@@ -12,10 +12,20 @@ Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaS
 ## Tecnologías utilizadas:
 - **Electron**: Framework para crear aplicaciones de escritorio multiplataforma utilizando tecnologías web.
 - **JavaScript Vanilla**: Para la lógica de la aplicación y la interacción con el DOM.
-- **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite` o `.onnx`.
+- **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite`, `tf` o `.onnx`.
 
 ## Instalación:
-1. Clonar el repositorio.
+1. Clonar el repositorio:
    ```bash
    git clone https://github.com/GallitoGod/UNCa-Interfaz.git
    cd UNCa-Interfaz
+2.  Instalar las dependencias:
+    ```bash
+    npm install
+    npm install electron --save-dev
+3. Ejecutar la aplicación:
+   ```bash
+   npm start
+
+## Contribución:
+- Las contribuciones son bienvenidas. Si deseas agregar nuevas funcionalidades o mejorar el código, no dudes en hacer un pull request.
