@@ -1,0 +1,141 @@
+:root {
+    --background: #ffffff;
+    --text: #333333;
+    --muted: #f1f5f9;
+    --muted-text: #64748b;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+}
+::-webkit-scrollbar {
+    display: none;
+}
+.dark-mode {
+    --background: #1e293b;
+    --text: #f1f5f9;
+    --muted: #334155;
+    --muted-text: #94a3b8;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+}
+body {
+    font-family: Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: var(--background);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.controls {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+@media (min-width: 768px) {
+    .controls {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+select, input[type="range"], button {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--muted-text);
+    border-radius: 4px;
+    background-color: var(--background);
+    color: var(--text);
+}
+button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+button:hover {
+    background-color: var(--primary-hover);
+}
+.logo {
+    width: 250px;
+    height: 100px;
+    margin-left: 125px;
+    margin-top: 20px;
+}
+.logo-container {
+    display: flex;
+}
+.modelo-toogle {
+    display: block;
+}
+.selectable {
+    margin-top: 25px;
+}
+.select-ia {
+    width: 350px;
+    margin-bottom: 20px;
+}
+.image-preview {
+    width: 800px;
+    height: 640px;
+    background-color: var(--muted);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+}
+.preview-container {
+    display: flex;
+    margin-bottom: 20px;
+}
+.prev-set {
+    border-radius: 0px;
+}
+.button-section {
+    display: flex;
+    justify-content: space-between;
+}
+.button-cont {
+    display: flex;
+    padding-left: 70px;
+    padding-right: 70px;
+    margin-bottom: 20px;
+}
+.input-sets {
+    padding-right: 5px;
+    padding-left: 25px;
+    padding-block: 8px;
+}
+.results {
+    background-color: var(--muted);
+    padding: 15px;
+    border-radius: 4px;
+}
+.results h3 {
+    margin-top: 0;
+}
+.results ul {
+    padding-left: 20px;
+}
+.theme-switch {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.theme-switch label {
+    cursor: pointer;
+}
