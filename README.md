@@ -18,4 +18,4 @@ Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaS
 1. Clonar el repositorio.
    ```bash
    git clone https://github.com/GallitoGod/UNCa-Interfaz.git
-   cd nombre-del-repositorio
+   cd UNCa-Interfaz
