@@ -1,19 +1,32 @@
-
+document.addEventListener('DOMContentLoaded', () => {
+  startCamera();
+  
+})
 const { ipcRenderer } = require('electron');
 
-// Escuchar el clic en el botón para cargar la imagen
 document.getElementById('upload-btn').addEventListener('click', () => {
-    ipcRenderer.send('load-image');
+  ipcRenderer.send('load-image');
 });
 
-// Escuchar la respuesta cuando la imagen es cargada exitosamente
 ipcRenderer.on('image-loaded', (event, { imagePath, imageBuffer }) => {
-    console.log('Imagen cargada desde:', imagePath);
-    // Aquí puedes usar la imagen en el frontend
-    // Puedes por ejemplo, mostrar la imagen en una etiqueta <img> con la ruta imagePath
+  console.log('Imagen cargada desde:', imagePath);
 });
 
-// Manejar si se canceló la carga de imagen
 ipcRenderer.on('image-load-cancelled', () => {
-    console.log('La carga de imagen fue cancelada');
+  console.log('La carga de imagen fue cancelada');
 });
+
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+   
+    const videoElement = document.getElementById('video');
+    videoElement.srcObject = stream;
+    videoElement.play();
+
+    console.log('Camera started');
+  } catch (err) {
+    console.error('Error accessing camera.', err);
+  }
+}

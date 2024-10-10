@@ -35,7 +35,6 @@ app.on('activate', function () {
   }
 });
 
-// Manejar la carga de imágenes
 ipcMain.on('upload-btn', async (event) => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
@@ -51,15 +50,10 @@ ipcMain.on('upload-btn', async (event) => {
   }
 });
 
-// Procesar la imagen con un modelo de IA (ejemplo simple)
 ipcMain.on('process-image', (event, { imagePath, modelName }) => {
-  // Aquí puedes realizar el análisis de la imagen con el modelo IA
-  // Puedes utilizar bibliotecas como TensorFlow.js o alguna que hayas entrenado
   console.log(`Procesando imagen: ${imagePath} con el modelo: ${modelName}`);
 
-  // Ejemplo de análisis de IA simulado:
   const analysisResults = `La imagen ${path.basename(imagePath)} fue procesada con el modelo ${modelName}.`;
 
-  // Enviar los resultados al frontend
   event.reply('analysis-complete', analysisResults);
 });
