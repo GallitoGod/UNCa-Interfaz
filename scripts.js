@@ -18,15 +18,38 @@ ipcRenderer.on('image-load-cancelled', () => {
 
 
 async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-   
-    const videoElement = document.getElementById('video');
-    videoElement.srcObject = stream;
-    videoElement.play();
+  const imagePreview = document.getElementById('image-preview');
+  const video = document.getElementById('video');
 
-    console.log('Camera started');
-  } catch (err) {
-    console.error('Error accessing camera.', err);
+  const constraints = {
+    audio: false,
+    video: {
+      width: imagePreview.clientWidth,
+      height: imagePreview.clientHeight,
+      frameRate: 30
+    }
+  };
+
+  const getVideo = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      handleSucces(stream);
+    } catch (err) {
+      console.log(err.name + ": " + err.message);
+    }
   }
+
+  const handleSucces = (stream) => {
+    video.srcObject = stream;
+    video.play();
+  }
+
+  getVideo();
+
+  /*
+  video.addEventListener('loadeddata', () => {
+    imagePreview.style.display = 'block';
+  });
+  */
+
 }
