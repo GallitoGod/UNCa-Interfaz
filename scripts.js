@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       console.log('Cámaras disponibles:', videoDevices);
 
-      cameraButtons.mainCamera.addEventListener('click', () => startCamera(0)); 
-      cameraButtons.webCamera.addEventListener('click', () => startCamera(1)); 
+      cameraButtons.mainCamera.addEventListener('click', () => startCamera(0, videoDevices)); 
+      cameraButtons.webCamera.addEventListener('click', () => startCamera(1, videoDevices)); 
     } catch (err) {
       console.error('Error al inicializar camaras:', err);
     }
@@ -31,7 +31,7 @@ const { ipcRenderer } = require('electron');
 
 
 
-async function startCamera(cameraIndex) {
+async function startCamera(cameraIndex, videoDevices) {
   const imagePreview = document.getElementById('image-preview');
   const video = document.getElementById('video');
   
