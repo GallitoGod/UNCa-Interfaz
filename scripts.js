@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   intializeCamera();
   const cameraButtons = {
-    mainCamera: document.querySelector('camera-btn'),
-    webCamera: document.querySelector('webcam-btn'),
+    mainCamera: document.getElementById('camera-btn'),
+    webCamera: document.getElementById('webcam-btn'),
   }
   let videoDevices = [];
 
@@ -19,34 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('Cámaras disponibles:', videoDevices);
 
       cameraButtons.mainCamera.addEventListener('click', () => startCamera(0)); 
-      cameraButtons.webcam.addEventListener('click', () => startCamera(1)); 
+      cameraButtons.webCamera.addEventListener('click', () => startCamera(1)); 
     } catch (err) {
       console.error('Error al inicializar camaras:', err);
     }
   }
 
-  async function switchCamera(cameraIndex) {
-    if (cameraIndex >= videoDevices.length || cameraIndex < 0) {
-      console.error('Índice de camara invalido');
-      return;
-    }
-
-    const constraints = {
-      video: {
-        deviceId: videoDevices[cameraIndex].deviceId
-      },
-      audio: false
-    };
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      video.play();
-      console.log(`Cambiado a la cámara: ${videoDevices[cameraIndex].label}`);
-    } catch (err) {
-      console.error('Error al cambiar de cámara:', err);
-    }
-  }
 
 });
 const { ipcRenderer } = require('electron');
@@ -76,6 +54,7 @@ async function startCamera(cameraIndex) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       handleSucces(stream);
+      console.log(`Cambiado a la cámara: ${videoDevices[cameraIndex].label}`);
     } catch (err) {
       console.log(err.name + ": " + err.message);
     }
