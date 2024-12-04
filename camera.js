@@ -10,7 +10,7 @@ export async function switchCamera(cameraSelect, startCamera) {
     const devices = await navigator.mediaDevices.enumerateDevices();
     videoDevices = devices.filter(device => device.kind === 'videoinput');
     if (videoDevices.length === 0) {
-      console.error('No se encontraron camaras disponibles');
+      console.error('No cameras found.');
       return;
     }
 
@@ -30,7 +30,7 @@ export async function switchCamera(cameraSelect, startCamera) {
     });
 
   } catch (err) {
-    console.error('Error al inicializar camaras:', err);
+    console.error('Error to initialize cameras:', err);
   }
 }
 
@@ -56,7 +56,7 @@ export async function startCamera(deviceId) {
       currentStream = stream;
       video.srcObject = stream;
       await video.play();
-      console.log(`Cambiado a la camara: ${deviceId}`);
+      console.log(`Changed to camera: ${deviceId}`);
     } catch (err) {
       console.log(err.name + ": " + err.message);
     }
