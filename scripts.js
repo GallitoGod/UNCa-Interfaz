@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+  initializeCameras();
   const cameraSelect = document.getElementById('camera-select');
-
   let videoDevices = []; 
 
   async function initializeCameras() {
@@ -27,6 +27,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function startCamera(cameraIndex) {
+    const imagePreview = document.getElementById('image-preview');
+    const video = document.getElementById('video');
+    
+    const constraints = {
+      audio: false,
+      video: {
+        deviceId: { exact: cameraIndex.deviceId },
+        width: imagePreview.clientWidth,
+        height: imagePreview.clientHeight,
+        frameRate: 30
+      }
+    };
+  
+    const getVideo = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        handleSucces(stream);
+        console.log(`Cambiado a la cámara: ${videoDevices[cameraIndex].label}`);
+      } catch (err) {
+        console.log(err.name + ": " + err.message);
+      }
+    }
+  
+    const handleSucces = (stream) => {
+      video.srcObject = stream;
+      video.play();
+    }
+  
+    getVideo();
+  
+    cameraSelect.addEventListener('change', (event) => {
+      switchCamera(event.target.value);
+    });
+  
+    initializeCameras;
+  }
+
 });
 
 
@@ -34,43 +72,3 @@ const { ipcRenderer } = require('electron');
 
 
 
-async function startCamera(cameraIndex) {
-  const imagePreview = document.getElementById('image-preview');
-  const video = document.getElementById('video');
-  
-  const constraints = {
-    audio: false,
-    video: {
-      deviceId: { exact: deviceId },
-      width: imagePreview.clientWidth,
-      height: imagePreview.clientHeight,
-      frameRate: 30
-    }
-  };
-
-  const getVideo = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      handleSucces(stream);
-      console.log(`Cambiado a la cámara: ${videoDevices[cameraIndex].label}`);
-    } catch (err) {
-      console.log(err.name + ": " + err.message);
-    }
-  }
-
-  const handleSucces = (stream) => {
-    video.srcObject = stream;
-    video.play();
-  }
-
-  getVideo();
-
-  // Escucha cambios en el menú desplegable
-  cameraSelect.addEventListener('change', (event) => {
-    switchCamera(event.target.value);
-  });
-
-  // Inicializa las cámaras al cargar la página
-  initializeCameras();
-
-}
