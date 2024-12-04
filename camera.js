@@ -1,14 +1,11 @@
 let videoDevices = []; 
-let currentStream = null;
 
 export async function switchCamera(cameraSelect) {
   try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-    }
-
+    await navigator.mediaDevices.getUserMedia({ video: true });
     const devices = await navigator.mediaDevices.enumerateDevices();
     videoDevices = devices.filter(device => device.kind === 'videoinput');
+
     if (videoDevices.length === 0) {
       console.error('No cameras found.');
       return;
@@ -24,15 +21,14 @@ export async function switchCamera(cameraSelect) {
 
     cameraSelect.addEventListener('change', (event) => {
       const selectedDeviceId = event.target.value;
-      startCamera(selectedDeviceId); 
+      startCamera(selectedDeviceId);
     });
 
     if (videoDevices[0]) {
       startCamera(videoDevices[0].deviceId);
     }
-
   } catch (err) {
-    console.error('Error to initialize cameras:', err);
+    console.error('Error initializing cameras:', err);
   }
 }
 
@@ -44,34 +40,29 @@ async function startCamera(deviceId) {
 
   const imagePreview = document.getElementById('image-preview');
   const video = document.getElementById('video');
-
+  
   const constraints = {
     audio: false,
     video: {
       deviceId: { exact: deviceId },
-      //width: imagePreview.clientWidth,
-      //height: imagePreview.clientHeight,
+      width: imagePreview.clientWidth,
+      height: imagePreview.clientHeight,
       frameRate: 30
     }
   };
-  console.log("Selected deviceId:", deviceId);
-  console.log("Constraints:", constraints);
 
-  const getVideo = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-      }
-      currentStream = stream;
-      video.srcObject = stream;
-      await video.play();
-      console.log(`Changed to camera: ${deviceId}`);
-    } catch (err) {
-      console.error(err.name + ": " + err.message);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
     }
+    video.srcObject = stream;
+    await video.play();
+    console.log(`Changed to camera: ${deviceId}`);
+  } catch (err) {
+    console.error(err.name + ": " + err.message);
   }
-  getVideo();
 }
+
 
