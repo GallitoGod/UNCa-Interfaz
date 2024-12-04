@@ -1,7 +1,7 @@
 let videoDevices = []; 
 let currentStream = null;
 
-export async function switchCamera(cameraSelect, startCamera) {
+export async function switchCamera(cameraSelect) {
   try {
     if (currentStream) {
       currentStream.getTracks().forEach(track => track.stop());
@@ -22,43 +22,54 @@ export async function switchCamera(cameraSelect, startCamera) {
       cameraSelect.appendChild(option);
     });
 
-    startCamera(videoDevices[0].deviceId);
-
     cameraSelect.addEventListener('change', (event) => {
       const selectedDeviceId = event.target.value;
       startCamera(selectedDeviceId); 
     });
+
+    if (videoDevices[0]) {
+      startCamera(videoDevices[0].deviceId);
+    }
 
   } catch (err) {
     console.error('Error to initialize cameras:', err);
   }
 }
 
-export async function startCamera(deviceId) {
+async function startCamera(deviceId) {
+  if (!deviceId) {
+    console.error("Invalid deviceId provided.");
+    return;
+  }
+
   const imagePreview = document.getElementById('image-preview');
   const video = document.getElementById('video');
-  
+
   const constraints = {
     audio: false,
     video: {
       deviceId: { exact: deviceId },
-      width: imagePreview.clientWidth,
-      height: imagePreview.clientHeight,
+      //width: imagePreview.clientWidth,
+      //height: imagePreview.clientHeight,
       frameRate: 30
     }
   };
+  console.log("Selected deviceId:", deviceId);
+  console.log("Constraints:", constraints);
+
   const getVideo = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
       }
       currentStream = stream;
       video.srcObject = stream;
       await video.play();
       console.log(`Changed to camera: ${deviceId}`);
     } catch (err) {
-      console.log(err.name + ": " + err.message);
+      console.error(err.name + ": " + err.message);
     }
   }
   getVideo();

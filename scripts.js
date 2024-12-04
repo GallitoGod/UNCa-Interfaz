@@ -1,4 +1,4 @@
-import { switchCamera, startCamera } from './camera.js'; 
+import { switchCamera } from './camera.js'; 
 
 document.addEventListener('DOMContentLoaded', () => {
   const cameraSelect = document.getElementById('camera-select');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedChunks = [];
   let isRecording = false;
 
-  switchCamera(cameraSelect, startCamera);
+  switchCamera(cameraSelect);
 
   recordButton.addEventListener('click', () => {
     if (!isRecording) {
