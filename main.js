@@ -10,8 +10,8 @@ function createWindow() {
     height: 600,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
-    }
+      contextIsolation: false,
+    },
   });
 
   mainWindow.loadFile('index.html');
@@ -38,7 +38,7 @@ app.on('activate', function () {
 ipcMain.on('upload-btn', async (event) => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg'] }]
+    filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg'] }],
   });
 
   if (!result.canceled) {

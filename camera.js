@@ -1,10 +1,10 @@
-let videoDevices = []; 
+let videoDevices = [];
 
 export async function switchCamera(cameraSelect) {
   try {
     await navigator.mediaDevices.getUserMedia({ video: true });
     const devices = await navigator.mediaDevices.enumerateDevices();
-    videoDevices = devices.filter(device => device.kind === 'videoinput');
+    videoDevices = devices.filter((device) => device.kind === 'videoinput');
 
     if (videoDevices.length === 0) {
       console.error('No cameras found.');
@@ -34,35 +34,32 @@ export async function switchCamera(cameraSelect) {
 
 async function startCamera(deviceId) {
   if (!deviceId) {
-    console.error("Invalid deviceId provided.");
+    console.error('Invalid deviceId provided.');
     return;
   }
 
   const imagePreview = document.getElementById('image-preview');
   const video = document.getElementById('video');
-  
   const constraints = {
     audio: false,
     video: {
       deviceId: { exact: deviceId },
-      width: imagePreview.clientWidth,
-      height: imagePreview.clientHeight,
-      frameRate: 30
-    }
+      width: imagePreview.clientWidth - 10,
+      height: imagePreview.clientHeight - 10,
+      frameRate: 30,
+    },
   };
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     if (video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject.getTracks().forEach((track) => track.stop());
       video.srcObject = null;
     }
     video.srcObject = stream;
     await video.play();
     console.log(`Changed to camera: ${deviceId}`);
   } catch (err) {
-    console.error(err.name + ": " + err.message);
+    console.error(err.name + ': ' + err.message);
   }
 }
-
-

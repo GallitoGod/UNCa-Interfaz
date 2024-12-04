@@ -1,112 +1,121 @@
 :root {
-    --background: #ffffff;
-    --text: #333333;
-    --muted: #f1f5f9;
-    --muted-text: #64748b;
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
+  --background: #ffffff;
+  --text: #333333;
+  --muted: #f1f5f9;
+  --muted-text: #64748b;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
 }
 ::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 body {
-    font-family: Arial, sans-serif;
-    background-color: var(--background);
-    color: var(--text);
-    line-height: 1.6;
-    padding: 20px;
-    transition: background-color 0.3s, color 0.3s;
+  font-family: Arial, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 20px;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 .container {
-    max-width: 800px;
-    margin: 0 auto;
-    background-color: var(--background);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--background);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 h1 {
-    text-align: center;
-    margin-bottom: 20px;
+  text-align: center;
+  margin-bottom: 20px;
 }
 label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
 }
-select, input[type="range"], button {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--muted-text);
-    border-radius: 4px;
-    background-color: var(--background);
-    color: var(--text);
+select,
+input[type='range'],
+button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--muted-text);
+  border-radius: 4px;
+  background-color: var(--background);
+  color: var(--text);
 }
 button {
-    background-color: var(--primary);
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 button:hover {
-    background-color: var(--primary-hover);
+  background-color: var(--primary-hover);
+}
+select {
+  outline: none;
+  border: 1px solid var(--muted-text);
 }
 .logo {
-    width: 250px;
-    height: 100px;
-    margin-left: 125px;
-    margin-top: 20px;
+  width: 250px;
+  height: 100px;
+  margin-left: 125px;
+  margin-top: 20px;
 }
 .logo-container {
-    display: flex;
+  display: flex;
 }
 .modelo-toogle {
-    display: block;
+  display: block;
 }
 .selectable {
-    margin-top: 25px;
+  margin-top: 25px;
 }
 .select-ia {
-    width: 350px;
-    margin-bottom: 20px;
+  width: 350px;
+  margin-bottom: 20px;
 }
 .image-preview {
-    width: 100%;
-    height: 640px;
-    background-color: var(--muted);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 4px;
+  width: 100%;
+  height: 640px;
+  background-color: var(--muted);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
 }
 .preview-container {
-    display: flex;
-    margin-bottom: 20px;
+  display: flex;
+  margin-bottom: 20px;
+  margin-top: 5px;
 }
 .prev-set {
-    border-radius: 0px;
+  border-radius: 0px;
 }
 .button-section {
-    display: flex;
-    justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
 }
 .button-cont {
-    display: flex;
-    padding-left: 70px;
-    padding-right: 70px;
-    margin-bottom: 20px;
+  display: flex;
+  padding-left: 70px;
+  padding-right: 70px;
+  margin-bottom: 20px;
 }
 .input-sets {
-    padding-right: 5px;
-    padding-left: 25px;
-    padding-block: 8px;
+  padding-right: 5px;
+  padding-left: 25px;
+  padding-block: 8px;
 }
 .theme-switch {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 10px;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 .theme-switch label {
-    cursor: pointer;
+  cursor: pointer;
 }
