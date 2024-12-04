@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     getVideo();
   
     cameraSelect.addEventListener('change', (event) => {
-      switchCamera(event.target.value);
+      initializeCameras(event.target.value);
     });
   
     initializeCameras;
