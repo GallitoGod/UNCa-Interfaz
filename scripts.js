@@ -1,9 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-  initializeCameras();
   const cameraSelect = document.getElementById('camera-select');
   let videoDevices = []; 
-
+  let currentStream = null;
+  initializeCameras();
   async function initializeCameras() {
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+    }
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -44,16 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const getVideo = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        handleSucces(stream);
+        currentStream = stream;
+        video.srcObject = stream;
+        await video.play();
         console.log(`Cambiado a la cámara: ${videoDevices[cameraIndex].label}`);
       } catch (err) {
         console.log(err.name + ": " + err.message);
       }
-    }
-  
-    const handleSucces = (stream) => {
-      video.srcObject = stream;
-      video.play();
     }
   
     getVideo();
