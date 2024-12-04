@@ -16,3 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// Estaria bueno hacer que si se toca el video, tome el tamaño de la ventana completa.
+// Tambien hay que intentar poner modo oscuro y modo claro que se pueda cambiar switch.
