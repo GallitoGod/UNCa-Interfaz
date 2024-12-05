@@ -9,7 +9,8 @@
 ::-webkit-scrollbar {
   display: none;
 }
-html, body {
+html,
+body {
   padding: 0;
   margin: 0;
 }
@@ -28,11 +29,12 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 100vh;
 }
 .settings-menu {
   position: fixed;
   top: 10%;
-  left: 5;
+  left: 2.5rem;
   transform: translateY(-50%);
   background-color: var(--background-default);
   border-radius: 8px;
@@ -168,14 +170,31 @@ select {
   display: flex;
   justify-content: space-between;
 }
+input .button-cont:focus {
+  border-color: black;
+}
 .button-cont {
   display: flex;
-  padding-left: 70px;
-  padding-right: 70px;
+  padding: 0.5rem 1.5rem;
   margin-bottom: 20px;
+  justify-content: center;
+  align-items: center;
+  font-weight: 900;
 }
 .input-sets {
   padding-right: 5px;
   padding-left: 25px;
   padding-block: 8px;
+}
+.grabar {
+  width: 200px;
+}
+.button-img {
+  font-weight: 900;
+}
+.select-ia {
+  font-weight: 900;
+}
+#camera-select {
+  font-weight: 900;
 }
