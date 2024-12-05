@@ -34,26 +34,3 @@ app.on('activate', function () {
     createWindow();
   }
 });
-
-ipcMain.on('upload-btn', async (event) => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg'] }],
-  });
-
-  if (!result.canceled) {
-    const imagePath = result.filePaths[0];
-    const imageBuffer = fs.readFileSync(imagePath);
-    event.reply('image-loaded', { imagePath, imageBuffer });
-  } else {
-    event.reply('image-load-cancelled');
-  }
-});
-
-ipcMain.on('process-image', (event, { imagePath, modelName }) => {
-  console.log(`Procesando imagen: ${imagePath} con el modelo: ${modelName}`);
-
-  const analysisResults = `La imagen ${path.basename(imagePath)} fue procesada con el modelo ${modelName}.`;
-
-  event.reply('analysis-complete', analysisResults);
-});

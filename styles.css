@@ -1,5 +1,5 @@
 :root {
-  --background: #ffffff;
+  --background-default: #ffffff;
   --text: #333333;
   --muted: #f1f5f9;
   --muted-text: #64748b;
@@ -11,7 +11,7 @@
 }
 body {
   font-family: Arial, sans-serif;
-  background-color: var(--background);
+  background-color: var(--background-default);
   color: var(--text);
   line-height: 1.6;
   padding: 20px;
@@ -19,10 +19,70 @@ body {
     background-color 0.3s,
     color 0.3s;
 }
-.container {
+.settings-menu {
+  position: fixed;
+  top: 10%;
+  left: 5;
+  transform: translateY(-50%);
+  background-color: var(--background-default);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 1em;
+  padding-right: 20px;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+  display: flex;
+  align-items: center;
+}
+.settings-menu .icon {
+  margin-right: 20px;
+  filter: brightness(0) saturate(100%);
+}
+.settings-menu .switch {
+  margin: 0 auto;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--primary);
+  transition: 0.4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: '';
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #ccc;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+.main-container {
   max-width: 800px;
   margin: 0 auto;
-  background-color: var(--background);
+  background-color: var(--background-default);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -43,7 +103,7 @@ button {
   padding: 10px;
   border: 1px solid var(--muted-text);
   border-radius: 4px;
-  background-color: var(--background);
+  background-color: var(--background-default);
   color: var(--text);
 }
 button {
@@ -91,10 +151,7 @@ select {
 .preview-container {
   display: flex;
   margin-bottom: 20px;
-  margin-top: 5px;
-}
-.prev-set {
-  border-radius: 0px;
+  margin-top: 10px;
 }
 .button-section {
   display: flex;
@@ -110,12 +167,4 @@ select {
   padding-right: 5px;
   padding-left: 25px;
   padding-block: 8px;
-}
-.theme-switch {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-.theme-switch label {
-  cursor: pointer;
 }
