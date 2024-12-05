@@ -101,6 +101,7 @@ input[type='range'],
 button {
   width: 100%;
   padding: 10px;
+  outline: none;
   border: 1px solid var(--muted-text);
   border-radius: 4px;
   background-color: var(--background-default);

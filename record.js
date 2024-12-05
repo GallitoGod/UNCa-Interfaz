@@ -2,7 +2,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
 
-export function startRecording(mediaRecorder, video) {
+export function startRecording(recordButton, video) {
   if (!video.srcObject) {
     console.error('there is no video stream available to record.');
     return;
@@ -45,6 +45,7 @@ export function stopRecording(recordButton) {
     mediaRecorder.stop();
     isRecording = false;
     recordButton.textContent = 'Iniciar';
+    recordButton.style.backgroundColor = '#3b82f6';
     console.log('Recording stopped.');
   }
 }
