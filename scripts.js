@@ -7,7 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const recordButton = document.getElementById('record-btn');
   const video = document.getElementById('video');
   const toggle = document.getElementById('dark-mode-toggle');
+  const fileButton = document.getElementById('personalized-upload');
+  const inputFile = document.getElementById('file-upload');
 
+  fileButton.addEventListener('click', () => {
+    inputFile.click();
+  })
   switchCamera(cameraSelect);
 
   recordButton.addEventListener('click', () => {
@@ -28,4 +33,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Estaria bueno hacer que si se toca el video, tome el tamaño de la ventana completa.
-// Tambien hay que intentar poner modo oscuro y modo claro que se pueda cambiar switch.
