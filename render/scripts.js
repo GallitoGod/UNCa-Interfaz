@@ -1,6 +1,7 @@
 import { switchCamera } from './camera.js';
 import { startRecording, stopRecording } from './record.js';
 import { enableDarkMode, disableDarkMode } from './toggleTheme.js';
+import { getModels } from './dinamicModels.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const cameraSelect = document.getElementById('camera-select');
@@ -10,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileButton = document.getElementById('personalized-upload');
   const inputFile = document.getElementById('file-upload');
 
+  getModels();
+  
   fileButton.addEventListener('click', () => {
     inputFile.click();
   })

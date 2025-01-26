@@ -27,6 +27,8 @@ Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaS
    ```bash
    npm install
    npm install electron --save-dev
+   npm install @tensorflow/tfjs
+   npm install onnxruntime-web
    ```
 3. Ejecutar la aplicación:
    ```bash

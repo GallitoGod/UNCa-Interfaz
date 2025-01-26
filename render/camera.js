@@ -1,3 +1,4 @@
+import { processFrames } from './dinamicModels.js';
 let videoDevices = [];
 
 export async function switchCamera(cameraSelect) {
@@ -38,6 +39,8 @@ async function startCamera(deviceId) {
     return;
   }
 
+  const outputCanvas = document.getElementById('outputCanvas');
+  const outputCtx = outputCanvas.getContext('2d');
   const imagePreview = document.getElementById('image-preview');
   const video = document.getElementById('video');
   const constraints = {
@@ -58,6 +61,7 @@ async function startCamera(deviceId) {
     }
     video.srcObject = stream;
     await video.play();
+    processFrames(video, outputCtx);
     console.log(`Changed to camera: ${deviceId}`);
   } catch (err) {
     console.error(err.name + ': ' + err.message);

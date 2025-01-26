@@ -20,9 +20,6 @@
                 <div class="model-toogle">
                     <label class="selectable" for="ai-model">Modelo de IA</label>
                     <select class="select-ia" id="ai-model">
-                        <option value="model1">Modelo 1</option>
-                        <option value="model2">Modelo 2</option>
-                        <option value="model3">Modelo 3</option>
                     </select>
                 </div>
                 <img class="logo" src="images/logo5.svg" alt="">
@@ -43,16 +40,19 @@
             </div>
             <div class="image-preview" id="image-preview">
                 <video id="video"></video>
+                <canvas id="outputCanvas" width="400" height="300" style="border: 1px solid black;"></canvas>
             </div>
             <div class="preview-container">
                 <input type="file" style="display: none;" id="file-upload" multiple>
-                <button type="file" class="button-img prev-set" id="personalized-upload">Cargar video</button>
+                <button class="button-img prev-set" id="personalized-upload">Cargar video</button>
                 <select id="camera-select">
                     <option value="">Selecciona una cámara</option>
                 </select>
             </div>
         </main>
-    </div>    
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>    
     <script type="module" src="scripts.js"></script>
 </body>
 </html>
