@@ -1,7 +1,12 @@
+import * as tf from '@tensorflow/tfjs';
+import * as ort from 'onnxruntime-web';
 import { selectedModel, modelType } from "./constants.js";
+import { sectionIA } from "./uiManager.js";
 
-export function setupModelLoader() {
+export async function setupModelLoader() {
     const modelSelect = document.getElementById('ai-model');
+    const models = await globalThis.api.getModels();
+    sectionIA(models, modelSelect);
 
     modelSelect.addEventListener('change', async () => {
         try {

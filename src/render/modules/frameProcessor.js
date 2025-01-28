@@ -11,7 +11,6 @@ export function setupFrameProcessor() {
 
     async function processFrame() {
         if (isProcessing || !selectedModel) return;
-
         isProcessing = true;
 
         try {

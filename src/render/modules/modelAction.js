@@ -1,3 +1,6 @@
+import * as tf from '@tensorflow/tfjs';
+import * as tflite from 'tflite';
+import * as ort from 'onnxruntime-web';
 import { selectedModel, modelType } from './constants.js';
 
 /**

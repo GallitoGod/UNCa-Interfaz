@@ -1,7 +1,8 @@
 import { switchCamera } from './modules/camera.js';
 import { startRecording, stopRecording } from './modules/record.js';
 import { enableDarkMode, disableDarkMode } from './modules/toggleTheme.js';
-import { getModels } from './modules/dinamicModels.js';
+import { setupFrameProcessor } from './modules/frameProcessor.js';
+import { setupModelLoader } from './modules/modelLoader.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const cameraSelect = document.getElementById('camera-select');
@@ -11,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileButton = document.getElementById('personalized-upload');
   const inputFile = document.getElementById('file-upload');
 
-  getModels();
+  setupFrameProcessor();
+  setupModelLoader();
   
   fileButton.addEventListener('click', () => {
     inputFile.click();
