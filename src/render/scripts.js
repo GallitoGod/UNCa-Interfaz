@@ -1,7 +1,7 @@
-import { switchCamera } from './camera.js';
-import { startRecording, stopRecording } from './record.js';
-import { enableDarkMode, disableDarkMode } from './toggleTheme.js';
-import { getModels } from './dinamicModels.js';
+import { switchCamera } from './modules/camera.js';
+import { startRecording, stopRecording } from './modules/record.js';
+import { enableDarkMode, disableDarkMode } from './modules/toggleTheme.js';
+import { getModels } from './modules/dinamicModels.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const cameraSelect = document.getElementById('camera-select');
