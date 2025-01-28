@@ -1,5 +1,6 @@
 import { selectedModel, modelType } from './constants.js';
 import { preprocessImage } from './utils.js';
+import { runModel } from './modelAction.js';
 
 export function setupFrameProcessor() {
     const video = document.getElementById('video');
