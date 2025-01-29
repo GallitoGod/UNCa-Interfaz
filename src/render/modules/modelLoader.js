@@ -1,5 +1,5 @@
-import * as tf from '@tensorflow/tfjs';
-import * as ort from 'onnxruntime-web';
+const tf = require('@tensorflow/tfjs');
+const ort = require('onnxruntime-web');
 import { selectedModel, modelType } from "./constants.js";
 import { sectionIA } from "./uiManager.js";
 

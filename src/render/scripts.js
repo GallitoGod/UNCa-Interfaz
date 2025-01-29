@@ -1,6 +1,6 @@
 import { switchCamera } from './modules/camera.js';
 import { startRecording, stopRecording } from './modules/record.js';
-import { enableDarkMode, disableDarkMode } from './modules/toggleTheme.js';
+import { enableDarkMode, disableDarkMode } from './modules/uiManager.js';
 import { setupFrameProcessor } from './modules/frameProcessor.js';
 import { setupModelLoader } from './modules/modelLoader.js';
 

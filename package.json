@@ -2,7 +2,7 @@
   "name": "unca-interfaz",
   "version": "1.0.0",
   "description": "Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaScript Vanilla**, que permite utilizar y cambiar modelos de **inteligencia artificial** para procesar imágenes o capturar datos en tiempo real desde cámaras.",
-  "main": "main.js",
+  "main": "./src/main.js",
   "scripts": {
     "start": "electron .",
     "format": "prettier --write .",

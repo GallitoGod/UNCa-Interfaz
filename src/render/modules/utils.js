@@ -1,5 +1,5 @@
-import * as tf from '@tensorflow/tfjs';
-import * as ort from 'onnxruntime-web';
+const tf = require('@tensorflow/tfjs');
+const ort = require('onnxruntime-web');
 import { modelType } from "./constants.js" 
 
 export function preprocessImage(imageData) {

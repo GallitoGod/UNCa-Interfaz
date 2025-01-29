@@ -1,4 +1,4 @@
-import { processFrames } from './dinamicModels.js';
+import { processFrames } from './frameProcessor.js';
 let videoDevices = [];
 
 export async function switchCamera(cameraSelect) {
