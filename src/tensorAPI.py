@@ -1,13 +1,13 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+import onnxruntime as ort
+import tensorflow as tf
+from PIL import Image
 import numpy as np
+import base64
 import cv2
 import io
 import os
-from PIL import Image
-import base64
-from fastapi.middleware.cors import CORSMiddleware
-import tensorflow as tf
-import onnxruntime as ort
 
 app = FastAPI()
 
@@ -31,6 +31,7 @@ def preprocess_image(image_bytes: bytes, img_size: int = 224):
 async def predict(data: dict):
 
     try:
+        print("Solicitud recibida en /predict")
         image_base64 = data.get("image")
         print(f"Base64 recibido: {image_base64[:100]}...")
         model_type = data.get("model_type", "tf")

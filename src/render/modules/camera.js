@@ -69,7 +69,7 @@ async function startCamera(deviceId) {
 }
 
 async function processVideoFrames(video, ctx) {
-  const apiEndpoint = "http://localhost:8000/predict"; 
+  const apiEndpoint = "http://127.0.0.1:8000/predict"; 
   const modelType = "tf"; 
 
   const processFrame = async () => {
