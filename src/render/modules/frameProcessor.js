@@ -1,3 +1,8 @@
+
+/*
+    POSIBLEMENTE ESTE ESCRIPT VUELE
+*/
+
 import { selectedModel, modelType } from './constants.js';
 import { preprocessImage } from './utils.js';
 import { runModel } from './modelAction.js';

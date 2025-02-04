@@ -1,3 +1,7 @@
+/*
+    POSIBLEMENTE ESTE ESCRIPT VUELE
+*/
+
 function drawOutput(ctx, data, classLabels) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 

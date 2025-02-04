@@ -37,6 +37,7 @@ app.on('activate', function () {
   }
 });
 
+//Esta api va a dejar de existir para hacer APIs unicamente en python
 ipcMain.handle('get-models', async () => {
   try {
     const modelsDir = path.join(__dirname, 'models');

@@ -1,3 +1,7 @@
+/*
+    POSIBLEMENTE ESTE ESCRIPT VUELE
+*/
+
 const tf = require('@tensorflow/tfjs');
 const ort = require('onnxruntime-web');
 import { selectedModel, modelType } from './constants.js';
