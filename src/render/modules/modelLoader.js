@@ -4,7 +4,7 @@ export async function fetchModels() {
     try {
       const response = await fetch(apiEndpoint);
       const { models } = await response.json();
-  
+      console.log(response.json);
       const selectElement = document.getElementById("modelSelect");
       selectElement.innerHTML = ""; 
   

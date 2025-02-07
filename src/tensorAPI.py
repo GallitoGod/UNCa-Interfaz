@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import onnxruntime as ort
+from typing import Union
 import tensorflow as tf
 from PIL import Image
 import numpy as np
@@ -27,14 +29,18 @@ def preprocess_image(image_bytes: bytes, img_size: int = 224):
     image_array = np.array(image) / 255.0 
     return np.expand_dims(image_array, axis=0) 
 
+class Data(BaseModel):
+    image: str
+    modelType: str
+
 @app.post("/predict")
-async def predict(data: dict):
+async def predict(data: Data):
 
     try:
         print("Solicitud recibida en /predict")
-        image_base64 = data.get("image")
+        image_base64 = data.image.get("image")
         print(f"Base64 recibido: {image_base64[:100]}...")
-        model_type = data.get("model_type", "tf")
+        model_type = data.modelType.get("model_type", "tf")
 
         image_data = base64.b64decode(image_base64.split(",")[1])
         processed_image = preprocess_image(image_data)
