@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 
 let mainWindow;
 
@@ -38,18 +39,29 @@ app.on('activate', function () {
 });
 
 //Esta api va a dejar de existir para hacer APIs unicamente en python
-ipcMain.handle('get-models', async () => {
-  try {
-    const modelsDir = path.join(__dirname, 'models');
-    if (!fs.existsSync(modelsDir)) {
-      throw new Error(`El directorio ${modelsDir} no existe`);
-    }
-  return fs.readdirSync(modelsDir).filter((file) => {
-    const ext = path.extname(file).toLowerCase();
-    return ext === '.onnx' || ext === '.json';
-  });
-  } catch (err) {
-    console.error('Error al obtener los modelos:', err);
-    throw err;
-  }
-});
+// ipcMain.handle('get-models', async () => {
+//   try {
+//     const modelsDir = path.join(__dirname, 'models');
+//     if (!fs.existsSync(modelsDir)) {
+//       throw new Error(`El directorio ${modelsDir} no existe`);
+//     }
+//   return fs.readdirSync(modelsDir).filter((file) => {
+//     const ext = path.extname(file).toLowerCase();
+//     return ext === '.onnx' || ext === '.json';
+//   });
+//   } catch (err) {
+//     console.error('Error al obtener los modelos:', err);
+//     throw err;
+//   }
+// });
+
+// ipcMain.handle('get-models', async (event, url) => {
+//   try {
+//     const response = await fetch(url);
+//     const data = await response.json();
+//     return data;
+//   } catch (err) {
+//     console.error('Error al obtener los modelos:', err);
+//     return { err : 'Error al obtener los modelos' };
+//   }
+// })
