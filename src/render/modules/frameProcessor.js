@@ -1,21 +1,19 @@
-import { selectedModel, modelType } from './constants.js';
+import { predictUrl } from './constants.js';
 
 export async function processVideoFrames(video, ctx) {
-    const apiEndpoint = "http://127.0.0.1:8000/predict"; 
   
     const processFrame = async () => {
       ctx.drawImage(video, 0, 0, ctx.canvas.width, ctx.canvas.height);
       const frameDataURL = ctx.canvas.toDataURL("image/jpeg");
   
       try {
-        const response = await fetch(apiEndpoint, {
+        const response = await fetch(predictUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             image: frameDataURL,
-            model_type: modelType,
           }),
         });
         const result = await response.json();

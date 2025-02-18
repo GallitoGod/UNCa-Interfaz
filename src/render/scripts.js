@@ -2,6 +2,8 @@ import { switchCamera } from './modules/camera.js';
 import { startRecording, stopRecording } from './modules/record.js';
 import { enableDarkMode, disableDarkMode } from './modules/uiManager.js';
 import { getModels } from './modules/modelLoader.js';
+import { selectModel } from './modules/selectModel.js';
+import { selectedModel } from './modules/constants.js';
 const d = document;
 
 d.addEventListener('DOMContentLoaded', () => {
@@ -11,8 +13,14 @@ d.addEventListener('DOMContentLoaded', () => {
   const toggle = d.getElementById('dark-mode-toggle');
   const fileButton = d.getElementById('personalized-upload');
   const inputFile = d.getElementById('file-upload');
+  const modelSelect = d.getElementById('ia-model');
 
   getModels();
+
+  modelSelect.addEventListener('Change', () => {
+    selectedModel = modelSelect.value;
+    selectModel();
+  });
   
   fileButton.addEventListener('click', () => {
     inputFile.click();

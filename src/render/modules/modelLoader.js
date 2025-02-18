@@ -1,6 +1,8 @@
+import { loadModelUrl } from "./constants.js";
+
 export async function getModels() {
   try {
-    const response = await fetch('http://127.0.0.1:8000/models');
+    const response = await fetch(loadModelUrl);
     const { models } = await response.json();
     const selectElement = document.getElementById("ia-model");
     selectElement.innerHTML = ""; 

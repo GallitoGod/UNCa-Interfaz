@@ -1,4 +1,4 @@
-import { processVideoFrames } from "./frameProcessor";
+import { processVideoFrames } from "./frameProcessor.js";
 let videoDevices = [];
 
 export async function switchCamera(cameraSelect) {
