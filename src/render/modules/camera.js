@@ -1,3 +1,4 @@
+import { processVideoFrames } from "./frameProcessor";
 let videoDevices = [];
 
 export async function switchCamera(cameraSelect) {
@@ -65,42 +66,4 @@ async function startCamera(deviceId) {
   } catch (err) {
     console.error(err.name + ': ' + err.message);
   }
-}
-
-async function processVideoFrames(video, ctx) {
-  const apiEndpoint = "http://127.0.0.1:8000/predict"; 
-  const modelType = "tf"; 
-
-  const processFrame = async () => {
-    ctx.drawImage(video, 0, 0, ctx.canvas.width, ctx.canvas.height);
-    const frameDataURL = ctx.canvas.toDataURL("image/jpeg");
-
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: frameDataURL,
-          model_type: modelType,
-        }),
-      });
-
-      const result = await response.json();
-      drawPrediction(ctx, result.prediction);
-    } catch (error) {
-      console.error("Error sending frame to API:", error);
-    }
-
-    requestAnimationFrame(processFrame);
-  };
-
-  requestAnimationFrame(processFrame);
-}
-
-function drawPrediction(ctx, prediction) {
-  ctx.fillStyle = "red";
-  ctx.font = "20px Arial";
-  ctx.fillText(`Prediction: ${prediction}`, 10, 30);
 }

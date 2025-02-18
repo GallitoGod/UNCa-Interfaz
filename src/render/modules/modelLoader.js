@@ -1,7 +1,6 @@
 export async function getModels() {
   try {
     const response = await fetch('http://127.0.0.1:8000/models');
-    if (!response.ok) throw new Error(`Error al obtener los modelos: ${response.statusText}`);
     const { models } = await response.json();
     const selectElement = document.getElementById("ia-model");
     selectElement.innerHTML = ""; 

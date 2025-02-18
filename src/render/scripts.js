@@ -2,14 +2,15 @@ import { switchCamera } from './modules/camera.js';
 import { startRecording, stopRecording } from './modules/record.js';
 import { enableDarkMode, disableDarkMode } from './modules/uiManager.js';
 import { getModels } from './modules/modelLoader.js';
+const d = document;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const cameraSelect = document.getElementById('camera-select');
-  const recordButton = document.getElementById('record-btn');
-  const video = document.getElementById('video');
-  const toggle = document.getElementById('dark-mode-toggle');
-  const fileButton = document.getElementById('personalized-upload');
-  const inputFile = document.getElementById('file-upload');
+d.addEventListener('DOMContentLoaded', () => {
+  const cameraSelect = d.getElementById('camera-select');
+  const recordButton = d.getElementById('record-btn');
+  const video = d.getElementById('video');
+  const toggle = d.getElementById('dark-mode-toggle');
+  const fileButton = d.getElementById('personalized-upload');
+  const inputFile = d.getElementById('file-upload');
 
   getModels();
   
