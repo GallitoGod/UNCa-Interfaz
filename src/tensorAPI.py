@@ -1,6 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import onnxruntime as ort
 from typing import Union
 import tensorflow as tf
@@ -8,7 +7,6 @@ from PIL import Image
 import numpy as np
 import base64
 import cv2
-import io
 import os
 
 app = FastAPI()
