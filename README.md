@@ -1,6 +1,6 @@
 # Interfaz de Inteligencia Artificial para Procesamiento de Imágenes y Cámaras
 
-Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaScript Vanilla**, que permite utilizar y cambiar modelos de **inteligencia artificial** para procesar imágenes o capturar datos en tiempo real desde cámaras. Su objetivo principal es proporcionar una interfaz intuitiva para cargar distintos modelos de IA y aplicar análisis o transformaciones sobre imágenes y videos.
+Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaScript Vanilla** y **FastApi**, que permite utilizar y cambiar modelos de **inteligencia artificial** para procesar imágenes o capturar datos en tiempo real desde cámaras. Su objetivo principal es proporcionar una interfaz intuitiva para cargar distintos modelos de IA y aplicar análisis sobre imágenes y videos.
 
 ## Características:
 
@@ -14,6 +14,7 @@ Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaS
 
 - **Electron**: Framework para crear aplicaciones de escritorio multiplataforma utilizando tecnologías web.
 - **JavaScript Vanilla**: Para la lógica de la aplicación y la interacción con el DOM.
+- **FastApi**: Framework para desarrollar APIs en Python.
 - **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite`, `tf` o `.onnx`.
 
 ## Instalación:
@@ -23,17 +24,36 @@ Este proyecto es una aplicación de escritorio creada con **Electron** y **JavaS
    git clone https://github.com/GallitoGod/UNCa-Interfaz.git
    cd UNCa-Interfaz
    ```
-2. Instalar las dependencias:
+2. Instalar las dependencias de Node.js:
    ```bash
    npm install
    npm install electron --save-dev
-   npm install @tensorflow/tfjs
-   npm install onnxruntime-web
    ```
-3. Ejecutar la aplicación:
+3. Configurar el entorno de Python:
+   Windows:
+   ```bash
+   python -m venv venv
+   .venv\Scripts\activate
+   ```
+   Linux/MacOS:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+4. Instalar las dependencias de Python:
+   ```bash
+   pip install -r requirements.txt
+   ```
+5. Ejecutar la aplicación:
+   En una terminal, inicia el servidor de Python:
+   ```bash
+   fastapi dev src/TensorAPI.py
+   ```
+   En otra terminal, inicia el cliente de Electron:
    ```bash
    npm start
    ```
+
 
 ## Contribución:
 
