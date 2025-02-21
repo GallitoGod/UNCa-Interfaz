@@ -30,12 +30,12 @@ Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaSc
    npm install electron --save-dev
    ```
 3. Configurar el entorno de Python:
-   -Windows:
+   - Windows:
    ```bash
    python -m venv venv
    .venv\Scripts\activate
    ```
-   -Linux/MacOS:
+   - Linux/MacOS:
    ```bash
    python -m venv venv
    source venv/bin/activate
