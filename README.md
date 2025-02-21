@@ -45,11 +45,11 @@ Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaSc
    pip install -r requirements.txt
    ```
 5. Ejecutar la aplicación:
-   En una terminal, inicia el servidor de Python:
+   - En una terminal, inicia el servidor de Python:
    ```bash
    fastapi dev src/TensorAPI.py
    ```
-   En otra terminal, inicia el cliente de Electron:
+   - En otra terminal, inicia el cliente de Electron:
    ```bash
    npm start
    ```
