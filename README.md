@@ -15,7 +15,7 @@ Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaSc
 - **Electron**: Framework para crear aplicaciones de escritorio multiplataforma utilizando tecnologías web.
 - **JavaScript Vanilla**: Para la lógica de la aplicación y la interacción con el DOM.
 - **FastApi**: Framework para desarrollar APIs en Python.
-- **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite`, `tf`, `.pt`, `.pth` o `.onnx`.
+- **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite`, `h5`, `.pt`, `.pth` o `.onnx`.
 
 ## Instalación:
 
