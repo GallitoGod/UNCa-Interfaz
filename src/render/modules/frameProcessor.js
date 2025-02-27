@@ -3,7 +3,7 @@ import { predictUrl } from './constants.js';
 export async function processVideoFrames(video, ctx) {
   
     const processFrame = async () => {
-      ctx.drawImage(video, 0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.drawImage(video, 0, 0, ctx.canvas.width, ctx.canvas.height); // <---- Aca esta dibujando antes de tener los datos de la api
       const frameDataURL = ctx.canvas.toDataURL("image/jpeg");
   
       try {

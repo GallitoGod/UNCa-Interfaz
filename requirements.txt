@@ -7,3 +7,4 @@ numpy
 opencv-python
 python-multipart
 pandas
+torch==2.1.0
