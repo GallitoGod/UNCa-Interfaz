@@ -12,8 +12,8 @@ export async function selectModel() {
                 model_name: selectedModel,
             }),
         });
-        console.log("Respuesta del servidor:", response);
+        console.log("server response:", response);
     } catch (err) {
-        console.error("Error al cambiar modelo:", err);
+        console.error("Error sending POST request:", err);
     }
 }

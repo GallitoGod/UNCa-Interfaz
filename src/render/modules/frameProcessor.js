@@ -19,7 +19,7 @@ export async function processVideoFrames(video, ctx) {
         const result = await response.json();
         drawPrediction(ctx, result.prediction);
       } catch (error) {
-        console.error("Error en la respuesta del servidor:", error);
+        console.error("Error fetching predictions:", error);
       }
       requestAnimationFrame(processFrame);
     };
