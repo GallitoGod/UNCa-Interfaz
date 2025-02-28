@@ -13,7 +13,7 @@ export async function getModels() {
       selectElement.appendChild(option);
     });
   } catch (error) {
-    console.error("Error al cargar los modelos:", error);
+    console.error("Error fetching models:", error);
   }
 }
   
