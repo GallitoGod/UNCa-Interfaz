@@ -140,3 +140,17 @@ async def predict(image_base64: str):
         return {"prediction": prediction}
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Error procesando la imagen: {str(err)}")
+    
+    '''
+        Esta api debe ser modificada para enviar los resultados dibujados directamente al cliente, 
+    OpneCV es una libreria que optimiza la generacion de imagenes utilizando arrays de pixeles directamente en C,
+    por lo que es mas eficiente hacerlo en la api que en el cliente.
+        Aparte se tiene que dar la capacidad de dar parametros de personalizacion de colores, grosores y hasta incluso fuentes
+    si se da el caso.
+        Por ultimo, codificar la imagen procesada en base64 y devolverla al cliente.
+    
+        IDEAS:
+            - Usar argumentos opcionales en FastAPI para cambiar dinamicamente los colores y estilos.
+            - Usar cv2.putText() para agregar texto a la imagen.
+            - Conviertir el color de "255,0,0" a una tupla (255,0,0) usando .split(",) y map(int, x.split(","))
+    '''
