@@ -1,56 +1,134 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Vision App</title>
+    <title>Vision AI - Computer Vision App</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="body-container">
-        <section class="settings-menu" id="settings-menu">
-            <img src="./images/lightMode.svg" alt="Light Mode" class="icon" id="mode-icon">
-            <label class="switch">
-              <input type="checkbox" id="dark-mode-toggle">
-              <span class="slider"></span>
-            </label>
-          </section>
-        <main class="main-container" id="main-menu">
+    <div class="app-container">
+        <header class="app-header">
             <div class="logo-container">
-                <div class="model-toogle">
-                    <label class="selectable" for="ai-model">Modelo de IA</label>
-                    <select class="select-ia" id="ia-model">
+                <img src="./images/logo5.svg" alt="Vision AI Logo" class="logo">
+                <h1 class="app-title">Vision AI</h1>
+            </div>
+            
+            <div class="header-controls">
+                <div class="model-selector">
+                    <label for="ia-model">Modelo de IA</label>
+                    <select id="ia-model" class="select-control">
                     </select>
                 </div>
-                <img class="logo" src="./images/logo5.svg" alt="">
-            </div>
-            <div class="button-section">
-                <div class="fiabilidad">
-                    <label for="">Confianza</label>
-                    <input placeholder="0.50" class="button-cont input-sets"></input>
-                </div>
-                <div class="wid-hig">
-                    <label for="">Tamaño</label>
-                    <input placeholder="100X100" class="button-cont input-sets"></input>
-                </div>
-                <div class="grabar">
-                    <label for="record-btn">Grabar</label>
-                    <button class="button-cont" id="record-btn">Iniciar</button>
+                
+                <div class="theme-toggle">
+                    <span class="theme-label">Modo Oscuro</span>
+                    <label class="switch">
+                        <input type="checkbox" id="dark-mode-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
-            <div class="image-preview" id="image-preview">
-                <video id="video"></video>
-                <canvas id="outputCanvas" width="400" height="300" style="border: 1px solid black;"></canvas>
-            </div>
-            <div class="preview-container">
-                <input type="file" style="display: none;" id="file-upload" multiple>
-                <button class="button-img prev-set" id="personalized-upload">Cargar video</button>
-                <select id="camera-select">
-                    <option value="">Selecciona una cámara</option>
-                </select>
+        </header>
+        
+        <main class="main-content">
+            <div class="content-grid">
+                <!-- Video Display Area -->
+                <div class="video-container">
+                    <video id="video" class="video-element"></video>
+                    <canvas id="outputCanvas" class="output-canvas"></canvas>
+                    <div class="no-video-message">
+                        <span>No hay fuente de video seleccionada</span>
+                    </div>
+                </div>
+                
+                <!-- Controls Panel -->
+                <div class="controls-panel">
+                    <div class="tabs">
+                        <div class="tab-header">
+                            <button class="tab-button active" data-tab="camera">Cámara</button>
+                            <button class="tab-button" data-tab="upload">Cargar Video</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="camera-tab">
+                            <div class="control-group">
+                                <label for="camera-select">Seleccionar Cámara</label>
+                                <select id="camera-select" class="select-control">
+                                    <option value="">Selecciona una cámara</option>
+                                </select>
+                            </div>
+                            
+                            <button id="record-btn" class="action-button primary-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <span>Iniciar Grabación</span>
+                            </button>
+                        </div>
+                        
+                        <div class="tab-content" id="upload-tab">
+                            <input type="file" id="file-upload" accept="video/*" style="display: none;">
+                            <button id="personalized-upload" class="action-button outline-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                <span>Cargar Video</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="control-group">
+                            <label for="confidence-slider">Confianza: <span id="confidence-value">50%</span></label>
+                            <div class="slider-container">
+                                <input type="range" id="confidence-slider" min="0" max="100" value="50" class="slider-control">
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="size-input">Tamaño (WxH)</label>
+                            <input type="text" id="size-input" class="text-input" placeholder="400x300">
+                        </div>
+                    </div>
+                    
+                    <button id="advanced-settings-btn" class="action-button outline-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <span>Configuración Avanzada</span>
+                    </button>
+                </div>
             </div>
         </main>
-    </div> 
+        
+        <!-- Advanced Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Configuración Avanzada</h3>
+                    <button class="close-button" id="close-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="control-group">
+                        <label for="bbox-color">Color de Bounding Box</label>
+                        <div class="color-picker-container">
+                            <div class="color-preview" id="bbox-color-preview"></div>
+                            <input type="color" id="bbox-color" value="#00BFFF" class="color-picker">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="label-color">Color de Etiquetas</label>
+                        <div class="color-picker-container">
+                            <div class="color-preview" id="label-color-preview"></div>
+                            <input type="color" id="label-color" value="#FFFFFF" class="color-picker">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="save-settings" class="action-button primary-button">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="../src/render/scripts.js"></script>
 </body>
 </html>

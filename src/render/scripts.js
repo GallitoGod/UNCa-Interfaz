@@ -1,6 +1,5 @@
 import { switchCamera } from './modules/camera.js';
 import { startRecording, stopRecording } from './modules/record.js';
-import { enableDarkMode, disableDarkMode } from './modules/uiManager.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
 import { selectedModel } from './modules/constants.js';
@@ -30,15 +29,79 @@ const d = document;
 */
 
 d.addEventListener('DOMContentLoaded', () => {
+  const darkModeToggle = d.getElementById('dark-mode-toggle');
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const tabContents = document.querySelectorAll(".tab-content");
+  const confidenceSlider = document.getElementById("confidence-slider");
+  const confidenceValue = document.getElementById("confidence-value");
+  const advancedSettingsBtn = document.getElementById("advanced-settings-btn");
+  const settingsModal = document.getElementById("settings-modal");
+  const closeModalBtn = document.getElementById("close-modal");
+  const saveSettingsBtn = document.getElementById("save-settings");
+  const bboxColorInput = document.getElementById("bbox-color");
+  const labelColorInput = document.getElementById("label-color");
+  const bboxColorPreview = document.getElementById("bbox-color-preview");
+  const labelColorPreview = document.getElementById("label-color-preview");
   const cameraSelect = d.getElementById('camera-select');
   const recordButton = d.getElementById('record-btn');
   const video = d.getElementById('video');
-  const toggle = d.getElementById('dark-mode-toggle');
   const fileButton = d.getElementById('personalized-upload');
   const inputFile = d.getElementById('file-upload');
   const modelSelect = d.getElementById('ia-model');
 
+  bboxColorPreview.style.backgroundColor = bboxColorInput.value;
+  labelColorPreview.style.backgroundColor = labelColorInput.value;
   getModels();
+
+  darkModeToggle.addEventListener("change", function () {
+    document.documentElement.classList.toggle("dark", this.checked);
+  });
+
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      const tabName = this.getAttribute("data-tab");
+
+      tabButtons.forEach((btn) => btn.classList.remove("active"));
+      this.classList.add("active");
+
+      tabContents.forEach((content) => {
+        content.classList.remove("active");
+        if (content.id === `${tabName}-tab`) {
+          content.classList.add("active");
+        }
+      });
+    });
+  });
+
+  confidenceSlider.addEventListener("input", function () {
+    confidenceValue.textContent = `${this.value}%`;
+  });
+
+  advancedSettingsBtn.addEventListener("click", () => {
+    settingsModal.classList.add("active");
+  });
+
+  closeModalBtn.addEventListener("click", () => {
+    settingsModal.classList.remove("active");
+  });
+
+  settingsModal.addEventListener("click", (e) => {
+    if (e.target === settingsModal) {
+      settingsModal.classList.remove("active");
+    }
+  });
+
+  bboxColorInput.addEventListener("input", function () {
+    bboxColorPreview.style.backgroundColor = this.value;
+  });
+
+  labelColorInput.addEventListener("input", function () {
+    labelColorPreview.style.backgroundColor = this.value;
+  });
+
+  saveSettingsBtn.addEventListener("click", () => {
+    settingsModal.classList.remove("active");
+  });
 
   modelSelect.addEventListener('Change', () => {
     selectedModel = modelSelect.value;
@@ -55,14 +118,6 @@ d.addEventListener('DOMContentLoaded', () => {
       startRecording(recordButton, video);
     } else {
       stopRecording(recordButton);
-    }
-  });
-
-  toggle.addEventListener('change', () => {
-    if (toggle.checked) {
-      enableDarkMode();
-    } else {
-      disableDarkMode();
     }
   });
 });
