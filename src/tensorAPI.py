@@ -29,7 +29,6 @@ def preprocess_image(image_bytes: bytes, img_size: int = 224):
     Por lo que esta funcion va a tener que ser flexible en la forma de procesar las imagenes. Una idea para hacerlo
     es utilizar un objeto, siendo la ia seleccionada en el cliente, el cual tenga todas las especificaciones necesarias
     para procesar bien las imagenes desde esta funcion (la cual incluso podria ser un metodo de la clase).
-    
     '''
     image = np.frombuffer(image_bytes, dtype=np.uint8) # Convierte la imagen en un array de valores enteros
     image = cv2.imdecode(image, cv2.IMREAD_COLOR) # La imagen se procesa en 3 canales (RGB/BGR)
