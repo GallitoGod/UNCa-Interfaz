@@ -24,7 +24,7 @@ export async function processVideoFrames(video, ctx) {
         const response = await fetch(predictUrl, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json", //                POSIBLEMENTE ESTE SCRIPT VUELE
           },
           body: JSON.stringify({
             image: frameDataURL,

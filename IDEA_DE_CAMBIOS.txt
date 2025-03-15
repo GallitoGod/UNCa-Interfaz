@@ -1,0 +1,25 @@
+api/
+├── models/
+│   ├── yolo.py  #----> Desde el repositorio YOLOv7
+│   └── common.py
+├── cfg/
+│   ├── yolov7.yaml
+│   └── yolov7-seg.yaml
+├── weights/
+│   ├── yolov7.pt
+│   └── yolov7-seg.pt 
+└── TensorAPI.py  #----> Hay que buscarle otro nombre, no me gusta. Podria ser algo como funcIA.py ? 
+
+
+Basicamente, inicia la tercera gran reconstruccion de la aplicacion.
+
+
+
+
+
+
+
+
+
+
+

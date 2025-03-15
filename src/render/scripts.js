@@ -1,4 +1,4 @@
-import { switchCamera } from './modules/camera.js';
+import { switchCamera } from './modules/cameraSwitcher.js';
 import { startRecording, stopRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
