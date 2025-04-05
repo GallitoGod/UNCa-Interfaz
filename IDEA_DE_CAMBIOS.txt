@@ -1,17 +1,17 @@
 api/
-├── models/
-│   ├── yolo.py  #----> Desde el repositorio YOLOv7
-│   └── common.py
-├── cfg/
-│   ├── yolov7.yaml
-│   └── yolov7-seg.yaml
-├── weights/
-│   ├── yolov7.pt
-│   └── yolov7-seg.pt 
-└── TensorAPI.py  #----> Hay que buscarle otro nombre, no me gusta. Podria ser algo como funcIA.py ? 
+├── func/
+│   ├── model_loader.py
+│   └── do_inference.py
+├── forms/
+│   ├── onnx_load.py
+│   ├── keras_load.py
+|   ├── tflite_load.py
+│   ├──   //---->   FUTUROS FORMATOS SOPORTADOS
+│
+└── mainAPI.py  //---->    AHORA ES 'tensorAPI.py'
 
 
-Basicamente, inicia la tercera gran reconstruccion de la aplicacion.
+Basicamente, reconstruccion de archivo 'api'.
 
 
 

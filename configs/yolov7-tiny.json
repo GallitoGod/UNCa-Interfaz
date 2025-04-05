@@ -1,0 +1,15 @@
+{
+    "input_shape": [640, 640],
+    "normalize": {
+      "enabled": true,
+      "mean": [0, 0, 0],
+      "std": [255, 255, 255]
+    },
+    "model_type": "detection",
+    "postprocessing": {
+      "nms": true,
+      "confidence_threshold": 0.25,
+      "iou_threshold": 0.45
+    }
+  }
+  
