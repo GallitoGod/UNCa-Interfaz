@@ -1,6 +1,7 @@
 import os
 from .model_loader import ModelLoader
-from .general.utils import findConfigModel
+from .general.json_reader import loadModelConfig
+from .general.utils import preprocessImage, postprocessOutput
 '''   
     Tiene que comportarce como un controlador del backend de dependiente de los eventos del cliente.
     Debe ser capaz de: 
@@ -10,7 +11,7 @@ from .general.utils import findConfigModel
         4_ Liberar recursos
 
     Patron aplicado: Strategy.
-    '''
+'''
 class ModelController:
 
     def __init__(self):
@@ -20,10 +21,10 @@ class ModelController:
 
     def load_model(self, model_path: str):
         self.model_format = os.path.splitext(model_path)[1].lower()
-        self.config = findConfigModel(model_path)
+        self.config = loadModelConfig(model_path)
         self.predict_fn = ModelLoader.load(model_path, self.model_format)
 
-    def inference(self, img):
-        if self.predict_fn is None:
-            raise RuntimeError("Model no cargado.")
-        return self.predict_fn(img)
+    def inference(self, img, confidence_override: float = None):
+        preprocessed = preprocessImage(img, self.config)
+        raw_output = self.predict_fn(preprocessed)
+        return postprocessOutput(raw_output, self.config, confidence_override)
