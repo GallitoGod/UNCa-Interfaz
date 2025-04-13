@@ -1,7 +1,7 @@
 from .config_schema import OutputConfig
 from typing import Callable
 
-class ReactiveOutputConfig(OutputConfig):
+class ReactiveOutputConfig(OutputConfig):   #   <---- Idea para el cambio de confianza desde el cliente
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._on_change_callback = None

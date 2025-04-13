@@ -15,6 +15,7 @@ class InputConfig(BaseModel):
     std: List[float] = [1.0, 1.0, 1.0]
     letterbox: bool = False
     scale: bool = False
+
 class ModelConfig(BaseModel):
     model_type: str  
     input: InputConfig
