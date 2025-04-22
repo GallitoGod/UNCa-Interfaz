@@ -5,9 +5,19 @@ import cv2
 
 def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]:
     steps = []
+    transform_info = {}
     if config.letterbox:
-        pass
-        #   steps.append(lambda img: letterboxResize(img, (config.width, config.height)))   <--- ESTA ES LA IDEA CUANDO HAGA LA FUNCION 
+        letterbox = build_letterbox(config.width, config.height, pad_color=(114, 114, 114))
+
+        def letterbox_wrapper(img):
+            padded, scale, pad_left, pad_top = letterbox(img)
+            transform_info['scale'] = scale
+            transform_info['pad_left'] = pad_left
+            transform_info['pad_top'] = pad_top
+            transform_info['used_letterbox'] = True
+            return padded
+
+        steps.append(letterbox_wrapper)
     else:
         steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
 
@@ -87,3 +97,53 @@ def buildPostprocessor(output_config: OutputConfig) -> Callable[[np.ndarray, Opt
     No lo veo necesario si se especifica al usuario el no jugar con el cambio de confianza y hacerlo solo cuando sea necesario. 
     Si se lo usa repetidamente se haria inutil el objetivo de "congelar", para mayor rendimiento, la funcion de postProcesamiento para cada IA.
 '''
+
+
+
+def build_letterbox(input_width, input_height, pad_color=(114, 114, 114)):
+    def letterbox(img):
+        h, w = img.shape[:2]
+        scale = min(input_width / w, input_height / h)
+        nw, nh = int(w * scale), int(h * scale)
+        pad_w = input_width - nw
+        pad_h = input_height - nh
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+
+        resized = cv2.resize(img, (nw, nh))
+        padded = cv2.copyMakeBorder(
+            resized, pad_top, pad_bottom, pad_left, pad_right,
+            borderType=cv2.BORDER_CONSTANT,
+            value=pad_color
+        )
+        return padded, scale, pad_left, pad_top
+
+    return letterbox
+
+
+
+
+# {     <---    ESTO TENDRIA QUE SER PARTE EL INPUT EN LOS ARCHIVOS .JSON
+#   "input": {
+#     "width": 640,
+#     "height": 640,
+#     "letterbox": true,
+#     "auto_pad_color": [114, 114, 114],
+#     "preserve_aspect_ratio": true
+#   }
+# }     <----   SI UTILIZO ESTA IDEA, "SUPUESTAMENTE" LETTERBOX SERIA "A PRUEBA DE MODELOS"
+
+
+
+# if transform_info and transform_info.get("used_letterbox"):     <-----    DENTRO DE POSTPROCESS TENDRIA QUE INCLUIR ALGO PARA CANCELAR EL LETTERBOX
+#             scale = transform_info["scale"]
+#             pad_left = transform_info["pad_left"]
+#             pad_top = transform_info["pad_top"]
+#             for p in predictions:
+#                 # Deshacer el padding y escala
+#                 p[0] = (p[0] - pad_left) / scale  # x1
+#                 p[1] = (p[1] - pad_top) / scale   # y1
+#                 p[2] = (p[2] - pad_left) / scale  # x2
+#                 p[3] = (p[3] - pad_top) / scale   # y2
