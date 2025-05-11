@@ -37,7 +37,7 @@ def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]
             img = step(img)
         return img
 
-    return preprocess
+    return preprocess, transform_info
 
 
 def iou(box1, box2):
@@ -67,13 +67,28 @@ def non_max_suppression(predictions: List[List[float]], threshold: float) -> Lis
 
     return keep
 
-def buildPostprocessor(config: OutputConfig) -> Callable[[List[List[float]]], List[List[float]]]:
+def undo_transform(p, transform_info):
+    scale = transform_info["scale"]
+    pad_left = transform_info["pad_left"]
+    pad_top = transform_info["pad_top"]
+    p[0] = (p[0] - pad_left) / scale
+    p[1] = (p[1] - pad_top) / scale
+    p[2] = (p[2] - pad_left) / scale
+    p[3] = (p[3] - pad_top) / scale
+    return p
+
+def buildPostprocessor(config: OutputConfig, transform_info: dict = None) -> Callable[[List[List[float]]], List[List[float]]]:
+    #El orden aqui siempre debe ser: 1_Filtrar por confianza 2_Aplicar nms 3_Deshacer letterbox(Si es que se aplico). 
     steps = []
 
     steps.append(lambda preds: [p for p in preds if p[4] >= config.confidence_threshold])
 
     if config.apply_nms:
         steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
+
+    if transform_info and transform_info.get("used_letterbox", True):
+        steps.append(lambda preds: [undo_transform(p, transform_info) for p in preds])
+
 
     def postprocess(predictions: List[List[float]]) -> List[List[float]]:
         for step in steps:
@@ -134,16 +149,3 @@ def build_letterbox(input_width, input_height, pad_color=(114, 114, 114)):
 #     "preserve_aspect_ratio": true
 #   }
 # }     <----   SI UTILIZO ESTA IDEA, "SUPUESTAMENTE" LETTERBOX SERIA "A PRUEBA DE MODELOS"
-
-
-
-# if transform_info and transform_info.get("used_letterbox"):     <-----    DENTRO DE POSTPROCESS TENDRIA QUE INCLUIR ALGO PARA CANCELAR EL LETTERBOX
-#             scale = transform_info["scale"]
-#             pad_left = transform_info["pad_left"]
-#             pad_top = transform_info["pad_top"]
-#             for p in predictions:
-#                 # Deshacer el padding y escala
-#                 p[0] = (p[0] - pad_left) / scale  # x1
-#                 p[1] = (p[1] - pad_top) / scale   # y1
-#                 p[2] = (p[2] - pad_left) / scale  # x2
-#                 p[3] = (p[3] - pad_top) / scale   # y2

@@ -17,6 +17,7 @@ class ModelController:
     def __init__(self):
         self.predict_fn = None
         self.preprocess_fn = None
+        self.letter_transformers = None
         self.postprocess_fn = None
         self.model_format = None
         self.config = None
@@ -26,8 +27,8 @@ class ModelController:
         self.config = loadModelConfig(model_path)
 
         self.predict_fn = ModelLoader.load(model_path, self.model_format)
-        self.preprocess_fn = buildPreprocessor(self.config)
-        self.postprocess_fn = buildPostprocessor(self.config)
+        self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config)
+        self.postprocess_fn = buildPostprocessor(self.config, self.letter_transformers)
 
     def inference(self, img, confidence_override: float = None):
         preprocessed = self.predict_fn(img)
