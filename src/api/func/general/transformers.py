@@ -3,11 +3,33 @@ from typing import Callable, List
 import numpy as np
 import cv2
 
+def build_letterbox(input_width, input_height, pad_color):
+    def letterbox(img):
+        h, w = img.shape[:2]
+        scale = min(input_width / w, input_height / h)
+        nw, nh = int(w * scale), int(h * scale)
+        pad_w = input_width - nw
+        pad_h = input_height - nh
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+
+        resized = cv2.resize(img, (nw, nh))
+        padded = cv2.copyMakeBorder(
+            resized, pad_top, pad_bottom, pad_left, pad_right,
+            borderType=cv2.BORDER_CONSTANT,
+            value=pad_color
+        )
+        return padded, scale, pad_left, pad_top
+
+    return letterbox
+
 def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]:
     steps = []
     transform_info = {}
     if config.letterbox:
-        letterbox = build_letterbox(config.width, config.height, pad_color=(114, 114, 114))
+        letterbox = build_letterbox(config.width, config.height, config.auto_pad_color)
 
         def letterbox_wrapper(img):
             padded, scale, pad_left, pad_top = letterbox(img)
@@ -112,40 +134,3 @@ def buildPostprocessor(output_config: OutputConfig) -> Callable[[np.ndarray, Opt
     No lo veo necesario si se especifica al usuario el no jugar con el cambio de confianza y hacerlo solo cuando sea necesario. 
     Si se lo usa repetidamente se haria inutil el objetivo de "congelar", para mayor rendimiento, la funcion de postProcesamiento para cada IA.
 '''
-
-
-
-def build_letterbox(input_width, input_height, pad_color=(114, 114, 114)):
-    def letterbox(img):
-        h, w = img.shape[:2]
-        scale = min(input_width / w, input_height / h)
-        nw, nh = int(w * scale), int(h * scale)
-        pad_w = input_width - nw
-        pad_h = input_height - nh
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        pad_top = pad_h // 2
-        pad_bottom = pad_h - pad_top
-
-        resized = cv2.resize(img, (nw, nh))
-        padded = cv2.copyMakeBorder(
-            resized, pad_top, pad_bottom, pad_left, pad_right,
-            borderType=cv2.BORDER_CONSTANT,
-            value=pad_color
-        )
-        return padded, scale, pad_left, pad_top
-
-    return letterbox
-
-
-
-
-# {     <---    ESTO TENDRIA QUE SER PARTE EL INPUT EN LOS ARCHIVOS .JSON
-#   "input": {
-#     "width": 640,
-#     "height": 640,
-#     "letterbox": true,
-#     "auto_pad_color": [114, 114, 114],
-#     "preserve_aspect_ratio": true
-#   }
-# }     <----   SI UTILIZO ESTA IDEA, "SUPUESTAMENTE" LETTERBOX SERIA "A PRUEBA DE MODELOS"

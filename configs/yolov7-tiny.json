@@ -9,7 +9,8 @@
     "mean": [0.0, 0.0, 0.0],
     "std": [1.0, 1.0, 1.0],
     "letterbox": true,
-    "scale": true
+    "auto_pad_color": [114, 114, 114],
+    "preserve_aspect_ratio": true
   },
 
   "output": {
