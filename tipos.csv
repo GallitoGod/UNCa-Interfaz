@@ -1,0 +1,9 @@
+Formato,Extensión,Tipo de Input,Tamaño de Input,Tipo de Output,Formato de Output
+"SavedModel",".pb","Tensor (tf.Tensor)","[1, H, W, C]","Tensor (tf.Tensor)","[N, x1, y1, x2, y2, score, class]"
+"Keras",".h5","Tensor (tf.Tensor)","[1, H, W, C]","Tensor (tf.Tensor)","[N, num_classes] o [N, 6]"
+"TFLite",".tflite","Tensor (np.ndarray)","[1, H, W, C]","Múltiples arrays","boxes [N,4], classes [N], scores [N], count [1]"
+"Checkpoint",".ckpt","Tensor (tf.Tensor)","[1, H, W, C]","Tensor (tf.Tensor)","Depende del modelo definido"
+"TorchScript",".pt","Tensor (torch.Tensor)","[1, C, H, W]","Tensor (torch.Tensor)","[N, 6] = [x1, y1, x2, y2, score, class]"
+"State Dict",".pth","Tensor (torch.Tensor)","[1, C, H, W]","Tensor (torch.Tensor)","Depende del modelo definido"
+"ONNX",".onnx","Tensor (np.ndarray)","[1, C, H, W]","Tensor (np.ndarray)","[batch, anchors, 85] (YOLOv5)"
+

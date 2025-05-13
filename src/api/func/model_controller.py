@@ -16,6 +16,8 @@ class ModelController:
 
     def __init__(self):
         self.predict_fn = None
+        self.input_interpreter = None
+        self.output_interpreter = None
         self.preprocess_fn = None
         self.letter_transformers = None
         self.postprocess_fn = None
@@ -26,7 +28,7 @@ class ModelController:
         self.model_format = os.path.splitext(model_path)[1].lower()
         self.config = loadModelConfig(model_path)
 
-        self.predict_fn = ModelLoader.load(model_path, self.model_format)
+        self.predict_fn, self.input_interpreter, self.output_interpreter = ModelLoader.load(model_path, self.model_format)
         self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config)
         self.postprocess_fn = buildPostprocessor(self.config, self.letter_transformers)
 
@@ -35,7 +37,7 @@ class ModelController:
         raw_output = self.predict_fn(preprocessed)
         return self.postprocess_fn(raw_output)      # <--- TODAVIA HAY QUE ALTERAR LA CONFIANZA
     
-    def unload_model(self):     # <--- SI TERMINA SIENDO INECESARIO, SE VA A BORRAR
+    def unload_model(self):
         self.predict_fn = None
         self.preprocess_fn = None
         self.postprocess_fn = None
