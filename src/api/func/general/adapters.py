@@ -1,33 +1,35 @@
-from config_schema import ModelConfig
+from config_schema import TensorStructure
+from coords_converter import generate_box_converter
 
-def generate_output_adapter(config: ModelConfig):
-    structure = config.output.tensor_structure
-    conf_thres = config.output.confidence_threshold
+def generate_output_adapter(tensor_structure: TensorStructure):
+    convert_box = generate_box_converter(
+        tensor_structure.format, tensor_structure.coordinates
+    )
 
-    def output_adapter(raw_output):
-        detections = []
+    conf_idx = tensor_structure.confidence_index
+    cls_idx = tensor_structure.class_index
+    
+    def adapter_fn_out(row):
+        box = convert_box(row)
+        confidence = row[conf_idx]
+        class_id = int(row[cls_idx])
+        # En el orden que espera el postprocesador: [x1, y1, x2, y2, conf, class]
+        return [*box, confidence, class_id]
 
-        for d in raw_output:
-            box = [d[i] for i in structure.box_indices]
-            confidence = d[structure.confidence_index]
-            class_id = int(d[structure.class_index])
-
-            # En el orden que espera el postprocesador: [x1, y1, x2, y2, conf, class]
-            detections.append(box + [confidence, class_id])
-
-        return detections
-
-    return output_adapter
+    return adapter_fn_out
 
 
 
 
 """
-    raw_output viene directamente de la IA luego de la inferencia.
-Este contiene todas las detecciones que el modelo haya emitido, 
-generalmente en forma de arrays, cada uno con informacion de una unica deteccion.
+    row viene de raw_output que viene directamente de la IA luego de la inferencia.
+    Este contiene todas las detecciones que el modelo haya emitido, 
+generalmente en forma de arrays, cada uno con informacion de una unica deteccion. El problema
+esta cuando no viene en forma de List[List[float]] o np.ndarray, asi que el problema a resolver ahora es 
+el que todas las IAs llegas este punto devuelvan estas dos clases de "listas" para que el adaptador funcione
+correctamente.
 
-    Cada deteccion puede tener los datos en un orden diferente:
+    En el caso de ser List[List[float]] o np.ndarray, cada deteccion puede tener los datos en un orden diferente:
 [x1, y1, x2, y2, confidence, class_id] o
 [cx, cy, w, h, conf, cls] o
 [y1, x1, y2, x2, ...], etc.
@@ -39,38 +41,6 @@ reestructurar si hace falta, y devolver en el formato estandar que el sistema en
 faltaria seria devolverlo al cliente.
 """
 
-"""
-    La idea seria hacer algo asi, solo que se mantenga congelado en una unica opcion
-hasta que se cambie de IA. Como ya pasa con los pasos a seguir los postprocesos y preprocesos genericos
-del controlador. Basicamente, no solo que es posible permitir una mayor flexibilidad a la hora de 
-utilizar coordenadas distintas en distintas IAs, sino que es necesario para mantener la filosofia del programa;
-la capacidad de poder hacer andar la mayor cantidad de IAs CASI independientes de su formato, estructura y variables.
-"""
-def convert_box(box, format: str, coordinates: dict):
-    if format == "xyxy":
-        x1 = box[coordinates["x1"]]
-        y1 = box[coordinates["y1"]]
-        x2 = box[coordinates["x2"]]
-        y2 = box[coordinates["y2"]]
-    elif format == "cxcywh":
-        cx = box[coordinates["cx"]]
-        cy = box[coordinates["cy"]]
-        w = box[coordinates["w"]]
-        h = box[coordinates["h"]]
-        x1 = cx - w / 2
-        y1 = cy - h / 2
-        x2 = cx + w / 2
-        y2 = cy + h / 2
-    elif format == "yxyx":
-        y1 = box[coordinates["y1"]]
-        x1 = box[coordinates["x1"]]
-        y2 = box[coordinates["y2"]]
-        x2 = box[coordinates["x2"]]
-    else:
-        raise ValueError(f"Unknown box format: {format}")
-    
-    return [x1, y1, x2, y2]
-#   Si esta, hasta ahora, funcion resulta ser muy grande, incluso se podria separar en otro script.
 
 """
     Hay que alterar la lectura de los JSONs a:
@@ -85,5 +55,6 @@ def convert_box(box, format: str, coordinates: dict):
         "confidence_index": 4,
         "class_index": 5
     }
-    Y con ello ya podria implementarse esta idea.
+    Tambien hay que adaptarla si los modelos devuelven raw_outputs distintos de la forma
+List[List[float]] o np.ndarray.    
 """

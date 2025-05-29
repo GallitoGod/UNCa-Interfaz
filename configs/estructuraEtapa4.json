@@ -16,11 +16,15 @@
     "nms_threshold": 0.45,
     "apply_nms": true,
     "tensor_structure": {
-      "box_format": "xyxy",
-      "box_indices": [0, 1, 2, 3],
+    "format": "yxyx",
+      "coordinates": {
+        "y1": 0,
+        "x1": 1,
+        "y2": 2,
+        "x2": 3
+      },
       "confidence_index": 4,
-      "class_index": 5,
-      "class_count": 80
+      "class_index": 5
     }
   },
   "OBSERVACION": "esta seria la estructura que tendrian que tener los JSONs para poder funcionar"
