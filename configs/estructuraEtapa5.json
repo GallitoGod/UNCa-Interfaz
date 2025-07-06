@@ -1,0 +1,43 @@
+{
+  "model_type": "detection",
+  "input": {
+    "width": 640,
+    "height": 640,
+    "channels": 3,
+    "normalize": true,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "scale": true,
+    "letterbox": true,
+    "auto_pad_color": [114, 114, 114],
+    "preserve_aspect_ratio": true,
+    "color_order": "RGB",
+    "input_tensor": {
+      "layout": "NCHW",
+      "dtype": "float32",
+      "quantized": false
+    }
+  },
+  "output": {
+    "confidence_threshold": 0.25,
+    "apply_nms": true,
+    "nms_threshold": 0.45,
+    "tensor_structure": {
+      "box_format": "cxcywh",
+      "coordinates": {
+        "cx": 0,
+        "cy": 1,
+        "w": 2,
+        "h": 3
+      },
+      "confidence_index": 4,
+      "class_index": 5,
+      "num_classes": 80
+    },
+    "output_tensor": {
+      "layout": "NCHW",
+      "dtype": "float32",
+      "output_format": "raw"
+    }
+  }
+}

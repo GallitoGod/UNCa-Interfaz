@@ -1,7 +1,16 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict
 
-# --- NUEVO ---
+class InputTensorConfig(BaseModel):
+    layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
+    dtype: Literal["float32", "uint8", "int8"] = "float32"
+    quantized: bool = False
+
+class OutputTensorConfig(BaseModel):
+    layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
+    dtype: Literal["float32", "int8"] = "float32"
+    output_format: Literal["raw", "multihead", "softmax"] = "raw"
+
 class TensorStructure(BaseModel):
     box_format: Literal["xyxy", "cxcywh", "yxyx"]
     coordinates: Dict[str, int]
@@ -14,6 +23,7 @@ class OutputConfig(BaseModel):
     nms_threshold: Optional[float] = 0.45
     apply_nms: bool = Field(default=False)
     tensor_structure: Optional[TensorStructure]
+    output_tensor: Optional[OutputTensorConfig] = None
 
 class InputConfig(BaseModel):
     width: int
@@ -25,6 +35,8 @@ class InputConfig(BaseModel):
     letterbox: bool = Field(default=False)
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
+    color_order: Optional[Literal["RGB", "BGR"]] = "RGB"
+    input_tensor: Optional[InputTensorConfig] = None 
 
 class ModelConfig(BaseModel):
     model_type: Literal["detection", "classification", "segmentation"]

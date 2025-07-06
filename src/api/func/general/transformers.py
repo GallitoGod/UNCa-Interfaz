@@ -51,9 +51,6 @@ def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]
         std = np.array(config.std).reshape(1, 1, -1)
         steps.append(lambda img: (img - mean) / std)
 
-    if config.channels == 1:
-        steps.append(lambda img: cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)[..., None])
-
     def preprocess(img):
         for step in steps:
             img = step(img)
