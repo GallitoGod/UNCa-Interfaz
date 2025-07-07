@@ -40,14 +40,12 @@ def generate_output_adapter(tensor_structure: TensorStructure):
     return adapter_fn_out
 
 
-
-
 """
     row viene de raw_output que viene directamente de la IA luego de la inferencia.
     Este contiene todas las detecciones que el modelo haya emitido, 
-generalmente en forma de arrays, cada uno con informacion de una unica deteccion. El problema
-esta cuando no viene en forma de List[List[float]] o np.ndarray, asi que el problema a resolver ahora es 
-el que todas las IAs llegas este punto devuelvan estas dos clases de "listas" para que el adaptador funcione
+generalmente en forma de arrays, cada uno con informacion de una unica deteccion. raw_output 
+puede no venir en forma de List[List[float]] o np.ndarray, asi que el problema a resolver ahora es 
+el que todas las IAs llegado este punto devuelvan estas dos clases de "listas" para que el adaptador funcione
 correctamente.
 
     En el caso de ser List[List[float]] o np.ndarray, cada deteccion puede tener los datos en un orden diferente:
@@ -77,5 +75,5 @@ faltaria seria devolverlo al cliente.
         "class_index": 5
     }
     Tambien hay que adaptarla si los modelos devuelven raw_outputs distintos de la forma
-List[List[float]] o np.ndarray.    
+List[List[float]] o np.ndarray. <---    ESTO YA ESTA HECHO CON 'unpackers.py'   
 """

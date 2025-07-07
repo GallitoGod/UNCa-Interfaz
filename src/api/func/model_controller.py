@@ -2,6 +2,8 @@ import os
 from .model_loader import ModelLoader
 from .general.json_reader import loadModelConfig
 from .general.transformers import buildPreprocessor, buildPostprocessor
+from .general.adapters import generate_input_adapter, generate_output_adapter
+from .general.unpackers import build_unpacker
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.
     Debe ser capaz de: 
@@ -16,8 +18,9 @@ class ModelController:
 
     def __init__(self):
         self.predict_fn = None
-        self.input_interpreter = None
-        self.output_interpreter = None
+        self.input_adapter = None
+        self.output_adapter = None
+        self.unpack_fn = None
         self.preprocess_fn = None
         self.letter_transformers = None
         self.postprocess_fn = None
@@ -28,17 +31,26 @@ class ModelController:
         self.model_format = os.path.splitext(model_path)[1].lower()
         self.config = loadModelConfig(model_path)
 
-        self.predict_fn, self.input_interpreter, self.output_interpreter = ModelLoader.load(model_path, self.model_format)
+        self.predict_fn = ModelLoader.load(model_path, self.model_format)
         self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config)
+        self.input_adapter = generate_input_adapter(self.config.input)
+        self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
+        self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
         self.postprocess_fn = buildPostprocessor(self.config, self.letter_transformers)
 
     def inference(self, img, confidence_override: float = None):
-        preprocessed = self.predict_fn(img)
-        raw_output = self.predict_fn(preprocessed)
-        return self.postprocess_fn(raw_output)      # <--- TODAVIA HAY QUE ALTERAR LA CONFIANZA
+        pre = self.preprocess_fn(img)
+        adapted_input = self.input_adapter(pre)
+        raw_output = self.predict_fn(adapted_input)
+        unpacked = self.unpack_fn(raw_output)
+        adapted_output = [self.output_adapter(row) for row in unpacked]
+        return self.postprocess_fn(adapted_output)      # <--- TODAVIA HAY QUE ALTERAR LA CONFIANZA
     
     def unload_model(self):
         self.predict_fn = None
+        self.input_adapter = None
+        self.output_adapter = None
+        self.unpack_fn = None
         self.preprocess_fn = None
         self.postprocess_fn = None
         self.model_format = None
