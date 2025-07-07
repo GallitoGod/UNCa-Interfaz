@@ -1,5 +1,26 @@
-from config_schema import TensorStructure
-from coords_converter import generate_box_converter
+from api.func.general.tensor_converter import generate_box_converter, generate_layout_converter
+from config_schema import TensorStructure, InputConfig
+import numpy as np
+
+def generate_input_adapter(input_config: InputConfig):
+    tensor_cfg = input_config.input_tensor or None
+    color_order = input_config.color_order or "RGB"
+    layout_converter = generate_layout_converter(tensor_cfg.layout) if tensor_cfg else lambda x: x
+    dtype = tensor_cfg.dtype if tensor_cfg else "float32"
+
+    if color_order == "BGR":
+        def adapter_fn_in(img: np.ndarray) -> np.ndarray:
+            img = img[..., ::-1]           # invierte canales
+            img = layout_converter(img)    # reordenar layout
+            return img.astype(dtype)       # tipo final
+    else:
+        def adapter_fn_in(img: np.ndarray) -> np.ndarray:
+            img = layout_converter(img)
+            return img.astype(dtype)
+
+    return adapter_fn_in
+
+
 
 def generate_output_adapter(tensor_structure: TensorStructure):
     convert_box = generate_box_converter(

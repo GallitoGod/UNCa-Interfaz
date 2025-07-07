@@ -1,4 +1,5 @@
 from typing import Callable
+import numpy as np
 
 def generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
     if fmt == "xyxy":
@@ -24,3 +25,23 @@ def generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
         ]
     else:
         raise ValueError(f"Formato desconocido: {fmt}")
+
+
+def generate_layout_converter(layout: str):
+    """
+    layout: "HWC", "CHW", "NHWC", "NCHW"
+    Devuelve una funcion que adapta la entrada a ese formato
+    """
+    def to_layout(img: np.ndarray) -> np.ndarray:
+        if layout == "CHW":
+            return np.transpose(img, (2, 0, 1))
+        elif layout == "NHWC":
+            return img[np.newaxis, ...]
+        elif layout == "NCHW":
+            img = np.transpose(img, (2, 0, 1))
+            return img[np.newaxis, ...]
+        elif layout == "HWC":
+            return img
+        else:
+            raise ValueError(f"Formato de layout desconocido: {layout}")
+    return to_layout
