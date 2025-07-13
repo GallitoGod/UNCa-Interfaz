@@ -119,15 +119,8 @@ def buildPostprocessor(config: OutputConfig, transform_info: dict = None) -> Cal
 
 
 '''
-    Otra forma de cambiar la confianza sin tener que alterar toda funcion buildPostprocessor seria esta:
-
-def buildPostprocessor(output_config: OutputConfig) -> Callable[[np.ndarray, Optional[float]], Any]:
-    def postprocess(output, override_conf=None):
-        confidence = override_conf if override_conf is not None else output_config.confidence_threshold
-        # Luego usar `confidence` en los filtros...
-        return [p for p in output if p[4] >= confidence]
-    return postprocess
-
-    No lo veo necesario si se especifica al usuario el no jugar con el cambio de confianza y hacerlo solo cuando sea necesario. 
-    Si se lo usa repetidamente se haria inutil el objetivo de "congelar", para mayor rendimiento, la funcion de postProcesamiento para cada IA.
+    Ahora la confianza si cambia con el cambio desde el cliente, el transformador pasa el valor de la confianza 
+al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ahora no se necesita
+descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
+hacer funcionar NMS.
 '''

@@ -3,7 +3,9 @@ from .model_loader import ModelLoader
 from .general.json_reader import loadModelConfig
 from .general.transformers import buildPreprocessor, buildPostprocessor
 from .general.adapters import generate_input_adapter, generate_output_adapter
+from .general.utils import ReactiveOutputConfig
 from .general.unpackers import build_unpacker
+
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.
     Debe ser capaz de: 
@@ -30,6 +32,7 @@ class ModelController:
     def load_model(self, model_path: str):
         self.model_format = os.path.splitext(model_path)[1].lower()
         self.config = loadModelConfig(model_path)
+        self.config.output = ReactiveOutputConfig(**self.config.output.dict())
 
         self.predict_fn = ModelLoader.load(model_path, self.model_format)
         self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config)
@@ -38,14 +41,17 @@ class ModelController:
         self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
         self.postprocess_fn = buildPostprocessor(self.config, self.letter_transformers)
 
-    def inference(self, img, confidence_override: float = None):
+    def inference(self, img):
         pre = self.preprocess_fn(img)
         adapted_input = self.input_adapter(pre)
         raw_output = self.predict_fn(adapted_input)
         unpacked = self.unpack_fn(raw_output)
         adapted_output = [self.output_adapter(row) for row in unpacked]
-        return self.postprocess_fn(adapted_output)      # <--- TODAVIA HAY QUE ALTERAR LA CONFIANZA
+        return self.postprocess_fn(adapted_output)      
     
+    def update_confidence(self, new_threshold: float):
+        self.config.output.confidence_threshold = new_threshold
+
     def unload_model(self):
         self.predict_fn = None
         self.input_adapter = None
