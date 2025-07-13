@@ -73,9 +73,9 @@ de inputs y cambiar el orden de ejecucion del controlador a:
 
 1_ Obtener el frame---------------------------------------(por hacer) <-- mainAPI.py
 2_ Preprocesar frame--------------------------------------(hecho)     <-- transformers.py
-3_ Adaptar el preproceso generico a la IA especifica------(por hacer) <-- adapters.py
+3_ Adaptar el preproceso generico a la IA especifica------(hecho) <-- adapters.py
 4_ Generar la inferencia----------------------------------(hecho)     <-- model_loader.py
-5_ Adaptar raw_output al formato generico del controlador-(por hacer) <-- adapters.py
+5_ Adaptar raw_output al formato generico del controlador-(hecho) <-- adapters.py
 6_ Postprocesar detections--------------------------------(hecho)     <-- transformers.py
 7_ Devolver al cliente------------------------------------(por hacer) <-- mainAPI.py
 
