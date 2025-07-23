@@ -1,5 +1,5 @@
 import os
-from .model_loader import ModelLoader
+from api.func.model_loader import ModelLoader
 from .general.json_reader import loadModelConfig
 from .general.transformers import buildPreprocessor, buildPostprocessor
 from .general.adapters import generate_input_adapter, generate_output_adapter
@@ -35,11 +35,11 @@ class ModelController:
         self.config.output = ReactiveOutputConfig(**self.config.output.dict())
 
         self.predict_fn = ModelLoader.load(model_path, self.model_format)
-        self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config)
+        self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config.input)
         self.input_adapter = generate_input_adapter(self.config.input)
         self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
         self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
-        self.postprocess_fn = buildPostprocessor(self.config, self.letter_transformers)
+        self.postprocess_fn = buildPostprocessor(self.config.output, self.letter_transformers)
 
     def inference(self, img):
         pre = self.preprocess_fn(img)
