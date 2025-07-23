@@ -1,5 +1,5 @@
 from api.func.general.tensor_converter import generate_box_converter, generate_layout_converter
-from general.config_schema import TensorStructure, InputConfig
+from api.func.general.config_schema import TensorStructure, InputConfig
 import numpy as np
 
 def generate_input_adapter(input_config: InputConfig):

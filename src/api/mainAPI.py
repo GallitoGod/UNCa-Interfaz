@@ -12,7 +12,7 @@ from PIL import Image
 import cv2
 from io import BytesIO
 from PIL import Image
-from func.model_controller import ModelController
+from api.func.model_controller import ModelController
 
 app = FastAPI()
 controller = ModelController()

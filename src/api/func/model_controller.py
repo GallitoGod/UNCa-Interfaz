@@ -1,11 +1,11 @@
 import os
 from .logger import setup_model_logger
 from api.func.model_loader import ModelLoader
-from .general.json_reader import loadModelConfig
-from .general.transformers import buildPreprocessor, buildPostprocessor
-from .general.adapters import generate_input_adapter, generate_output_adapter
-from .general.utils import ReactiveOutputConfig
-from .general.unpackers import build_unpacker
+from api.func.general.json_reader import loadModelConfig
+from api.func.general.transformers import buildPreprocessor, buildPostprocessor
+from api.func.general.adapters import generate_input_adapter, generate_output_adapter
+from api.func.general.utils import ReactiveOutputConfig
+from api.func.general.unpackers import build_unpacker
 
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.
