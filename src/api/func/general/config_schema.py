@@ -32,6 +32,7 @@ class InputConfig(BaseModel):
     normalize: bool = True
     mean: List[float] = [0.0, 0.0, 0.0]
     std: List[float] = [1.0, 1.0, 1.0]
+    scale: bool = True
     letterbox: bool = Field(default=False)
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True

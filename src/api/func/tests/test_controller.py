@@ -8,3 +8,4 @@ def test_full_inference():
     dummy_img = np.ones((640, 640, 3), dtype=np.uint8)
     results = mc.inference(dummy_img)
     assert isinstance(results, list)
+    mc.unload_model()

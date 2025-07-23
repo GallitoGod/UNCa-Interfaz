@@ -24,7 +24,7 @@ def generate_input_adapter(input_config: InputConfig):
 
 def generate_output_adapter(tensor_structure: TensorStructure):
     convert_box = generate_box_converter(
-        tensor_structure.format, tensor_structure.coordinates
+        tensor_structure.box_format, tensor_structure.coordinates
     )
 
     conf_idx = tensor_structure.confidence_index
