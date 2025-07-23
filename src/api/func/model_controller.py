@@ -1,4 +1,5 @@
 import os
+from .logger import setup_model_logger
 from api.func.model_loader import ModelLoader
 from .general.json_reader import loadModelConfig
 from .general.transformers import buildPreprocessor, buildPostprocessor
@@ -28,6 +29,7 @@ class ModelController:
         self.postprocess_fn = None
         self.model_format = None
         self.config = None
+        self.logger = None
 
     def load_model(self, model_path: str):
         self.model_format = os.path.splitext(model_path)[1].lower()
@@ -40,6 +42,10 @@ class ModelController:
         self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
         self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
         self.postprocess_fn = buildPostprocessor(self.config.output, self.letter_transformers)
+        
+        self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
+        self.logger.info("Modelo cargado correctamente")
+
 
     def inference(self, img):
         pre = self.preprocess_fn(img)
@@ -47,7 +53,9 @@ class ModelController:
         raw_output = self.predict_fn(adapted_input)
         unpacked = self.unpack_fn(raw_output)
         adapted_output = [self.output_adapter(row) for row in unpacked]
-        return self.postprocess_fn(adapted_output)      
+        result = self.postprocess_fn(adapted_output) 
+        self.logger.info(f"Inferencia ejecutada: {len(result)} detecciones")
+        return result     
     
     def update_confidence(self, new_threshold: float):
         self.config.output.confidence_threshold = new_threshold
