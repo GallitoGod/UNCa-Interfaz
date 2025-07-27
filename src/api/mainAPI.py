@@ -1,8 +1,31 @@
-# 💡 Idea:
+# ⚠️ preocupaciones
 
-# 💡 Falta logging del ciclo de vida de la IA activa
-# Seria una buena idea agregar un sistema de log por modelo activo. Aunque sea en consola o un archivo .log,
-# ayuda muchisimo en debugging y al implementar adaptadores.
+'''
+1. Falta de validacion fuerte y feedback estructurado
+Todo depende de que el JSON este bien hecho, de que el modelo tenga la salida esperada, 
+de que el adaptador coincida. Pero no hay una capa de validacion fuerte que diga “el modelo no devuelve 
+lo que el unpacker espera” o “el JSON esta mal formado”.
+    Solucion: Añadir validacion con pydantic mas profunda para los outputs y una validacion 
+cruzada entre JSON ↔ codigo al cargar un modelo.
+'''
+
+'''
+2. Documentación y descubribilidad
+Nadie puede entender el programa sin abrir el codigo. No hay descripciones ni ejemplo de payloads en los endpoints.
+    Solucion : Utilizar FastAPI Docs (http://localhost:8000/docs) usando Body(...), Form(...) y UploadFile(...)
+bien anotados con descripciones.
+'''
+
+'''
+3. Poca trazabilidad / logging
+Cuando algo falle en produccion, por ejemplo porque un modelo devuelve un shape inesperado, no sabria a donde fallo.
+Si no hay logs claros, va a ser un infierno debuguear.
+    Solucion: Usar logging de Python con niveles (info, warning, error) en puntos como: carga, inferencia, adaptacion, etc.
+'''
+
+#   Basicamente, Esto no es un proyecto universitario cualquiera.
+#   Es el embrion de una plataforma seria de gestion de modelos de IA de vision por computadora;
+#un autentico sistema operador de inteligencias artificiales de vision por computadora.
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -69,3 +92,14 @@ async def run_inference(file: UploadFile = File(...)):
 def unload_model():
     controller.unload_model()
     return {"status": "ok", "message": "Modelo descargado."}
+
+
+'''
+| Endpoint actual      | Sugerencia RESTful     | Justificacion                          |
+| -------------------- | ---------------------- | -------------------------------------- |
+| `/load_model`        | `/model/load`          | Mas claro y agrupado bajo `/model`     |
+| `/unload`            | `/model/unload`        | Idem                                   |
+| `/config/confidence` | `/config/confidence`   | Está bien                              |
+| `/inference`         | `/predict`             | "Predict" es más claro para APIs de ML |
+
+'''

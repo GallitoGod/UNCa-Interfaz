@@ -19,6 +19,10 @@ from api.func.general.unpackers import build_unpacker
 '''
 class ModelController:
 
+    # TODO: encapsular preprocessor + input_adapter en un InputPipeline
+    # TODO: acoplamiento a detalles internos (ej. self.letter_transformers expuesto)
+    # TODO: desacoplar unload_model para que cada componente tenga su propio release
+    # TODO: escape de la validación de estado (None checks)
     def __init__(self):
         self.predict_fn = None
         self.input_adapter = None
@@ -79,12 +83,12 @@ se debe cambiar la forma en la que lee los JSONs el programa (leer las anotacion
 de los adaptadores para entender como), terminar el adaptador de outputs, hacer el adaptador 
 de inputs y cambiar el orden de ejecucion del controlador a:
 
-1_ Obtener el frame---------------------------------------(por hacer) <-- mainAPI.py
+1_ Obtener el frame---------------------------------------(casi hecho) <-- mainAPI.py
 2_ Preprocesar frame--------------------------------------(hecho)     <-- transformers.py
 3_ Adaptar el preproceso generico a la IA especifica------(hecho) <-- adapters.py
 4_ Generar la inferencia----------------------------------(hecho)     <-- model_loader.py
 5_ Adaptar raw_output al formato generico del controlador-(hecho) <-- adapters.py
 6_ Postprocesar detections--------------------------------(hecho)     <-- transformers.py
-7_ Devolver al cliente------------------------------------(por hacer) <-- mainAPI.py
+7_ Devolver al cliente------------------------------------(casi hecho) <-- mainAPI.py
 
 """
