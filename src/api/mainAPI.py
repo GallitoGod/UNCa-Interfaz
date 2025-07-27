@@ -37,18 +37,28 @@ from io import BytesIO
 from PIL import Image
 from api.func.model_controller import ModelController
 
-app = FastAPI()
+app = FastAPI(
+    title="Sistema de Visión por Computadora",
+    description="API para carga de modelos y ejecución de inferencias sobre imágenes.",
+    version="1.0.0"
+)
 controller = ModelController()
+
+class ModelPathRequest(BaseModel):
+    model_path: str
+
+class ConfidenceUpdateRequest(BaseModel):
+    value: float
 
 # ════════════════════════════════════════
 # 1 Cargar modelo
 # ════════════════════════════════════════
 
-@app.post("/load_model")
-def load_model(model_path: str = Form(...)):
+@app.post("/model/load")
+def load_model(data: ModelPathRequest):
     try:
-        controller.load_model(model_path)
-        return {"status": "ok", "message": f"Modelo cargado: {model_path}"}
+        controller.load_model(data.model_path)
+        return {"status": "ok", "message": f"Modelo cargado: {data.model_path}"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
 
@@ -58,15 +68,16 @@ def load_model(model_path: str = Form(...)):
 # ════════════════════════════════════════
 
 @app.post("/config/confidence")
-def update_confidence(value: float = Form(...)):
-    controller.update_confidence(value)
-    return {"status": "ok", "new_confidence": value}
+def update_confidence(data: ConfidenceUpdateRequest):
+    controller.update_confidence(data.value)
+    return {"status": "ok", "new_confidence": data.value}
 
 
 # ════════════════════════════════════════
 # 3 Enviar imagen y obtener deteccion
 # ════════════════════════════════════════
 
+@app.post("/predict")
 async def run_inference(file: UploadFile = File(...)):
     try:
         image_bytes = await file.read()
@@ -78,6 +89,7 @@ async def run_inference(file: UploadFile = File(...)):
             image_np = image_np[..., :3]
 
         result = controller.inference(image_np)
+        result = [det.tolist() for det in result]
         return {"status": "ok", "detections": result}
 
     except Exception as e:
@@ -88,18 +100,7 @@ async def run_inference(file: UploadFile = File(...)):
 # 4 Descargar modelo (de momento no va a andar)
 # ════════════════════════════════════════
 
-@app.post("/unload")
+@app.post("/model/unload")
 def unload_model():
     controller.unload_model()
     return {"status": "ok", "message": "Modelo descargado."}
-
-
-'''
-| Endpoint actual      | Sugerencia RESTful     | Justificacion                          |
-| -------------------- | ---------------------- | -------------------------------------- |
-| `/load_model`        | `/model/load`          | Mas claro y agrupado bajo `/model`     |
-| `/unload`            | `/model/unload`        | Idem                                   |
-| `/config/confidence` | `/config/confidence`   | Está bien                              |
-| `/inference`         | `/predict`             | "Predict" es más claro para APIs de ML |
-
-'''
