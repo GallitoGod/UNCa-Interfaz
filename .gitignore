@@ -1,6 +1,8 @@
 src/__pycache__/
+logs/
 node_modules/
 package-lock.json
 .vscode/
 .venv/
 .prettierrc
+pytest.ini

@@ -38,8 +38,8 @@ from PIL import Image
 from api.func.model_controller import ModelController
 
 app = FastAPI(
-    title="Sistema de Visión por Computadora",
-    description="API para carga de modelos y ejecución de inferencias sobre imágenes.",
+    title="Sistema de Vision por Computadora",
+    description="API para carga de modelos y ejecucion de inferencias sobre imagenes.",
     version="1.0.0"
 )
 controller = ModelController()
