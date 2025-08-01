@@ -1,4 +1,5 @@
 src/__pycache__/
+src/api/__pycache__/
 src/api/forms/__pycache__/
 src/api/func/__pycache__/
 src/api/func/general/__pycache__/
