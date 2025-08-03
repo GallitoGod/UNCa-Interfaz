@@ -44,11 +44,10 @@ def generate_output_adapter(tensor_structure: TensorStructure):
     row viene de raw_output que viene directamente de la IA luego de la inferencia.
     Este contiene todas las detecciones que el modelo haya emitido, 
 generalmente en forma de arrays, cada uno con informacion de una unica deteccion. raw_output 
-puede no venir en forma de List[List[float]] o np.ndarray, asi que el problema a resolver ahora es 
-el que todas las IAs llegado este punto devuelvan estas dos clases de "listas" para que el adaptador funcione
-correctamente.
+puede no venir en forma de List[List[float]] o np.ndarray, pero de ello ya se encarga el script
+unpakers.py, pasando softmax y multihead a raw.
 
-    En el caso de ser List[List[float]] o np.ndarray, cada deteccion puede tener los datos en un orden diferente:
+    Al ser List[List[float]] o np.ndarray, cada deteccion puede tener los datos en un orden diferente:
 [x1, y1, x2, y2, confidence, class_id] o
 [cx, cy, w, h, conf, cls] o
 [y1, x1, y2, x2, ...], etc.
@@ -62,7 +61,7 @@ faltaria seria devolverlo al cliente.
 
 
 """
-    Hay que alterar la lectura de los JSONs a:
+    Los JSONs ahora contienen este objeto para el adaptador:
     "tensor_structure": {
         "format": "yxyx",       |   "format": "cxcywh",
         "coordinates": {        |   "coordinates": {
@@ -73,7 +72,5 @@ faltaria seria devolverlo al cliente.
         },                      |   },
         "confidence_index": 4,
         "class_index": 5
-    }
-    Tambien hay que adaptarla si los modelos devuelven raw_outputs distintos de la forma
-List[List[float]] o np.ndarray. <---    ESTO YA ESTA HECHO CON 'unpackers.py'   
+    } 
 """

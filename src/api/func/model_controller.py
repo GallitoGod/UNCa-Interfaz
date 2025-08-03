@@ -36,19 +36,22 @@ class ModelController:
         self.logger = None
 
     def load_model(self, model_path: str):
-        self.model_format = os.path.splitext(model_path)[1].lower()
-        self.config = loadModelConfig(model_path)
-        self.config.output = ReactiveOutputConfig(**self.config.output.dict())
+        try:
+            self.model_format = os.path.splitext(model_path)[1].lower()
+            self.config = loadModelConfig(model_path)
+            self.config.output = ReactiveOutputConfig(**self.config.output.dict())
 
-        self.predict_fn = ModelLoader.load(model_path, self.model_format)
-        self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config.input)
-        self.input_adapter = generate_input_adapter(self.config.input)
-        self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
-        self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
-        self.postprocess_fn = buildPostprocessor(self.config.output, self.letter_transformers)
-        
-        self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
-        self.logger.info("Modelo cargado correctamente")
+            self.predict_fn = ModelLoader.load(model_path, self.model_format)
+            self.preprocess_fn, self.letter_transformers = buildPreprocessor(self.config.input)
+            self.input_adapter = generate_input_adapter(self.config.input)
+            self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
+            self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
+            self.postprocess_fn = buildPostprocessor(self.config.output, self.letter_transformers)
+            
+            self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
+            self.logger.info("Modelo cargado correctamente")
+        except Exception as e:
+            self.logger.exception(f"Error en la carga de modelo: {e}")
 
 
     def inference(self, img):
@@ -62,7 +65,11 @@ class ModelController:
         return result     
     
     def update_confidence(self, new_threshold: float):
-        self.config.output.confidence_threshold = new_threshold
+        try:
+            self.config.output.confidence_threshold = new_threshold
+            self.logger.info(f"Confianza actualizada a {new_threshold}.")
+        except Exception as e:
+            self.logger.exception("No se pudo actualizar la confianza.")
 
     def unload_model(self):
         self.predict_fn = None

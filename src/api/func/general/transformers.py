@@ -26,37 +26,40 @@ def build_letterbox(input_width, input_height, pad_color):
     return letterbox
 
 def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]:
-    steps = []
-    transform_info = {}
-    if config.letterbox:
-        letterbox = build_letterbox(config.width, config.height, config.auto_pad_color)
+    try:
+        steps = []
+        transform_info = {}
+        if config.letterbox:
+            letterbox = build_letterbox(config.width, config.height, config.auto_pad_color)
 
-        def letterbox_wrapper(img):
-            padded, scale, pad_left, pad_top = letterbox(img)
-            transform_info['scale'] = scale
-            transform_info['pad_left'] = pad_left
-            transform_info['pad_top'] = pad_top
-            transform_info['used_letterbox'] = True
-            return padded
+            def letterbox_wrapper(img):
+                padded, scale, pad_left, pad_top = letterbox(img)
+                transform_info['scale'] = scale
+                transform_info['pad_left'] = pad_left
+                transform_info['pad_top'] = pad_top
+                transform_info['used_letterbox'] = True
+                return padded
 
-        steps.append(letterbox_wrapper)
-    else:
-        steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
+            steps.append(letterbox_wrapper)
+        else:
+            steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
 
-    if config.scale:
-        steps.append(lambda img: img.astype(np.float32) / 255.0)
+        if config.scale:
+            steps.append(lambda img: img.astype(np.float32) / 255.0)
 
-    if config.normalize:
-        mean = np.array(config.mean).reshape(1, 1, -1)
-        std = np.array(config.std).reshape(1, 1, -1)
-        steps.append(lambda img: (img - mean) / std)
+        if config.normalize:
+            mean = np.array(config.mean).reshape(1, 1, -1)
+            std = np.array(config.std).reshape(1, 1, -1)
+            steps.append(lambda img: (img - mean) / std)
 
-    def preprocess(img):
-        for step in steps:
-            img = step(img)
-        return img
+        def preprocess(img):
+            for step in steps:
+                img = step(img)
+            return img
 
-    return preprocess, transform_info
+        return preprocess, transform_info
+    except Exception as e:
+        raise ValueError(f"Error: {e}") from e
 
 
 def iou(box1, box2):
@@ -98,29 +101,31 @@ def undo_transform(p, transform_info):
 
 def buildPostprocessor(config: OutputConfig, transform_info: dict = None) -> Callable[[List[List[float]]], List[List[float]]]:
     #El orden aqui siempre debe ser: 1_Filtrar por confianza 2_Aplicar nms 3_Deshacer letterbox(Si es que se aplico). 
-    steps = []
+    try:
+        steps = []
 
-    steps.append(lambda preds: [p for p in preds if p[4] >= config.confidence_threshold])
+        steps.append(lambda preds: [p for p in preds if p[4] >= config.confidence_threshold])
 
-    if config.apply_nms:
-        steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
+        if config.apply_nms:
+            steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
 
-    if transform_info and transform_info.get("used_letterbox", True):
-        steps.append(lambda preds: [undo_transform(p, transform_info) for p in preds])
+        if transform_info and transform_info.get("used_letterbox", True):
+            steps.append(lambda preds: [undo_transform(p, transform_info) for p in preds])
 
 
-    def postprocess(predictions: List[List[float]]) -> List[List[float]]:
-        for step in steps:
-            predictions = step(predictions)
-        return predictions
+        def postprocess(predictions: List[List[float]]) -> List[List[float]]:
+            for step in steps:
+                predictions = step(predictions)
+            return predictions
 
-    return postprocess
-
+        return postprocess
+    except Exception as e:
+        raise ValueError(f"Error: {e}") from e
 
 
 '''
     Ahora la confianza si cambia con el cambio desde el cliente, el transformador pasa el valor de la confianza 
-al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ahora no se necesita
+al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ya no se necesita
 descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
 hacer funcionar NMS.
 '''
