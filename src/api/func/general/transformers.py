@@ -1,4 +1,4 @@
-from .config_schema import InputConfig, OutputConfig
+from .config_schema import InputConfig, OutputConfig, RuntimeSession
 from typing import Callable, List
 import numpy as np
 import cv2
@@ -25,7 +25,7 @@ def build_letterbox(input_width, input_height, pad_color):
 
     return letterbox
 
-def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]:
+def buildPreprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable[[np.ndarray], np.ndarray]:
     try:
         steps = []
         transform_info = {}
@@ -57,7 +57,13 @@ def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]
                 img = step(img)
             return img
 
-        return preprocess, transform_info
+        runtime.metadata = [
+            float(transform_info['pad_left']),
+            float(transform_info['pad_top']),
+            float(transform_info['scale']),
+        ]
+        runtime.used_letterbox = bool(transform_info['used_letterbox'])
+        return preprocess
     except Exception as e:
         raise ValueError(f"Error: {e}") from e
 
@@ -99,7 +105,7 @@ def undo_transform(p, transform_info):
     p[3] = (p[3] - pad_top) / scale
     return p
 
-def buildPostprocessor(config: OutputConfig, transform_info: dict = None) -> Callable[[List[List[float]]], List[List[float]]]:
+def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> Callable[[List[List[float]]], List[List[float]]]:
     #El orden aqui siempre debe ser: 1_Filtrar por confianza 2_Aplicar nms 3_Deshacer letterbox(Si es que se aplico). 
     try:
         steps = []

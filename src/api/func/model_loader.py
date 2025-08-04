@@ -13,5 +13,5 @@ class ModelLoader:
         elif model_format == ".onnx":
             return Onnx(model_path)
         else:
-            raise ValueError(f"Formato no soportado: {model_format}")
+            raise ValueError(f"Fallo al cargar el modelo: {model_format}, {model_path}")
         

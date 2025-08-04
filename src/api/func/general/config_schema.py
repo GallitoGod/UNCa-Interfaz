@@ -39,7 +39,13 @@ class InputConfig(BaseModel):
     color_order: Optional[Literal["RGB", "BGR"]] = "RGB"
     input_tensor: Optional[InputTensorConfig] = None 
 
+class RuntimeSession(BaseModel):
+    metadata: Optional[List[float]] = [0.0 ,0.0 ,0.0] # scale, pad_left, pad_top
+    used_letterbox: bool = False
+    # Mas adelante ire agregando datos mutables que sean necesarios
+
 class ModelConfig(BaseModel):
     model_type: Literal["detection", "classification", "segmentation"]
     input: InputConfig
     output: OutputConfig
+    runtime: RuntimeSession = Field(default_factory=RuntimeSession)
