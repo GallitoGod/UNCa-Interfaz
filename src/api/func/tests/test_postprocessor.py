@@ -23,7 +23,7 @@ def test_postprocessor_filters_confidence():
         tensor_structure=ts
     )
 
-    post_fn = buildPostprocessor(config)
+    post_fn = buildPostprocessor(config, transform_info=None)
     result = post_fn(preds)
 
     assert len(result) == 2

@@ -20,16 +20,13 @@ from api.func.general.unpackers import build_unpacker
 class ModelController:
 
     # TODO: encapsular preprocessor + input_adapter en un InputPipeline
-    # TODO: acoplamiento a detalles internos (ej. self.letter_transformers expuesto)
     # TODO: desacoplar unload_model para que cada componente tenga su propio release
-    # TODO: escape de la validación de estado (None checks)
     def __init__(self):
         self.predict_fn = None
         self.input_adapter = None
         self.output_adapter = None
         self.unpack_fn = None
         self.preprocess_fn = None
-        #self.letter_transformers = None
         self.postprocess_fn = None
         self.model_format = None
         self.config = None
@@ -39,7 +36,7 @@ class ModelController:
         try:
             self.model_format = os.path.splitext(model_path)[1].lower()
             self.config = loadModelConfig(model_path)
-            self.config.output = ReactiveOutputConfig(**self.config.output.dict())
+            self.config.output = ReactiveOutputConfig(**self.config.output.model_dump()) #antes era dict enves de model_dump
 
             self.predict_fn = ModelLoader.load(model_path, self.model_format)
             self.preprocess_fn = buildPreprocessor(self.config.input, self.config.runtime)

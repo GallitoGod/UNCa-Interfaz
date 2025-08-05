@@ -7,7 +7,7 @@ def setup_model_logger(model_name: str, log_dir: str = "logs"):
     log_path = os.path.join(log_dir, f"{model_name}.log")
 
     logger = logging.getLogger(model_name)
-    logger.setLevel(logging.INFO)
+    #logger.setLevel(logging.INFO)
 
     if not logger.handlers:
         fh = logging.FileHandler(log_path)

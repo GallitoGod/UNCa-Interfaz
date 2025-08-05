@@ -4,43 +4,40 @@ import numpy as np
 import cv2
 
 def build_letterbox(input_width, input_height, pad_color):
+    #VOY A TOMAR COMO UN ESTANDAR QUE LA IMAGEN SIEMPRE ENTRA EN LAS MEDIDAS WIDHT=1920, HEIGHT=1080
+    h, w = 1080, 1920
+    scale = min(input_width / w, input_height / h)
+    nw, nh = int(w * scale), int(h * scale)
+    pad_w = input_width - nw
+    pad_h = input_height - nh
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
     def letterbox(img):
-        h, w = img.shape[:2]
-        scale = min(input_width / w, input_height / h)
-        nw, nh = int(w * scale), int(h * scale)
-        pad_w = input_width - nw
-        pad_h = input_height - nh
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        pad_top = pad_h // 2
-        pad_bottom = pad_h - pad_top
-
         resized = cv2.resize(img, (nw, nh))
         padded = cv2.copyMakeBorder(
             resized, pad_top, pad_bottom, pad_left, pad_right,
             borderType=cv2.BORDER_CONSTANT,
             value=pad_color
         )
-        return padded, scale, pad_left, pad_top
+        return padded
+    transform_info = {
+        "scale": scale,
+        "pad_left": pad_left,
+        "pad_top": pad_top,
+        "letterbox_used": True
+    }
 
-    return letterbox
+    return letterbox, transform_info
 
 def buildPreprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable[[np.ndarray], np.ndarray]:
     try:
         steps = []
-        transform_info = {}
-        if config.letterbox:
-            letterbox = build_letterbox(config.width, config.height, config.auto_pad_color)
+        if config.letterbox and config.preserve_aspect_ratio:
+            letterbox, transform_info = build_letterbox(config.width, config.height, config.auto_pad_color)
 
-            def letterbox_wrapper(img):
-                padded, scale, pad_left, pad_top = letterbox(img)
-                transform_info['scale'] = scale
-                transform_info['pad_left'] = pad_left
-                transform_info['pad_top'] = pad_top
-                transform_info['used_letterbox'] = True
-                return padded
-
-            steps.append(letterbox_wrapper)
+            steps.append(letterbox)
         else:
             steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
 
@@ -57,12 +54,7 @@ def buildPreprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable[
                 img = step(img)
             return img
 
-        runtime.metadata = [
-            float(transform_info['pad_left']),
-            float(transform_info['pad_top']),
-            float(transform_info['scale']),
-        ]
-        runtime.used_letterbox = bool(transform_info['used_letterbox'])
+        runtime.metadata = transform_info
         return preprocess
     except Exception as e:
         raise ValueError(f"Error: {e}") from e
@@ -115,7 +107,7 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
         if config.apply_nms:
             steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
 
-        if transform_info and transform_info.get("used_letterbox", True):
+        if transform_info and transform_info.metadata["letterbox_used"]:
             steps.append(lambda preds: [undo_transform(p, transform_info) for p in preds])
 
 

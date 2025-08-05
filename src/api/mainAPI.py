@@ -87,6 +87,8 @@ async def run_inference(file: UploadFile = File(...)):
         # El controlador se encarga del color_order
         if image_np.shape[-1] == 4:
             image_np = image_np[..., :3]
+        
+        #Que tal si desde aca veo el tamano de entrada para estatizar completamente a letterbox ???
 
         result = controller.inference(image_np)
         result = [det.tolist() for det in result]
@@ -97,7 +99,7 @@ async def run_inference(file: UploadFile = File(...)):
 
 
 # ════════════════════════════════════════
-# 4 Descargar modelo (de momento no va a andar)
+# 4 Descargar modelo (de momento no va a andar). Ahora que lo recuero, ya tenia alguna forma de descargar el JSON del modelo ???
 # ════════════════════════════════════════
 
 @app.post("/model/unload")
