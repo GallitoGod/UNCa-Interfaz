@@ -36,11 +36,12 @@ class InputConfig(BaseModel):
     letterbox: bool = Field(default=False)
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
-    color_order: Optional[Literal["RGB", "BGR"]] = "RGB"
+    color_order: Optional[Literal["RGB", "BGR", "GRAY"]] = "RGB"
     input_tensor: Optional[InputTensorConfig] = None 
 
 class RuntimeSession(BaseModel):
-    metadata: Optional[List[float]] = [1.0 ,0.0 ,0.0, False] # scale, pad_left, pad_top, used_letterbox
+    metadata_letter: Optional[List[float]] = [1.0 ,0.0 ,0.0, False] # scale, pad_left, pad_top, used_letterbox
+    channels: int = 3
     #DEVICE: Optional[Literal["CPU", "GPU", "TPU", "NPU"]] = "CPU" <--- TENER EN CUENTA EN EL FUTURO
     # Mas adelante ire agregando datos mutables que sean necesarios
 

@@ -40,9 +40,9 @@ class ModelController:
 
             self.predict_fn = ModelLoader.load(model_path, self.model_format)
             self.preprocess_fn = buildPreprocessor(self.config.input, self.config.runtime)
-            self.input_adapter = generate_input_adapter(self.config.input)
+            self.input_adapter = generate_input_adapter(self.config.input, self.config.runtime)
             self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
-            self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
+            self.output_adapter = generate_output_adapter(self.config.output.tensor_structure, self.config.runtime)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
             
             self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
@@ -82,11 +82,11 @@ class ModelController:
         self.config = None
 
 """
-1_ Obtener el frame---------------------------------------(casi hecho) <-- mainAPI.py
-2_ Preprocesar frame--------------------------------------(hecho)     <-- transformers.py
+1_ Obtener el frame---------------------------------------(hecho) <-- mainAPI.py
+2_ Preprocesar frame--------------------------------------(hecho) <-- transformers.py
 3_ Adaptar el preproceso generico a la IA especifica------(hecho) <-- adapters.py
-4_ Generar la inferencia----------------------------------(hecho)     <-- model_loader.py
+4_ Generar la inferencia----------------------------------(hecho) <-- model_loader.py
 5_ Adaptar raw_output al formato generico del controlador-(hecho) <-- adapters.py
-6_ Postprocesar detections--------------------------------(hecho)     <-- transformers.py
-7_ Devolver al cliente------------------------------------(casi hecho) <-- mainAPI.py
+6_ Postprocesar detections--------------------------------(hecho) <-- transformers.py
+7_ Devolver al cliente------------------------------------(hecho) <-- mainAPI.py
 """

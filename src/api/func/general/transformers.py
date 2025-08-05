@@ -54,7 +54,7 @@ def buildPreprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable[
                 img = step(img)
             return img
 
-        runtime.metadata = transform_info
+        runtime.metadata_letter = transform_info
         return preprocess
     except Exception as e:
         raise ValueError(f"Error: {e}") from e
@@ -107,8 +107,8 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
         if config.apply_nms:
             steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
 
-        if transform_info and transform_info.metadata["letterbox_used"]:
-            steps.append(lambda preds: [undo_transform(p, transform_info) for p in preds])
+        if transform_info and transform_info.metadata_letter["letterbox_used"]:
+            steps.append(lambda preds: [undo_transform(p, transform_info.metadata_letter) for p in preds])
 
 
         def postprocess(predictions: List[List[float]]) -> List[List[float]]:
