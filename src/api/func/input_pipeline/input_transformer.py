@@ -1,47 +1,44 @@
-from api.func.general.config_schema import InputConfig
+from ..reader_pipeline import InputConfig, RuntimeSession
 from typing import Callable
 import numpy as np
 import cv2
 
 
 def build_letterbox(input_width, input_height, pad_color):
+    #VOY A TOMAR COMO UN ESTANDAR QUE LA IMAGEN SIEMPRE ENTRA EN LAS MEDIDAS WIDHT=1920, HEIGHT=1080
+    h, w = 1080, 1920
+    scale = min(input_width / w, input_height / h)
+    nw, nh = int(w * scale), int(h * scale)
+    pad_w = input_width - nw
+    pad_h = input_height - nh
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
     def letterbox(img):
-        h, w = img.shape[:2]
-        scale = min(input_width / w, input_height / h)
-        nw, nh = int(w * scale), int(h * scale)
-        pad_w = input_width - nw
-        pad_h = input_height - nh
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        pad_top = pad_h // 2
-        pad_bottom = pad_h - pad_top
-
         resized = cv2.resize(img, (nw, nh))
         padded = cv2.copyMakeBorder(
             resized, pad_top, pad_bottom, pad_left, pad_right,
             borderType=cv2.BORDER_CONSTANT,
             value=pad_color
         )
-        return padded, scale, pad_left, pad_top
+        return padded
+    transform_info = {
+        "scale": scale,
+        "pad_left": pad_left,
+        "pad_top": pad_top,
+        "letterbox_used": True
+    }
 
-    return letterbox
+    return letterbox, transform_info
 
-def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]:
+def buildPreprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable[[np.ndarray], np.ndarray]:
     try:
         steps = []
-        transform_info = {}
-        if config.letterbox:
-            letterbox = build_letterbox(config.width, config.height, config.auto_pad_color)
+        if config.letterbox and config.preserve_aspect_ratio:
+            letterbox, transform_info = build_letterbox(config.width, config.height, config.auto_pad_color)
 
-            def letterbox_wrapper(img):
-                padded, scale, pad_left, pad_top = letterbox(img)
-                transform_info['scale'] = scale
-                transform_info['pad_left'] = pad_left
-                transform_info['pad_top'] = pad_top
-                transform_info['used_letterbox'] = True
-                return padded
-
-            steps.append(letterbox_wrapper)
+            steps.append(letterbox)
         else:
             steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
 
@@ -58,6 +55,7 @@ def buildPreprocessor(config: InputConfig) -> Callable[[np.ndarray], np.ndarray]
                 img = step(img)
             return img
 
-        return preprocess, transform_info
+        runtime.metadata_letter = transform_info
+        return preprocess
     except Exception as e:
-        raise ValueError(f"Error: {e}") from e
+        raise ValueError(e) from e

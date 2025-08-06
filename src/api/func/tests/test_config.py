@@ -1,5 +1,5 @@
 
-from api.func.general.config_schema import ModelConfig
+from api.func.reader_pipeline.config_schema import ModelConfig
 import json
 
 def test_load_config():

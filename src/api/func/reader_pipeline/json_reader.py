@@ -1,6 +1,6 @@
 import os
 import json
-from api.func.general.config_schema import ModelConfig
+from .config_schema import ModelConfig
 
 def loadModelConfig(model_path: str) -> ModelConfig:
     base_name = os.path.splitext(os.path.basename(model_path))[0]

@@ -1,7 +1,7 @@
 from typing import Any, Callable, List, Union
 import numpy as np
 
-def build_unpacker(output_format: str) -> Callable[[Any], Union[List[List[float]], np.ndarray]]:
+def unpack_out(output_format: str) -> Callable[[Any], Union[List[List[float]], np.ndarray]]:
     """
     Devuelve una funcion especializada para desempaquetar el raw_output de un modelo
     segun el formato declarado en output_tensor.output_format.

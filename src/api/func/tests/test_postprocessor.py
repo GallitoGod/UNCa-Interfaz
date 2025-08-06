@@ -1,6 +1,6 @@
 
-from api.func.general.transformers import buildPostprocessor
-from api.func.general.config_schema import OutputConfig, TensorStructure
+from api.func.output_pipeline.output_transformer import buildPostprocessor
+from api.func.reader_pipeline.config_schema import OutputConfig, TensorStructure
 import numpy as np
 
 def test_postprocessor_filters_confidence():

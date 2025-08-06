@@ -1,11 +1,12 @@
 import os
 from .logger import setup_model_logger
-from api.func.model_loader import ModelLoader
-from api.func.general.json_reader import loadModelConfig
-from api.func.general.transformers import buildPreprocessor, buildPostprocessor
-from api.func.general.adapters import generate_input_adapter, generate_output_adapter
-from api.func.general.thresholds_updater import ReactiveOutputConfig
-from api.func.general.unpackers import build_unpacker
+from .model_loader import ModelLoader
+from .reader_pipeline import loadModelConfig
+#from api.func.general.transformers import buildPreprocessor, buildPostprocessor
+#from api.func.general.adapters import generate_input_adapter, generate_output_adapter
+from .reader_pipeline import ReactiveOutputConfig
+from .input_pipeline import buildPreprocessor, generate_input_adapter
+from .output_pipeline import unpack_out, buildPostprocessor, generate_output_adapter
 
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.
@@ -41,7 +42,7 @@ class ModelController:
             self.predict_fn = ModelLoader.load(model_path, self.model_format)
             self.preprocess_fn = buildPreprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input, self.config.runtime)
-            self.unpack_fn = build_unpacker(self.config.output.output_tensor.output_format)
+            self.unpack_fn = unpack_out(self.config.output.output_tensor.output_format)
             self.output_adapter = generate_output_adapter(self.config.output.tensor_structure, self.config.runtime)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
             
