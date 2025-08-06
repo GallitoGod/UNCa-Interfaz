@@ -39,7 +39,10 @@ def undo_transform(p, transform_info):
     return p
 
 def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> Callable[[List[List[float]]], List[List[float]]]:
-    #El orden aqui siempre debe ser: 1_Filtrar por confianza 2_Aplicar nms 3_Deshacer letterbox(Si es que se aplico). 
+    #El orden aqui siempre debe ser: 
+    #   1_Filtrar por confianza (en el casode no usar nms. Es asi? Tengo que confirmarlo)
+    #   2_Aplicar nms(en el caso de necesitarlo) 
+    #   3_Deshacer letterbox(Si es que se aplico). 
     try:
         steps = []
 
@@ -66,5 +69,5 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
     Ahora la confianza si cambia con el cambio desde el cliente, el transformador pasa el valor de la confianza 
 al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ya no se necesita
 descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
-hacer funcionar NMS.
+hacer la funcion de confianza.
 '''

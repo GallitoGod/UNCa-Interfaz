@@ -1,4 +1,3 @@
-
 {
   "model_type": "detection",
   "input": {
@@ -20,23 +19,23 @@
     }
   },
   "output": {
-    "confidence_threshold": 0.25,
+    "confidence_threshold": 0.5,
     "nms_threshold": 0.45,
-    "apply_nms": false,
+    "apply_nms": true,
     "tensor_structure": {
-      "box_format": "xyxy",
+      "box_format": "cxcywh",
       "coordinates": {
-        "x0": 1,
-        "y0": 2,
-        "x1": 3,
-        "y1": 4
+        "cx": 0,
+        "cy": 1,
+        "w": 2,
+        "h": 3
       },
-      "confidence_index": 6,
+      "confidence_index": 4,
       "class_index": 5,
-      "num_classes": null
+      "num_classes": 80
     },
     "output_tensor": {
-      "layout": "NC",
+      "layout": "NCHW",
       "dtype": "float32",
       "output_format": "raw"
     }

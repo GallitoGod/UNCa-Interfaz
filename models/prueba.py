@@ -160,8 +160,7 @@ def infer(img_path, model_path, class_names_path=None, use_cuda=True):
 #  Probar con cualquier modelo y clases
 img_result = infer(
     img_path="models/horses.jpg",
-    model_path="models/best_4class.onnx",
-    class_names_path="models/clases.json",
+    model_path="models/yolov7-tiny.onnx",
     use_cuda=True
 )
 img_result.show()
