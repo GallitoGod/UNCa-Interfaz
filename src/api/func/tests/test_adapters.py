@@ -9,7 +9,7 @@ def test_input_adapter():
         width=640, height=640, channels=3, normalize=False, scale=False,
         input_tensor=InputTensorConfig(layout="NCHW", dtype="float32", quantized=False)
     )
-    adapter = generate_input_adapter(cfg, runtime=None)
+    adapter = generate_input_adapter(cfg)
     out = adapter(dummy_img)
     assert isinstance(out, np.ndarray)
     assert out.shape == (1, 3, 640, 640)

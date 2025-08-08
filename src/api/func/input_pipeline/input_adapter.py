@@ -20,7 +20,7 @@ def generate_layout_converter(layout: str):
             raise ValueError(f"Formato de layout desconocido: {layout}")
     return to_layout
 
-def generate_input_adapter(input_config: InputConfig, runtime: RuntimeSession):
+def generate_input_adapter(input_config: InputConfig):
     tensor_cfg = input_config.input_tensor or None
     color_order = input_config.color_order or "RGB"
     layout_converter = generate_layout_converter(tensor_cfg.layout) if tensor_cfg else lambda x: x
@@ -29,7 +29,6 @@ def generate_input_adapter(input_config: InputConfig, runtime: RuntimeSession):
     
     if channels == 1:
         color_order = "GRAY"
-        runtime.channels = 1
     if channels == 3:
         pass
     else:

@@ -35,8 +35,6 @@
       "num_classes": 80
     },
     "output_tensor": {
-      "layout": "NCHW",
-      "dtype": "float32",
       "output_format": "raw"
     }
   }

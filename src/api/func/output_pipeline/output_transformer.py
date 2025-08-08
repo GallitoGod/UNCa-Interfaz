@@ -40,7 +40,7 @@ def undo_transform(p, transform_info):
 
 def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> Callable[[List[List[float]]], List[List[float]]]:
     #El orden aqui siempre debe ser: 
-    #   1_Filtrar por confianza (en el casode no usar nms. Es asi? Tengo que confirmarlo)
+    #   1_Filtrar por confianza (en el caso de no usar nms. Es asi? Tengo que confirmarlo)
     #   2_Aplicar nms(en el caso de necesitarlo) 
     #   3_Deshacer letterbox(Si es que se aplico). 
     try:
@@ -70,4 +70,12 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
 al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ya no se necesita
 descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
 hacer la funcion de confianza.
+    Tengo que revisar el concepto del NMS, tengo un par de dudas respecto a como se aplica.
+'''
+
+'''
+    Esta es la ultima parte del pipeline de salida, de aqui se tendrian que pasar los bouding boxes al cliente
+el se debe encargar de dibujarlos sobre la imagen. No se toca la visualizacion, por lo que no necesito
+devolver colores de los boxes ni la imagen del input pipeline en blanco y negro para devolverlo a valores normales. 
+    Esa imagen ya puede desaparecer del flujo del programa.
 '''

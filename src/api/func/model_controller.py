@@ -2,8 +2,6 @@ import os
 from .logger import setup_model_logger
 from .model_loader import ModelLoader
 from .reader_pipeline import loadModelConfig
-#from api.func.general.transformers import buildPreprocessor, buildPostprocessor
-#from api.func.general.adapters import generate_input_adapter, generate_output_adapter
 from .reader_pipeline import ReactiveOutputConfig
 from .input_pipeline import buildPreprocessor, generate_input_adapter
 from .output_pipeline import unpack_out, buildPostprocessor, generate_output_adapter
@@ -20,8 +18,18 @@ from .output_pipeline import unpack_out, buildPostprocessor, generate_output_ada
 '''
 class ModelController:
 
-    # TODO: encapsular preprocessor + input_adapter en un InputPipeline
-    # TODO: desacoplar unload_model para que cada componente tenga su propio release
+    # TODO: el controlador debe terminar siendo un administrador de pipelines, nod debe conocer los detalles de cada pipeline
+    # como ya lo hace. Debe entender el JSON, percatar si es calsificacion, deteccion, etc y en base a ello elegir las pipelines correctas.
+    # Por lo que la siguiente actualizacion del controlador va a ser una reestructuracion completa para lograr cumplir ese objetivo.
+    '''
+        EL CONCEPTO:
+
+        def inference(self, img):
+            # despues de entender que clase de IA es:
+            pre = InputPipeline.preprocess(img) #hace absolutamente todo el preprocesamiento
+            infer = ModelLoader.predict(pre) #hace la inferencia
+            return OutputPipeline.postprocess(infer) #hace el postprocesamiento y devuelve el resultado final
+    '''
     def __init__(self):
         self.predict_fn = None
         self.input_adapter = None
@@ -41,9 +49,9 @@ class ModelController:
 
             self.predict_fn = ModelLoader.load(model_path, self.model_format)
             self.preprocess_fn = buildPreprocessor(self.config.input, self.config.runtime)
-            self.input_adapter = generate_input_adapter(self.config.input, self.config.runtime)
+            self.input_adapter = generate_input_adapter(self.config.input)
             self.unpack_fn = unpack_out(self.config.output.output_tensor.output_format)
-            self.output_adapter = generate_output_adapter(self.config.output.tensor_structure, self.config.runtime)
+            self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
             
             self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])

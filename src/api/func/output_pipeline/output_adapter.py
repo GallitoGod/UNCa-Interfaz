@@ -1,5 +1,5 @@
 from typing import Callable
-from ..reader_pipeline import TensorStructure, RuntimeSession
+from ..reader_pipeline import TensorStructure
 
 def generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
     if fmt == "xyxy":
@@ -26,19 +26,13 @@ def generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
     else:
         raise ValueError(f"Formato desconocido: {fmt}")
 
-def generate_output_adapter(tensor_structure: TensorStructure, runtime: RuntimeSession):
+def generate_output_adapter(tensor_structure: TensorStructure):
     convert_box = generate_box_converter(
         tensor_structure.box_format, tensor_structure.coordinates
     )
 
     conf_idx = tensor_structure.confidence_index
     cls_idx = tensor_structure.class_index
-
-    if runtime.channels == 1:
-        pass
-       # Por ahora si la IA necesita un canal, voy a dejar que vuelva un unico canal al cliente.
-    else: 
-        pass
 
     def adapter_fn_out(row):
         box = convert_box(row)

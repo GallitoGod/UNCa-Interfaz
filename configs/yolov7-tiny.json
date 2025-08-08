@@ -26,18 +26,16 @@
     "tensor_structure": {
       "box_format": "xyxy",
       "coordinates": {
-        "x0": 1,
-        "y0": 2,
-        "x1": 3,
-        "y1": 4
+        "x1": 0,
+        "y1": 1,
+        "x2": 2,
+        "y2": 3
       },
-      "confidence_index": 6,
-      "class_index": 5,
+      "confidence_index": 5,
+      "class_index": 4,
       "num_classes": null
     },
     "output_tensor": {
-      "layout": "NC",
-      "dtype": "float32",
       "output_format": "raw"
     }
   }
