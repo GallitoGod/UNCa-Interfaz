@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Dict
+from typing import List, Optional, Literal, Dict, Union
 
 class InputTensorConfig(BaseModel):
     layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
@@ -36,11 +36,16 @@ class InputConfig(BaseModel):
     letterbox: bool = Field(default=False)
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
-    color_order: Optional[Literal["RGB", "BGR", "GRAY"]] = "RGB"
+    color_order: Optional[str] = "RGB"
     input_tensor: Optional[InputTensorConfig] = None 
 
 class RuntimeSession(BaseModel):
-    metadata_letter: Optional[List[float]] = [1.0 ,0.0 ,0.0, False] # scale, pad_left, pad_top, used_letterbox
+    metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
+    "scale": 1.0,
+    "pad_left": 0.0,
+    "pad_top": 0.0,
+    "letterbox_used": False
+}
     channels: int = 3
     #DEVICE: Optional[Literal["CPU", "GPU", "TPU", "NPU"]] = "CPU" <--- TENER EN CUENTA EN EL FUTURO
     # Mas adelante ire agregando datos mutables que sean necesarios

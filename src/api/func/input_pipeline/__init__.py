@@ -1,7 +1,7 @@
 from .input_adapter import generate_input_adapter
-from .input_transformer import buildPreprocessor
+from .input_transformer import build_preprocessor
 
 __all__ = [
     'generate_input_adapter', 
-    'buildPreprocessor'
+    'build_preprocessor'
 ]

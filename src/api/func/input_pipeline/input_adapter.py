@@ -1,5 +1,5 @@
 import numpy as np
-from ..reader_pipeline import InputConfig, RuntimeSession
+from api.func.reader_pipeline.config_schema import InputConfig
 
 def generate_layout_converter(layout: str):
     """
@@ -29,7 +29,7 @@ def generate_input_adapter(input_config: InputConfig):
     
     if channels == 1:
         color_order = "GRAY"
-    if channels == 3:
+    elif channels == 3:
         pass
     else:
         raise ValueError(f"Canal invalido: {channels}. Solo 1 (GRAY) o 3 (RGB/BGR) son soportados.")
@@ -39,12 +39,12 @@ def generate_input_adapter(input_config: InputConfig):
             img = layout_converter(img)    # reordenar layout
             img = img[..., ::-1]           # invertir canales
             return img.astype(dtype)       # tipo final
-    if color_order == "GRAY":
+    elif color_order == "GRAY":
         def adapter_fn_in(img: np.ndarray) -> np.ndarray:
             img = layout_converter(img)    
             img = np.dot(img[...,:3], [0.2989, 0.5870, 0.1140]).astype(np.uint8)
             return img.astype(dtype)       
-    if color_order == "RGB":
+    elif color_order == "RGB":
         def adapter_fn_in(img: np.ndarray) -> np.ndarray:
             img = layout_converter(img)
             return img.astype(dtype)

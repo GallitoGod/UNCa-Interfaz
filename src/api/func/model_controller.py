@@ -3,7 +3,7 @@ from .logger import setup_model_logger
 from .model_loader import ModelLoader
 from .reader_pipeline import loadModelConfig
 from .reader_pipeline import ReactiveOutputConfig
-from .input_pipeline import buildPreprocessor, generate_input_adapter
+from .input_pipeline import build_preprocessor, generate_input_adapter
 from .output_pipeline import unpack_out, buildPostprocessor, generate_output_adapter
 
 '''   
@@ -48,7 +48,7 @@ class ModelController:
             self.config.output = ReactiveOutputConfig(**self.config.output.model_dump()) #antes era dict enves de model_dump
 
             self.predict_fn = ModelLoader.load(model_path, self.model_format)
-            self.preprocess_fn = buildPreprocessor(self.config.input, self.config.runtime)
+            self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
             self.unpack_fn = unpack_out(self.config.output.output_tensor.output_format)
             self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
