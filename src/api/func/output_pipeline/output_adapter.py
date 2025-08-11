@@ -1,5 +1,5 @@
 from typing import Callable
-from ..reader_pipeline import TensorStructure
+from api.func.reader_pipeline.config_schema import TensorStructure
 
 def generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
     if fmt == "xyxy":
@@ -37,7 +37,7 @@ def generate_output_adapter(tensor_structure: TensorStructure):
     def adapter_fn_out(row):
         box = convert_box(row)
         confidence = row[conf_idx]
-        class_id = int(row[cls_idx])
+        class_id = row[cls_idx]
         # En el orden que espera el postprocesador: [x1, y1, x2, y2, conf, class]
         return [*box, confidence, class_id]
 
