@@ -2,7 +2,7 @@ from api.forms.keras_load import kerasLoader as Keras
 from api.forms.tflite_load import tfliteLoader as Tflite
 from api.forms.onnx_load import onnxLoader as Onnx
 
-class ModelLoader:
+class Model_loader:
 
     @staticmethod
     def load(model_path, model_format):

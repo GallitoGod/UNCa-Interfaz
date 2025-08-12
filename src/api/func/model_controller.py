@@ -1,6 +1,6 @@
 import os
 from .logger import setup_model_logger
-from .model_loader import ModelLoader
+from .reader_pipeline import Model_loader
 from .reader_pipeline import load_model_config
 from .reader_pipeline import Reactive_output_config
 from .input_pipeline import build_preprocessor, generate_input_adapter
@@ -45,9 +45,9 @@ class ModelController:
         try:
             self.model_format = os.path.splitext(model_path)[1].lower()
             self.config = load_model_config(model_path)
-            self.config.output = Reactive_output_config(**self.config.output.model_dump()) #antes era dict enves de model_dump
+            self.config.output = Reactive_output_config(**self.config.output.model_dump())
 
-            self.predict_fn = ModelLoader.load(model_path, self.model_format)
+            self.predict_fn = Model_loader.load(model_path, self.model_format)
             self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
             self.unpack_fn = unpack_out(self.config.output.output_tensor.output_format)
