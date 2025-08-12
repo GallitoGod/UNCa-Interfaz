@@ -122,7 +122,7 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
 
 '''
     Ahora la confianza si cambia con el cambio desde el cliente, el transformador pasa el valor de la confianza 
-al NMS a traves de el valor mutable "nms_threshold" que toma valor de "ReactiveOutputConfig". Ya no se necesita
+al NMS a traves de el valor mutable "nms_threshold" que toma valor de "Reactive_output_config". Ya no se necesita
 descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
 hacer la funcion de confianza.
     Tengo que revisar el concepto del NMS, tengo un par de dudas respecto a como se aplica.

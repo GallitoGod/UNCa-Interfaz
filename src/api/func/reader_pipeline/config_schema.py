@@ -7,8 +7,8 @@ class InputTensorConfig(BaseModel):
     quantized: bool = False
 
 class OutputTensorConfig(BaseModel):
-    #layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"  No es necesario (por ahora)
-    #dtype: Literal["float32", "int8"] = "float32"          No es necesario (por ahora)
+    #layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"  No es necesario 
+    #dtype: Literal["float32", "int8"] = "float32"          No es necesario 
     output_format: Literal["raw", "multihead", "softmax"] = "raw"
 
 class TensorStructure(BaseModel):
