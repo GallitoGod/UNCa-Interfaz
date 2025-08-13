@@ -7,13 +7,26 @@ def setup_model_logger(model_name: str, log_dir: str = "logs"):
     log_path = os.path.join(log_dir, f"{model_name}.log")
 
     logger = logging.getLogger(model_name)
-    #logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)  # Captura todo, desde DEBUG
 
     if not logger.handlers:
+        # Handler para archivo
         fh = logging.FileHandler(log_path)
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        fh.setFormatter(formatter)
+        fh.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        fh.setFormatter(file_formatter)
         logger.addHandler(fh)
+
+        # Handler para consola
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        console_formatter = logging.Formatter(
+            "%(levelname)s - %(message)s"
+        )
+        ch.setFormatter(console_formatter)
+        logger.addHandler(ch)
 
     return logger
 

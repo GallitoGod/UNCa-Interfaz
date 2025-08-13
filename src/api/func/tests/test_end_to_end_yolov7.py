@@ -17,18 +17,19 @@ def draw_boxes(image, boxes, labels=None, scores=None):
 
 
 def test_yolov7_tiny_on_horse_image():
-    img_path = Path("api/func/tests/testing_images/horses.jpg")
+    img_path = Path(__file__).parent / "testing_images" / "horses.jpg"
     image = cv2.imread(str(img_path))
     assert image is not None, "No se pudo cargar la imagen de prueba."
 
-    model_path = Path("models/yolov7-tiny.json")
+    model_path = Path("models/yolov7-tiny.onnx")
     controller = ModelController()
     controller.load_model(model_path)
-    result = controller.process(image)
-
-    boxes = result["boxes"]
-    labels = result.get("labels", [])
-    scores = result.get("scores", [])
+    result = controller.inference(image)
+    print(result)
+    for item in result:
+        boxes = item[0:4]
+        labels = item[4]
+        scores = item[5]
 
     output_img = draw_boxes(image.copy(), boxes, labels, scores)
 
@@ -37,4 +38,4 @@ def test_yolov7_tiny_on_horse_image():
     plt.axis("off")
     plt.show()
 
-    cv2.imwrite("api/func/tests/testing_images/horses_detected.png", output_img)
+    cv2.imwrite(Path(__file__).parent / "testing_images" / "horses_detected.jpg", output_img)
