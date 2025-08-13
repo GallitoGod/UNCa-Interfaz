@@ -37,7 +37,7 @@ def test_load_and_inference_integration(fake_config):
         mc = ModelController()
         mc.load_model("fake_model.onnx")
 
-        # Ejecución de inference
+        # Ejecucion de inference
         result = mc.inference("image_data")
 
         # Validaciones de flujo
