@@ -45,7 +45,7 @@ class RuntimeSession(BaseModel):
     "pad_left": 0.0,
     "pad_top": 0.0,
     "letterbox_used": False
-}
+    }
     channels: int = 3
     #DEVICE: Optional[Literal["CPU", "GPU", "TPU", "NPU"]] = "CPU" <--- TENER EN CUENTA EN EL FUTURO
     # Mas adelante ire agregando datos mutables que sean necesarios

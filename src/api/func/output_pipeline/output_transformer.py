@@ -80,6 +80,7 @@ def undo_transform(p, transform_info):
     p[3] = (p[3] - pad_top) / scale
     return p
 
+
 def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> Callable[[List[List[float]]], List[List[float]]]:
     """
     Construye una funcion de postprocesamiento que aplica, en orden, los siguientes pasos:
@@ -108,7 +109,6 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
 
         if transform_info and transform_info.metadata_letter["letterbox_used"]:
             steps.append(lambda preds: [undo_transform(p, transform_info.metadata_letter) for p in preds])
-
 
         def postprocess(predictions: List[List[float]]) -> List[List[float]]:
             for step in steps:
