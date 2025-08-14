@@ -1,23 +1,31 @@
-# Interfaz de Inteligencia Artificial para Procesamiento de Imágenes y Cámaras
+# UNCaLens – Sistema Modular de Visión por Computadora
 
-Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaScript Vanilla** y **FastApi**, que permite utilizar y cambiar modelos de **inteligencia artificial** para procesar imágenes o capturar datos en tiempo real desde cámaras. Su objetivo principal es proporcionar una interfaz intuitiva para cargar distintos modelos de IA y aplicar análisis sobre imágenes y videos.
+Este proyecto corresponde a una aplicación diseñada para la ejecución y prueba de modelos de detección de objetos sobre imágenes y videos. Actualmente está en desarrollo y enfocado principalmente en la parte backend, con un pipeline de inferencia funcional y adaptable a distintos formatos de modelos.
 
-## Características:
+> [!IMPORTANT]
+> Estado del Proyecto
+>- Actualmente, la comunicación entre el backend (Python/FastAPI) y el cliente en JavaScript/Electron se encuentra en desarrollo.
+>- El sistema ya soporta la carga y ejecución de modelos de detección en formatos Keras, ONNX y TFLite.
+>- El frontend en Electron aún no está operativo; las pruebas actuales se realizan directamente sobre la API y scripts de backend.
 
-- **Carga de modelos de IA personalizados**: Permite al usuario cargar diferentes modelos entrenados para tareas específicas, como clasificación de objetos, detección facial, etc.
-- **Procesamiento de imágenes**: Los usuarios pueden cargar imágenes locales para ser procesadas por el modelo de IA seleccionado.
-- **Integración con cámaras**: Posibilidad de abrir cámaras conectadas al dispositivo y aplicar modelos de IA en tiempo real.
-- **Interfaz amigable**: Diseñada con JavaScript Vanilla para ser rápida y fácil de usar, con opciones claras para seleccionar y cambiar entre distintos modelos.
-- **Arquitectura flexible**: Ideal para quienes deseen probar distintos modelos de IA sin necesidad de desarrollar interfaces complejas.
+## Características Principales
+- Compatibilidad con múltiples formatos de modelos: `ONNX`, `Keras (.h5)` y `TFLite`.
+- Procesamiento de imágenes y video:
+   - Escalado y preprocesado automático a las dimensiones requeridas por cada modelo.
+   - Postprocesamiento con filtrado por confianza, NMS y reversión de transformaciones (letterbox).
+- Diseño modular: Separación clara entre el manejo del modelo, preprocesamiento, inferencia y postprocesamiento.
+- Preparado para integración con cámaras y flujos de video en tiempo real (funcionalidad planificada).
 
-## Tecnologías utilizadas:
+## Tecnologías Utilizadas
+- `Python 3.8.10` – Lenguaje principal para backend.
+- `FastAPI` – Servidor API rápido y asíncrono.
+- `OpenCV` – Procesamiento de imágenes y video.
+- `NumPy` – Manipulación numérica.
+- `ONNX Runtime` / `TensorFlow Lite` / `TensorFlow` – Ejecución de modelos.
 
-- **Electron**: Framework para crear aplicaciones de escritorio multiplataforma utilizando tecnologías web.
-- **JavaScript Vanilla**: Para la lógica de la aplicación y la interacción con el DOM.
-- **FastApi**: Framework para desarrollar APIs en Python.
-- **Inteligencia Artificial**: Compatible con modelos preentrenados en formatos populares como `.tflite`, `h5`, `.pt`, `.pth` o `.onnx`.
 
-## Instalación:
+> [!NOTE]
+> Instalación:
 
 1. Clonar el repositorio:
    ```bash
@@ -57,7 +65,13 @@ Este proyecto es una aplicación de escritorio creada con **Electron**, **JavaSc
    npm start
    ```
 
+> [!WARNING]
+> Nota: El cliente en Electron todavía no está operativo. Las pruebas deben realizarse consumiendo directamente la API.
 
-## Contribución:
 
-- Las contribuciones son bienvenidas. Si deseas agregar nuevas funcionalidades o mejorar el código, no dudes en hacer un pull request.
+## Contribución
+El proyecto está en una etapa temprana, por lo que cualquier aporte es bienvenido.
+Si querés colaborar, podés:
+- Probar la API y reportar errores.
+- Mejorar el pipeline de inferencia y postprocesamiento.
+- Avanzar en la integración con el cliente en Electron.
