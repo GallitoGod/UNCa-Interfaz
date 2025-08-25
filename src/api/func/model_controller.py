@@ -50,7 +50,7 @@ class ModelController:
             self.predict_fn = Model_loader.load(model_path, self.model_format)
             self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
-            self.unpack_fn = unpack_out(self.config.output.output_tensor.output_format)
+            self.unpack_fn = unpack_out(self.config.output) #<----  Cambio
             self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
             
@@ -64,7 +64,12 @@ class ModelController:
         try:
             pre = self.preprocess_fn(img)
             adapted_input = self.input_adapter(pre)
-            raw_output = self.predict_fn(adapted_input)
+            raw_output = self.predict_fn(adapted_input) #   <-- Nuevo problema:
+            """
+            Esto puede ser tanto una lista de listas de flotantes o un diccionario de tensores por asi decirlo.
+            Tengo que especificar de alguna manera en el JSON como tiene que tratar esto el unpaker.
+            
+"""
             unpacked = self.unpack_fn(raw_output)
             adapted_output = [self.output_adapter(row) for row in unpacked]
             result = self.postprocess_fn(adapted_output) 

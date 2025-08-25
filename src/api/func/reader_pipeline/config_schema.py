@@ -9,7 +9,7 @@ class InputTensorConfig(BaseModel):
 class OutputTensorConfig(BaseModel):
     #layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"  No es necesario 
     #dtype: Literal["float32", "int8"] = "float32"          No es necesario 
-    output_format: Literal["raw", "multihead", "softmax"] = "raw"
+    output_format: Literal["raw", "multihead", "softmax", "efficientdet"] = "raw"
 
 class TensorStructure(BaseModel):
     box_format: Literal["xyxy", "cxcywh", "yxyx"]

@@ -102,7 +102,12 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
     try:
         steps = []
 
-        steps.append(lambda preds: [p for p in preds if p[4] >= config.confidence_threshold])
+        if OutputConfig.output_tensor != "efficientdet":
+            """
+                Esto es asi porque 'efficientdet' ya cuenta con un filtro de confianza interno para mejorar 
+            la eficiencia del programa. Aparte es el unico caso en el que no se tiene que usar esta funcion.
+            """
+            steps.append(lambda preds: [p for p in preds if p[4] >= config.confidence_threshold])
 
         if config.apply_nms:
             steps.append(lambda preds: non_max_suppression(preds, config.nms_threshold))
