@@ -102,7 +102,7 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
     try:
         steps = []
 
-        if OutputConfig.output_tensor != "efficientdet":
+        if OutputConfig.output_tensor.output_format != "efficientdet":
             """
                 Esto es asi porque 'efficientdet' ya cuenta con un filtro de confianza interno para mejorar 
             la eficiencia del programa. Aparte es el unico caso en el que no se tiene que usar esta funcion.
