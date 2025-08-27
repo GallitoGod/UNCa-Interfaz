@@ -36,38 +36,57 @@ def unpack_out(output: OutputConfig) -> Callable[[Any], Union[List[List[float]],
         return unpack_softmax
     
     elif output.output_tensor.output_format == "efficientdet":
-        def parse_efficientdet(raw_output, image_shape=(1920, 1080)):
+        def parse_efficientdet(raw_output, image_shape=None):
             """
-            Convierte la salida de un modelo EfficientDet en detecciones listas.
-            Devuelve lista de listas en el formato:
-                [x_min, y_min, x_max, y_max, score, class_id]
-            Esta funcion filtra confianza antes del transformador para un mejor
-                 manejo y menor consumo de potencia de procesador.
+            raw_output admite:
+            - (boxes, class_scores[, ...])  ó
+            - (class_scores, boxes[, ...])
+            Donde:
+            boxes:       (1, N, 4) en orden [ymin, xmin, ymax, xmax], normalizadas [0..1]
+            class_scores:(1, N, C) probabilidades o logits ya softmaxeadas
+
+            image_shape: (W, H) del tensor de entrada al modelo.
+
+            Devuelve: List[List[float]] con [x1, y1, x2, y2, score, class_id] en floats.
             """
-            boxes, scores, classes, count = raw_output
-            detections = []
-            h, w = image_shape
+            a, b = raw_output[0], raw_output[1]
 
-            for i in range(boxes.shape[1]): 
-                scores = classes[0, i]   # Probabilidades para todas las clases
-                class_id = np.argmax(scores)    # Clase con mayor score
-                score = scores[class_id]
+            # Detectar cual es boxes por el ultimo eje
+            if a.shape[-1] == 4:
+                boxes = a         # (1, N, 4)
+                class_scores = b  # (1, N, C)
+            else:
+                class_scores = a
+                boxes = b
 
-                if score < output.confidence_threshold:
-                    continue  # Descarta detecciones de baja confianza
+            scores = class_scores[0]      # (N, C)
+            bxy = boxes[0]                # (N, 4) [ymin,xmin,ymax,xmax]
 
-                # Coordenadas normalizadas
-                y_min, x_min, y_max, x_max = boxes[0, i]
+            # Mejor clase por anchor (vectorizado) numpy
+            best_cls = np.argmax(scores, axis=1)                            # (N,)
+            best_sc = scores[np.arange(scores.shape[0]), best_cls]          # (N,)
 
-                # Escala los boxes (1920x1080)
-                x_min = int(x_min * w)
-                x_max = int(x_max * w)
-                y_min = int(y_min * h)
-                y_max = int(y_max * h)
+            # Filtro por umbral (vectorizado) numpy
+            mask = best_sc >= float(output.confidence_threshold)
+            if not np.any(mask):
+                return []
 
-                # Guarda como List[List[float]]
-                detections.append([x_min, y_min, x_max, y_max, float(score), int(class_id)])
-            return detections
+            sel = bxy[mask]                          # (K, 4)
+            sc  = best_sc[mask].astype(np.float32)   # (K,)
+            cl  = best_cls[mask].astype(np.float32)  # float por contrato del sistema
+
+            ymin, xmin, ymax, xmax = sel.T
+            x1, y1, x2, y2 = xmin, ymin, xmax, ymax  # a [x1,y1,x2,y2]
+
+            # Escalado a pixeles del tensor de entrada
+            if image_shape is not None:
+                W, H = image_shape  
+                x1 = x1 * W; x2 = x2 * W
+                y1 = y1 * H; y2 = y2 * H
+
+            dets = np.column_stack([x1, y1, x2, y2, sc, cl]).astype(float)
+
+            return dets.tolist()
         return parse_efficientdet
 
     else:
