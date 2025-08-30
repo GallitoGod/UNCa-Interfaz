@@ -6,10 +6,6 @@ class InputTensorConfig(BaseModel):
     dtype: Literal["float32", "uint8", "int8"] = "float32"
     quantized: bool = False
 
-class OutputTensorConfig(BaseModel):
-    #layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"  No es necesario 
-    #dtype: Literal["float32", "int8"] = "float32"          No es necesario 
-    output_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost"] = "raw"
 class TensorStructure(BaseModel):
     box_format: Literal["xyxy", "cxcywh", "yxyx"]
     coordinates: Dict[str, int]
@@ -22,7 +18,7 @@ class OutputConfig(BaseModel):
     nms_threshold: Optional[float] = 0.45
     apply_nms: bool = Field(default=False)
     tensor_structure: Optional[TensorStructure]
-    output_tensor: Optional[OutputTensorConfig] = None
+    pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost"] = "raw"
 
 class InputConfig(BaseModel):
     width: int
@@ -39,6 +35,8 @@ class InputConfig(BaseModel):
     input_tensor: Optional[InputTensorConfig] = None 
 
 class RuntimeSession(BaseModel):
+    widht: int = 1920
+    height: int = 1080
     metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
     "scale": 1.0,
     "pad_left": 0.0,

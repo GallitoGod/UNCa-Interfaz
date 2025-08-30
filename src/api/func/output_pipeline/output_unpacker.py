@@ -293,7 +293,7 @@ def unpack_out(output_cfg: OutputConfig) -> Callable[[Any, Optional[ImageSize]],
     donde b0..b3 permanecen en el formato nativo de la IA (YOLO: cx,cy,w,h; SSD/EfficientDet: ymin,xmin,ymax,xmax).
     El adapter posterior convierte a xyxy 'tensor_structure'.
     """
-    fmt = (output_cfg.output_tensor.output_format or "").lower()
+    fmt = (output_cfg.pack_format or "").lower()
 
     if fmt in ("yolo_flat"):
         return unpack_yolo_flat(output_cfg)

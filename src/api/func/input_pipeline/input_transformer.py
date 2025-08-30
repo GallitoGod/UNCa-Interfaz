@@ -4,9 +4,8 @@ import numpy as np
 import cv2
 
 
-def build_letterbox(input_width, input_height, pad_color):
-    # Imagen base: W=1920, H=1080
-    h, w = 1080, 1920
+def build_letterbox(input_width, input_height, pad_color, runtime):
+    h, w = runtime.height, runtime.widht
     scale = min(input_width / w, input_height / h)
     nw, nh = int(w * scale), int(h * scale)
     pad_w = input_width - nw
@@ -36,7 +35,7 @@ def build_preprocessor(config: InputConfig, runtime: RuntimeSession) -> Callable
     try:
         steps = []
         if config.letterbox and config.preserve_aspect_ratio:
-            letterbox, transform_info = build_letterbox(config.width, config.height, config.auto_pad_color)
+            letterbox, transform_info = build_letterbox(config.width, config.height, config.auto_pad_color, runtime)
             steps.append(letterbox)
             runtime.metadata_letter = transform_info
         else:
