@@ -15,7 +15,8 @@ class TensorStructure(BaseModel):
 
 class OutputConfig(BaseModel):
     confidence_threshold: float = 0.5
-    nms_threshold: Optional[float] = 0.45
+    nms_threshold: float = 0.45
+    nms_per_class: bool = False
     apply_nms: bool = Field(default=False)
     tensor_structure: Optional[TensorStructure]
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost"] = "raw"
@@ -32,11 +33,13 @@ class InputConfig(BaseModel):
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
     color_order: Optional[str] = "RGB"
-    input_tensor: Optional[InputTensorConfig] = None 
+    input_tensor: InputTensorConfig = None 
 
 class RuntimeSession(BaseModel):
-    widht: int = 1920
-    height: int = 1080
+    input_width: 0
+    input_height: 0
+    orig_width: int = 0
+    orig_height: int = 0
     metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
     "scale": 1.0,
     "pad_left": 0.0,
@@ -44,8 +47,8 @@ class RuntimeSession(BaseModel):
     "letterbox_used": False
     }
     channels: int = 3
+    out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
     #DEVICE: Optional[Literal["CPU", "GPU", "TPU", "NPU"]] = "CPU" <--- TENER EN CUENTA EN EL FUTURO
-    # Mas adelante ire agregando datos mutables que sean necesarios
 
 class ModelConfig(BaseModel):
     model_type: Literal["detection", "classification", "segmentation"]

@@ -1,5 +1,6 @@
 from api.func.reader_pipeline.config_schema import OutputConfig, RuntimeSession
 from typing import Callable, List
+import numpy as np
 
 def iou(box1, box2):
     """
@@ -54,31 +55,59 @@ def non_max_suppression(predictions: List[List[float]], threshold: float) -> Lis
 
     return keep
 
-def undo_transform(p, transform_info):
+def undo_transform(dets_xyxy: np.ndarray, runtime):
     """
-    Revierte las transformaciones de escala y padding aplicadas durante el preprocesamiento
-    (por ejemplo, las que genera el letterbox).
-    Proceso:
-        1. Resta el padding izquierdo y superior a las coordenadas x1, y1, x2, y2.
-        2. Divide las coordenadas resultantes por el factor de escala original.
-        3. Devuelve las coordenadas restauradas al espacio original de la imagen.
-    Parametros:
-        - p: Lista [x1, y1, x2, y2, ...] que representa una caja detectada.
-        - transform_info: Diccionario con las claves:
-            - "scale": factor de escala aplicado en preprocesado.
-            - "pad_left": padding horizontal aplicado.
-            - "pad_top": padding vertical aplicado.
-    Retorna:
-        - Lista `p` con las coordenadas corregidas.
+    dets_xyxy: np.ndarray shape (N, >=4) en pixeles del TENSOR (xyxy)
+               columnas: [x1, y1, x2, y2, ...]
+    runtime:   RuntimeSession con:
+        - input_width, input_height
+        - orig_width, orig_height
+        - metadata_letter: {scale, pad_left, pad_top, letterbox_used}
+    Devuelve: np.ndarray (N, >=4) en pixeles de la IMAGEN ORIGINAL (xyxy).
     """
-    scale = transform_info["scale"]
-    pad_left = transform_info["pad_left"]
-    pad_top = transform_info["pad_top"]
-    p[0] = (p[0] - pad_left) / scale
-    p[1] = (p[1] - pad_top) / scale
-    p[2] = (p[2] - pad_left) / scale
-    p[3] = (p[3] - pad_top) / scale
-    return p
+
+    x1 = dets_xyxy[:, 0].astype(np.float32, copy=False)
+    y1 = dets_xyxy[:, 1].astype(np.float32, copy=False)
+    x2 = dets_xyxy[:, 2].astype(np.float32, copy=False)
+    y2 = dets_xyxy[:, 3].astype(np.float32, copy=False)
+
+    W0 = float(runtime.orig_width)
+    H0 = float(runtime.orig_height)
+
+    md = runtime.metadata_letter or {}
+    letterbox_used = bool(md.get("letterbox_used", False))
+
+    if letterbox_used:
+        s        = float(md.get("scale", 1.0))
+        pad_left = float(md.get("pad_left", 0.0))
+        pad_top  = float(md.get("pad_top",  0.0))
+
+        x1 = (x1 - pad_left) / s
+        x2 = (x2 - pad_left) / s
+        y1 = (y1 - pad_top)  / s
+        y2 = (y2 - pad_top)  / s
+    else:
+        W_in = float(runtime.input_width)
+        H_in = float(runtime.input_height)
+
+        sx = W0 / W_in if W_in > 0 else 1.0
+        sy = H0 / H_in if H_in > 0 else 1.0
+
+        x1 = x1 * sx; x2 = x2 * sx
+        y1 = y1 * sy; y2 = y2 * sy
+
+    x1_, x2_ = np.minimum(x1, x2), np.maximum(x1, x2)
+    y1_, y2_ = np.minimum(y1, y2), np.maximum(y1, y2)
+
+    x1_ = np.clip(x1_, 0.0, W0)
+    x2_ = np.clip(x2_, 0.0, W0)
+    y1_ = np.clip(y1_, 0.0, H0)
+    y2_ = np.clip(y2_, 0.0, H0)
+
+    out = dets_xyxy.copy()
+    out[:, 0] = x1_; out[:, 1] = y1_
+    out[:, 2] = x2_; out[:, 3] = y2_
+    return out
 
 
 def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> Callable[[List[List[float]]], List[List[float]]]:
@@ -123,19 +152,3 @@ def buildPostprocessor(config: OutputConfig, transform_info: RuntimeSession) -> 
         return postprocess
     except Exception as e:
         raise ValueError(f"Error: {e}") from e
-
-
-'''
-    Ahora la confianza si cambia con el cambio desde el cliente, el transformador pasa el valor de la confianza 
-al NMS a traves de el valor mutable "nms_threshold" que toma valor de "Reactive_output_config". Ya no se necesita
-descongelar "postprocess" ya que no toma un valor estatico sino que lee el ultimo valor de confianza antes de 
-hacer la funcion de confianza.
-    Tengo que revisar el concepto del NMS, tengo un par de dudas respecto a como se aplica.
-'''
-
-'''
-    Esta es la ultima parte del pipeline de salida, de aqui se tendrian que pasar los bouding boxes al cliente
-el se debe encargar de dibujarlos sobre la imagen. No se toca la visualizacion, por lo que no necesito
-devolver colores de los boxes ni la imagen del input pipeline en blanco y negro para devolverlo a valores normales. 
-    Esa imagen ya puede desaparecer del flujo del programa.
-'''
