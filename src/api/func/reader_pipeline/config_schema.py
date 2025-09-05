@@ -14,10 +14,11 @@ class TensorStructure(BaseModel):
     num_classes: Optional[int]
 
 class OutputConfig(BaseModel):
+    apply_conf_filter: bool = True
     confidence_threshold: float = 0.5
-    nms_threshold: float = 0.45
+    apply_nms: bool = False
     nms_per_class: bool = False
-    apply_nms: bool = Field(default=False)
+    nms_threshold: float = 0.45
     tensor_structure: Optional[TensorStructure]
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost"] = "raw"
 
