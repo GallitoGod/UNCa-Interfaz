@@ -17,6 +17,7 @@ class OutputConfig(BaseModel):
     apply_conf_filter: bool = True
     confidence_threshold: float = 0.5
     apply_nms: bool = False
+    top_k: bool = False
     nms_per_class: bool = False
     nms_threshold: float = 0.45
     tensor_structure: Optional[TensorStructure]
