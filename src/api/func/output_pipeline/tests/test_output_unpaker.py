@@ -13,11 +13,6 @@ import pytest
 
 from api.func.output_pipeline.output_unpacker import unpack_out
 
-
-# --------------------------
-# Dummies (runtime y config)
-# --------------------------
-
 class _DummyOutputTensor:
     def __init__(self, output_format: str):
         self.output_format = output_format
@@ -46,11 +41,6 @@ class _DummyRuntime:
             "pad_top": pad_top,
             "letterbox_used": letterbox_used,
         }
-
-
-# =============
-# yolo_flat
-# =============
 
 def test_yolo_flat_tensor_pixels_no_escalado():
     cfg = _DummyOutputConfig("yolo_flat")
@@ -81,11 +71,6 @@ def test_yolo_flat_normalized_con_escalado():
     assert np.isclose([cx, cy, w, h], [160, 160, 64, 32]).all()
     assert np.isclose(sc, 0.72) and cl == 1.0
 
-
-# =============
-# boxes_scores
-# =============
-
 def test_boxes_scores_detecta_orden_y_normaliza():
     cfg = _DummyOutputConfig("boxes_scores")
     rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
@@ -114,11 +99,6 @@ def test_boxes_scores_detecta_orden_y_normaliza():
         y1b, x1b, y2b, x2b, scb, clb = rows[1]
         assert np.isclose([y1b, x1b, y2b, x2b], [0, 0, 320, 320]).all()
         assert np.isclose(scb, 0.9) and clb == 0.0
-
-
-# =============
-# tflite_detpost
-# =============
 
 def test_tflite_detpost_respeta_count_y_normaliza():
     cfg = _DummyOutputConfig("tflite_detpost")

@@ -38,8 +38,8 @@ class InputConfig(BaseModel):
     input_tensor: InputTensorConfig = None 
 
 class RuntimeSession(BaseModel):
-    input_width: 0
-    input_height: 0
+    input_width: int = 0
+    input_height: int = 0
     orig_width: int = 0
     orig_height: int = 0
     metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
