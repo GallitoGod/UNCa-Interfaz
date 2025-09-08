@@ -64,14 +64,13 @@ class ModelController:
         try:
             pre = self.preprocess_fn(img)
             adapted_input = self.input_adapter(pre)
-            raw_output = self.predict_fn(adapted_input) #   <-- Nuevo problema:
-            """
-            Esto puede ser tanto una lista de listas de flotantes o un diccionario de tensores por asi decirlo.
-            Tengo que especificar de alguna manera en el JSON como tiene que tratar esto el unpaker.
-            
-"""
-            unpacked = self.unpack_fn(raw_output, input_tensor_size= (self.config.runtime.width, self.config.runtime.height))
-            adapted_output = [self.output_adapter(row) for row in unpacked]
+            raw_output = self.predict_fn(adapted_input)
+            unpacked = self.unpack_fn(raw_output, getattr(self.config, "runtime", None))
+            if not isinstance(unpacked, (list, tuple)):
+                unpacked = [unpacked]
+            adapted_output = [self.output_adapter(list(r)) for r in unpacked]
+            if not isinstance(adapted_output, (list, tuple)):
+                adapted_output = [adapted_output]
             result = self.postprocess_fn(adapted_output) 
             self.logger.info(f"Inferencia ejecutada: {len(result)} detecciones")
             return result    

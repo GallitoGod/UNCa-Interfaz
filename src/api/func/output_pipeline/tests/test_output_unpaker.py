@@ -13,14 +13,9 @@ import pytest
 
 from api.func.output_pipeline.output_unpacker import unpack_out
 
-class _DummyOutputTensor:
-    def __init__(self, output_format: str):
-        self.output_format = output_format
-
 class _DummyOutputConfig:
-    def __init__(self, output_format: str):
-        self.output_tensor = _DummyOutputTensor(output_format)
-
+    def __init__(self, pack_format: str):
+        self.pack_format = pack_format
 class _DummyRuntime:
     def __init__(
         self,
@@ -73,6 +68,7 @@ def test_yolo_flat_normalized_con_escalado():
 
 def test_boxes_scores_detecta_orden_y_normaliza():
     cfg = _DummyOutputConfig("boxes_scores")
+    print(cfg)
     rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
 
     boxes = np.array([
@@ -102,6 +98,7 @@ def test_boxes_scores_detecta_orden_y_normaliza():
 
 def test_tflite_detpost_respeta_count_y_normaliza():
     cfg = _DummyOutputConfig("tflite_detpost")
+    print(cfg.pack_format)
     rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
 
     boxes = np.array([

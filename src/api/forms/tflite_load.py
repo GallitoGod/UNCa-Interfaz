@@ -10,7 +10,8 @@ def tfliteLoader(model_path):
         def tflite_predict(img):
             interpreter.set_tensor(input_details[0]['index'], img)
             interpreter.invoke()
-            return interpreter.get_tensor(output_details[0]['index']).tolist()
+            outs = tuple(interpreter.get_tensor(od['index']) for od in output_details)
+            return outs[0] if len(outs) == 1 else outs
         predict_fn = tflite_predict
         return predict_fn
     except Exception as err:

@@ -1,8 +1,8 @@
 {
   "model_type": "detection",
   "input": {
-    "width": 640,
-    "height": 640,
+    "width": 320,
+    "height": 320,
     "channels": 3,
     "normalize": true,
     "mean": [0.0, 0.0, 0.0],
@@ -13,30 +13,44 @@
     "preserve_aspect_ratio": true,
     "color_order": "RGB",
     "input_tensor": {
-      "layout": "NCHW",
+      "layout": "NHWC",
       "dtype": "float32",
       "quantized": false
     }
   },
   "output": {
     "apply_conf_filter": true,
-    "confidence_threshold": 0.25,
+    "confidence_threshold": 0.5,
     "apply_nms": false,
     "top_k": false,
     "nms_per_class": false,
     "nms_threshold": 0.45,
     "tensor_structure": {
-      "box_format": "xyxy",
+      "box_format": "yxyx",
       "coordinates": {
+        "y1": 0,
         "x1": 1,
-        "y1": 2,
-        "x2": 3,
-        "y2": 4
+        "y2": 2,
+        "x2": 3
       },
-      "confidence_index": 6,
+      "confidence_index": 4,
       "class_index": 5,
-      "num_classes": 80
+      "num_classes": 90
     },
-    "pack_format": "raw"
+    "pack_format": "boxes_scores"
+  },
+  "runtime": {
+    "input_width": 320,
+    "input_height": 320,
+    "orig_width": 0,
+    "orig_height": 0,
+    "metadata_letter": {
+      "scale": 1.0,
+      "pad_left": 0.0,
+      "pad_top": 0.0,
+      "letterbox_used": false
+    },
+    "channels": 3,
+    "out_coords_space": "tensor_pixels"
   }
 }

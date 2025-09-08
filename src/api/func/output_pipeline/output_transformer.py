@@ -110,7 +110,7 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Cal
       - Para modelos con TFLite DetectionPostProcess (ya traen NMS/umbral),
         por defecto desactivamos re-filtrado y re-NMS; se puede forzar via config.
     """
-    fmt = (getattr(output_cfg.output_tensor, "output_format", "") or "").lower()
+    fmt = (getattr(output_cfg, "pack_format", "") or "").lower()
     is_tflite_post = fmt in ("tflite_detpost")
 
     # ---------parametros-con-defaults-razonables---------

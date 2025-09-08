@@ -5,7 +5,7 @@ import numpy as np
 
 from api.func.model_controller import ModelController
 
-MODEL_PATH = "models/yolov7-tiny.onnx"
+MODEL_PATH = "models/efficientdet-lite0.tflite"          #"models/yolov7-tiny.onnx"
 IMAGE_PATH = Path(__file__).parent / "testing_images" / "imagen_redimensionada.jpg"
 NUM_IMAGES = 100  
 

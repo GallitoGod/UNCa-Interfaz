@@ -21,7 +21,7 @@ def test_yolov7_tiny_on_horse_image():
     image = cv2.imread(str(img_path))
     assert image is not None, "No se pudo cargar la imagen de prueba."
 
-    model_path = Path("models/yolov7-tiny.onnx")
+    model_path = Path("models/efficientdet-lite0.tflite")
     controller = ModelController()
     controller.load_model(model_path)
     result = controller.inference(image)

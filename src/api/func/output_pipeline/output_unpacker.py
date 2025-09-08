@@ -65,7 +65,7 @@ def _unpack_yolo_flat(output_cfg):
     Nota: conserva cxcywh (el adapter se encargara de colocarlo correctamente).
     """
     def fn(raw_output, runtime=None):
-        arr = _to_2d(raw_output)  # (N, 5+C)
+        arr = _to_2d(raw_output).astype(np.float32, copy=True)  # (N, 5+C)
         cx, cy, w, h = arr[:,0], arr[:,1], arr[:,2], arr[:,3]
         obj = arr[:,4]
         cls = arr[:,5:]
@@ -84,7 +84,7 @@ def _unpack_boxes_scores(output_cfg):
     def fn(raw_output, runtime=None):
         a,b = raw_output[0], raw_output[1]
         A,B = np.asarray(a), np.asarray(b)
-        boxes = _to_2d(a) if A.shape[-1]==4 else _to_2d(b)     # [ymin,xmin,ymax,xmax]
+        boxes = (_to_2d(a) if A.shape[-1]==4 else _to_2d(b)).astype(np.float32, copy=True)     # [ymin,xmin,ymax,xmax]
         scores= _to_2d(b) if A.shape[-1]==4 else _to_2d(a)     # (N,C)
         best_cls = np.argmax(scores, axis=1)
         best_p   = scores[np.arange(scores.shape[0]), best_cls]
@@ -111,7 +111,7 @@ def _unpack_tflite_detpost(output_cfg):
     def fn(raw_output, runtime=None):
         boxes, scores, classes = raw_output[0], raw_output[1], raw_output[2]
         count = int(np.asarray(raw_output[3]).reshape(-1)[0]) if len(raw_output)>=4 else None
-        boxes_2d = _to_2d(boxes)
+        boxes_2d = _to_2d(boxes).astype(np.float32, copy=True)
         N = min(boxes_2d.shape[0], count) if count is not None else boxes_2d.shape[0]
         ymin, xmin, ymax, xmax = boxes_2d[:N].T
         sc = np.asarray(scores).reshape(-1)[:N].astype(np.float32)
@@ -144,7 +144,7 @@ def unpack_out(output_cfg: OutputConfig) -> Callable[[Any, Optional[ImageSize]],
         return _unpack_tflite_detpost(output_cfg)
 
     if fmt == "raw":
-        return lambda raw_output, input_tensor_size=None: raw_output
+        return lambda raw_output, runTime : raw_output
 
     raise ValueError(
         f"output_format no soportado: '{fmt}'. Usa uno de: "
