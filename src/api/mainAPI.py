@@ -10,7 +10,7 @@ cruzada entre JSON ↔ codigo al cargar un modelo.
 '''
 
 '''
-2. Documentación y descubribilidad
+2. Documentacion y descubribilidad
 Nadie puede entender el programa sin abrir el codigo. No hay descripciones ni ejemplo de payloads en los endpoints.
     Solucion : Utilizar FastAPI Docs (http://localhost:8000/docs) usando Body(...), Form(...) y UploadFile(...)
 bien anotados con descripciones.
@@ -22,10 +22,6 @@ Cuando algo falle en produccion, por ejemplo porque un modelo devuelve un shape 
 Si no hay logs claros, va a ser un infierno debuguear.
     Solucion: Usar logging de Python con niveles (info, warning, error) en puntos como: carga, inferencia, adaptacion, etc.
 '''
-
-#   Basicamente, Esto no es un proyecto universitario cualquiera.
-#   Es el embrion de una plataforma seria de gestion de modelos de IA de vision por computadora;
-#un autentico sistema operador de inteligencias artificiales de vision por computadora.
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -88,7 +84,6 @@ async def run_inference(file: UploadFile = File(...)):
         if image_np.shape[-1] == 4:
             image_np = image_np[..., :3]
         
-        #Que tal si desde aca veo el tamano de entrada para estatizar completamente a letterbox ???
 
         result = controller.inference(image_np)
         result = [det.tolist() for det in result]
@@ -99,7 +94,7 @@ async def run_inference(file: UploadFile = File(...)):
 
 
 # ════════════════════════════════════════
-# 4 Descargar modelo (de momento no va a andar). Ahora que lo recuero, ya tenia alguna forma de descargar el JSON del modelo ???
+# 4 Descargar modelo (de momento no va a andar).
 # ════════════════════════════════════════
 
 @app.post("/model/unload")

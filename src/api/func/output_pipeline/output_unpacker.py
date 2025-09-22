@@ -127,7 +127,7 @@ def _unpack_tflite_detpost(output_cfg):
 
 def unpack_out(output_cfg: OutputConfig) -> Callable[[Any, Optional[ImageSize]], List[List[float]]]:
     """
-    **Devuelve un callback liviano que transforma la salida cruda del modelo en filas:**
+    **Devuelve un callback que transforma la salida cruda del modelo en filas:**
         [b0, b1, b2, b3, score, class_id]  (floats)
     donde b0..b3 permanecen en el formato nativo de la IA (YOLO: cx,cy,w,h; SSD/EfficientDet: ymin,xmin,ymax,xmax).
     El adapter posterior convierte a xyxy 'tensor_structure'.

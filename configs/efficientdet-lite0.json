@@ -38,19 +38,5 @@
       "num_classes": 90
     },
     "pack_format": "boxes_scores"
-  },
-  "runtime": {
-    "input_width": 320,
-    "input_height": 320,
-    "orig_width": 0,
-    "orig_height": 0,
-    "metadata_letter": {
-      "scale": 1.0,
-      "pad_left": 0.0,
-      "pad_top": 0.0,
-      "letterbox_used": false
-    },
-    "channels": 3,
-    "out_coords_space": "tensor_pixels"
   }
 }
