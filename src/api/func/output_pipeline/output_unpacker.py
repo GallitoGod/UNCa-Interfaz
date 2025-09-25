@@ -56,7 +56,99 @@ def _stack_as_float_lists(columns: List[NDArray]) -> List[List[float]]:
     mat = np.column_stack(columns).astype(float, copy=False)
     return mat.tolist()
 
+def _decode_anchor_deltas_to_yxyx(
+    deltas: NDArray, anchors: NDArray, variance: NDArray
+) -> Tuple[NDArray, NDArray, NDArray, NDArray]:
+    """
+    deltas:  (N,4) -> [ty, tx, th, tw]
+    anchors: (N,4) -> [ay, ax, ah, aw]   (centro y tamaño), NORMALIZADOS [0..1]
+    variance: (4,) -> [sy, sx, sh, sw]
+    Devuelve: (ymin, xmin, ymax, xmax) NORMALIZADOS [0..1]
+    """
+    ty, tx, th, tw = deltas.T
+    ay, ax, ah, aw = anchors.T
+    sy, sx, sh, sw = variance.astype(np.float32)
+
+    yc = ty * sy * ah + ay
+    xc = tx * sx * aw + ax
+    h  = np.exp(th * sh) * ah
+    w  = np.exp(tw * sw) * aw
+
+    ymin = yc - 0.5 * h
+    xmin = xc - 0.5 * w
+    ymax = yc + 0.5 * h
+    xmax = xc + 0.5 * w
+    return ymin, xmin, ymax, xmax
+    
+
 # ------------------------Callbacks------------------------
+
+def _unpack_anchor_deltas(output_cfg: OutputConfig):
+    """
+    Entrada cruda (sin DetectionPostProcess):
+      raw_output: (box_deltas, class_scores)  o  (class_scores, box_deltas)
+        box_deltas:   (1,N,4) o (N,4)  -> [ty, tx, th, tw]
+        class_scores: (1,N,C) o (N,C)  -> logits o probas
+    Requiere en runtime:
+      - anchors (N,4) normalizados [ay, ax, ah, aw]
+      - box_variance (4,) típicamente [0.1, 0.1, 0.2, 0.2]
+      - input_width/height
+    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PÍXELES DEL TENSOR.
+    """
+    def _fn(raw_output: Any, runtime=None) -> List[List[float]]:
+        if runtime is None or getattr(runtime, "anchors", None) is None:
+            raise ValueError("anchor_deltas: falta runtime.anchors (N,4) normalizados.")
+        variance = getattr(runtime, "box_variance", None)
+        if variance is None:
+            variance = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
+
+        if not isinstance(raw_output, (list, tuple)) or len(raw_output) < 2:
+            raise ValueError("anchor_deltas: se espera (box_deltas, class_scores) en una tupla/lista")
+
+        a, b = raw_output[0], raw_output[1]
+        A, B = np.asarray(a), np.asarray(b)
+
+        if A.shape[-1] == 4:
+            deltas_2d = _to_2d(a)      # (N,4)
+            cls_2d    = _to_2d(b)      # (N,C)
+        elif B.shape[-1] == 4:
+            deltas_2d = _to_2d(b)
+            cls_2d    = _to_2d(a)
+        else:
+            raise ValueError("anchor_deltas: no se encontró tensor (N,4) para box_deltas")
+
+        anchors = np.asarray(runtime.anchors, dtype=np.float32)
+        if anchors.shape[0] != deltas_2d.shape[0]:
+            raise ValueError(f"anchor_deltas: N anchors={anchors.shape[0]} != N deltas={deltas_2d.shape[0]}")
+
+        # 1) activar clases (softmax) y tomar best
+        #    (SSD/EfficientDet suele usar softmax multi-clase)
+        m = cls_2d - cls_2d.max(axis=1, keepdims=True)
+        np.exp(m, out=m)
+        cls_prob = m / (m.sum(axis=1, keepdims=True) + 1e-12)
+
+        best_cls = np.argmax(cls_prob, axis=1)
+        best_p   = cls_prob[np.arange(cls_prob.shape[0]), best_cls]
+
+        # 2) decodificar deltas -> yxyx NORMALIZADO
+        ymin, xmin, ymax, xmax = _decode_anchor_deltas_to_yxyx(deltas_2d, anchors, np.asarray(variance))
+
+        # 3) escalar a píxeles del tensor (lo espera el post para undo)
+        W, H = int(runtime.input_width), int(runtime.input_height)
+        ymin *= H; ymax *= H
+        xmin *= W; xmax *= W
+
+        return _stack_as_float_lists([
+            ymin.astype(np.float32, copy=False),
+            xmin.astype(np.float32, copy=False),
+            ymax.astype(np.float32, copy=False),
+            xmax.astype(np.float32, copy=False),
+            best_p.astype(np.float32, copy=False),
+            best_cls.astype(np.float32, copy=False),
+        ])
+
+    return _fn
+
 
 def _unpack_yolo_flat(output_cfg):
     """
@@ -136,6 +228,9 @@ def unpack_out(output_cfg: OutputConfig) -> Callable[[Any, Optional[ImageSize]],
 
     if fmt in ("yolo_flat"):
         return _unpack_yolo_flat(output_cfg)
+    
+    if fmt in ("anchor_deltas"):
+        return _decode_anchor_deltas_to_yxyx(output_cfg)
 
     if fmt in ("boxes_scores"):
         return _unpack_boxes_scores(output_cfg)

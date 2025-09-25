@@ -7,7 +7,7 @@ def setup_model_logger(model_name: str, log_dir: str = "logs"):
     log_path = os.path.join(log_dir, f"{model_name}.log")
 
     logger = logging.getLogger(model_name)
-    #logger.setLevel(logging.DEBUG)  # Captura todo, desde DEBUG
+    logger.setLevel(logging.DEBUG)  # Captura todo, desde DEBUG
 
     if not logger.handlers:
         # Handler para archivo

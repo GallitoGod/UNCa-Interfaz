@@ -116,3 +116,58 @@ def test_tflite_detpost_respeta_count_y_normaliza():
     y1, x1, y2, x2, sc, cl = rows[0]
     assert np.isclose([y1, x1, y2, x2], [64, 64, 128, 160]).all()
     assert np.isclose(sc, 0.8) and cl == 3.0
+
+def test_anchor_deltas_decodifica_y_escala_a_pixeles_tensor():
+    """
+    anchor_deltas:
+      - deltas (ty, tx, th, tw) = 0 -> debe devolver exactamente el anchor.
+      - anchors en formato centro/tamaño [ay, ax, ah, aw] NORMALIZADOS [0..1].
+      - salida esperada en PIXELES DEL TENSOR (usa input_width/height).
+      - clases via softmax sobre logits.
+    """
+    cfg = _DummyOutputConfig("anchor_deltas")
+    rt = _DummyRuntime(out_coords_space="tensor_pixels", input_width=320, input_height=320)
+
+    # Anchors normalizados [ay, ax, ah, aw] (centro y tamaño)
+    # A1: centro (0.5,0.5), tam (0.2,0.1) -> y1=0.4,x1=0.45,y2=0.6,x2=0.55
+    # A2: centro (0.25,0.25), tam (0.1,0.2) -> y1=0.2,x1=0.15,y2=0.3,x2=0.35
+    rt.anchors = np.array([
+        [0.5,  0.5,  0.2, 0.1],
+        [0.25, 0.25, 0.1, 0.2],
+    ], dtype=np.float32)
+    rt.box_variance = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
+
+    # Deltas = 0 -> devuelve exactamente el anchor (tras decode)
+    deltas_2d = np.zeros((2, 4), dtype=np.float32)
+    logits_2d = np.array([
+        [0.0, 10.0, 0.0],   # ~one-hot en clase 1
+        [10.0, 0.0, 0.0],   # ~one-hot en clase 0
+    ], dtype=np.float32)
+
+    # Valores esperados en pixeles del tensor (W=H=320)
+    # A1 -> [y1=128, x1=144, y2=192, x2=176]
+    # A2 -> [y1= 64, x1= 48, y2= 96, x2=112]
+    exp = np.array([
+        [128.0, 144.0, 192.0, 176.0],
+        [ 64.0,  48.0,  96.0, 112.0],
+    ], dtype=np.float32)
+
+    fn = unpack_out(cfg)
+
+    rows = fn((deltas_2d, logits_2d), rt)
+    arr = np.asarray(rows, dtype=np.float32)
+    assert arr.shape[0] == 2 and arr.shape[1] >= 6
+
+    # xyxy
+    np.testing.assert_allclose(arr[:, [1,0,3,2]], exp, atol=1e-4)  # [y1,x1,y2,x2] -> exp
+    assert arr[0, 5] == 1.0 and arr[0, 4] > 0.99
+    assert arr[1, 5] == 0.0 and arr[1, 4] > 0.99
+
+    deltas_3d = deltas_2d[None, ...]   # (1,2,4)
+    logits_3d = logits_2d[None, ...]   # (1,2,3)
+    rows_swapped = fn((logits_3d, deltas_3d), rt)
+    arr2 = np.asarray(rows_swapped, dtype=np.float32)
+
+    np.testing.assert_allclose(arr2[:, [1,0,3,2]], exp, atol=1e-4)
+    assert arr2[0, 5] == 1.0 and arr2[0, 4] > 0.99
+    assert arr2[1, 5] == 0.0 and arr2[1, 4] > 0.99

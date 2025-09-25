@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from .logger import setup_model_logger
 from .reader_pipeline import Model_loader
 from .reader_pipeline import load_model_config
@@ -71,6 +72,14 @@ class ModelController:
             adapted_output = [self.output_adapter(list(r)) for r in unpacked]
             if not isinstance(adapted_output, (list, tuple)):
                 adapted_output = [adapted_output]
+            iw, ih = self.config.runtime.input_width,  self.config.runtime.input_height
+            ow, oh = self.config.runtime.orig_width,   self.config.runtime.orig_height
+            md = self.config.runtime.metadata_letter or {}
+            self.logger.debug("[DBG] input/orig: input=%dx%d orig=%dx%d", iw, ih, ow, oh)
+            self.logger.debug("[DBG] letter: %s", md)
+
+            # ver 3 cajas ANTES del undo (espacio del tensor, 0..W_in/0..H_in)
+            self.logger.debug(f"[DBG] tensor-space (pre-undo): {np.asarray(adapted_output[:3])}")
             result = self.postprocess_fn(adapted_output) 
             self.logger.info(f"Inferencia ejecutada: {len(result)} detecciones")
             return result    
