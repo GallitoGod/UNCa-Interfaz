@@ -21,7 +21,7 @@ class OutputConfig(BaseModel):
     nms_per_class: bool = False
     nms_threshold: float = 0.45
     tensor_structure: Optional[TensorStructure]
-    pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost"] = "raw"
+    pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
 
 class InputConfig(BaseModel):
     width: int
