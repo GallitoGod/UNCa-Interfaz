@@ -31,6 +31,46 @@ class ModelController:
             infer = ModelLoader.predict(pre) #hace la inferencia
             return OutputPipeline.postprocess(infer) #hace el postprocesamiento y devuelve el resultado final
     '''
+
+    '''
+    0) Instrumentacion minima (una sola vez por carga de modelo)
+        Loggear model_id, format (onnx/tflite/tf), input_shape, dtype, preprocess usado.
+        Loggear tiempos por etapa: t_pre, t_inf, t_post, t_draw, t_total.
+        Loggear fps_avg y p95 (o al menos promedio + peor caso).
+    '''
+    '''
+    1) Config JSON: runtime controlado por modelo (NO hardcode)
+        Agregar en schema/config algo asi (idea, no literal):
+        runtime.device: "cpu" | "gpu"
+        runtime.backend: "onnxruntime" | "tflite" | "tensorflow" (si aplica)
+        runtime.threads: intra_op, inter_op, num_threads
+        runtime.onnx.providers: lista ordenada (ej ["CUDAExecutionProvider","CPUExecutionProvider"])
+        runtime.tflite.delegates: ["gpu"] o vacio
+        runtime.warmup_runs, runtime.benchmark_runs
+    '''
+    '''
+    2) ONNX Runtime: GPU habilitable y fallback
+        En onnx_load.py (donde se crea InferenceSession):
+        Detectar si el paquete es onnxruntime-gpu y si CUDAExecutionProvider esta disponible.
+        Crear sesion con providers desde config:
+            si device=="gpu": ["CUDAExecutionProvider","CPUExecutionProvider"]
+            si device=="cpu": ["CPUExecutionProvider"]
+        Setear threads desde config:
+            sess_options.intra_op_num_threads
+            sess_options.inter_op_num_threads
+        Loggear al cargar: sess.get_providers() y ort.get_available_providers()
+    '''
+    '''
+    3) TFLite: threads + delegate (si esta disponible)
+        En tflite_load.py:
+        Exponer num_threads desde config (siempre).
+        Si device=="gpu":
+            intentar crear delegate GPU (si no se puede, loggear y fallback a CPU).
+        Loggear al cargar: delegate=GPU/None, num_threads, y si esta usando XNNPACK (si se puede detectar).
+    '''
+
+
+
     def __init__(self):
         self.predict_fn = None
         self.input_adapter = None
