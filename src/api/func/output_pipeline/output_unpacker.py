@@ -157,7 +157,7 @@ def _unpack_yolo_flat(output_cfg):
     Nota: conserva cxcywh (el adapter se encargara de colocarlo correctamente).
     """
     def fn(raw_output, runtime=None):
-        arr = _to_2d(raw_output).astype(np.float32, copy=True)  # (N, 5+C)
+        arr = _to_2d(raw_output).astype(np.float32, copy=False)  # (N, 5+C)
         cx, cy, w, h = arr[:,0], arr[:,1], arr[:,2], arr[:,3]
         obj = arr[:,4]
         cls = arr[:,5:]
