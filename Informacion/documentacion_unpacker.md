@@ -324,11 +324,11 @@ Nunca por heurísticas implícitas.
 
 ---
 
-### 8. Extensibilidad: Registry de Unpackers
+### 7. Extensibilidad: Registry de Unpackers
 
 Esta sección formaliza un patrón para escalar el catálogo de contratos sin crecer en complejidad accidental.
 
-## 8.1 Patrón: UNPACKERS_REGISTRY
+## 7.1 Patrón: UNPACKERS_REGISTRY
 
 **ID:** EXT-PATTERN-REG-001
 **Versión:** v1.0
@@ -344,7 +344,7 @@ volver costosa la extensión (se “toca el núcleo” para agregar formatos).
 
 Solución: usar un registry explícito (diccionario) que mapee pack_format → unpacker_fn.
 
-Beneficios:
+* Beneficios:
 
 agregar un contrato nuevo = escribir función + registrar (sin tocar el controlador),
 
