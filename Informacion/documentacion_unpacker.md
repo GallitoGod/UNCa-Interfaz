@@ -162,7 +162,7 @@ Modelo incluye postprocesamiento (NMS) dentro del grafo.
 
 ## 6. Sistema de desempaquetadores
 
-### 6.0 Diagramas de flujo por contrato (referencia visual)
+### 6.0 Diagramas de flujo por contrato
 
 Cada contrato documentado a continuación posee un diagrama de flujo explícito que describe el recorrido semántico desde la salida cruda del modelo hasta el IR interno.
 
@@ -324,7 +324,45 @@ Nunca por heurísticas implícitas.
 
 ---
 
-## 7. Versionado y trazabilidad
+### 8. Extensibilidad: Registry de Unpackers
+
+Esta sección formaliza un patrón para escalar el catálogo de contratos sin crecer en complejidad accidental.
+
+## 8.1 Patrón: UNPACKERS_REGISTRY
+
+**ID:** EXT-PATTERN-REG-001
+**Versión:** v1.0
+**Fecha:** 2026-01-31
+
+* Problema: Un if/elif grande en el selector de desempaquetadores tiende a:
+
+crecer sin control,
+
+mezclar lógica de selección con lógica de desempaquetado,
+
+volver costosa la extensión (se “toca el núcleo” para agregar formatos).
+
+Solución: usar un registry explícito (diccionario) que mapee pack_format → unpacker_fn.
+
+Beneficios:
+
+agregar un contrato nuevo = escribir función + registrar (sin tocar el controlador),
+
+facilita pruebas unitarias por contrato,
+
+reduce ruido en unpack_out.
+
+Esqueleto recomendado:
+
+UNPACKERS_REGISTRY = { "yolo_flat": fn, "boxes_scores": fn, ... }
+
+unpack_out(cfg) → registry[cfg.pack_format] con fallback seguro.
+
+* Nota: El fallback “raw” debe seguir existiendo para depuración/control.
+
+---
+
+## 8. Versionado y trazabilidad
 
 Cada artefacto del sistema debe poseer:
 
@@ -343,9 +381,9 @@ Cambio: soporte para salida multi‑head
 
 ---
 
-## 8. Decisiones descartadas (registro histórico)
+## 9. Decisiones descartadas (registro histórico)
 
-### 8.1 Desempaquetador genérico universal
+### 9.1 Desempaquetador genérico universal
 
 **Estado:**  descartado
 
@@ -357,7 +395,7 @@ Cambio: soporte para salida multi‑head
 
 ---
 
-## 9. Estado actual del sistema
+## 10. Estado actual del sistema
 
 *  Arquitectura basada en contratos
 *  Clusterización explícita
@@ -367,9 +405,9 @@ Cambio: soporte para salida multi‑head
 
 ---
 
-## 10. Notas finales
+## 11. Notas finales
 
-Su objetivo es preservar el criterio de diseño frente al paso del tiempo y futuras modificaciones.
+El objetivo es preservar el criterio de diseño frente al paso del tiempo y futuras modificaciones.
 
 ---
 
