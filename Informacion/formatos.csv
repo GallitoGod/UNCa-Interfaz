@@ -1,8 +1,0 @@
-Formato,Extensión,¿Qué guarda?,Cómo cargarlo
-SavedModel,.pb,Estructura + Pesos,"tf.saved_model.load(""ruta/"")"
-Keras,.h5,Estructura + Pesos,"tf.keras.models.load_model(""modelo.h5"")"
-TensorFlow Lite,.tflite,Modelo optimizado,"tflite.Interpreter(""modelo.tflite"")"
-Checkpoint,.ckpt,Solo pesos del modelo,Requiere definir modelo antes
-PyTorch (TorchScript),.pt,Modelo serializado,"torch.jit.load(""modelo.pt"")"
-PyTorch (State Dict),.pth,Pesos del modelo,"torch.load(""modelo.pth"")"
-ONNX,.onnx,Modelo optimizado para interoperabilidad,"torch.onnx.load(""modelo.onnx"")"

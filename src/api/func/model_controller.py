@@ -5,7 +5,8 @@ from .reader_pipeline import Model_loader
 from .reader_pipeline import load_model_config
 from .reader_pipeline import Reactive_output_config
 from .input_pipeline import build_preprocessor, generate_input_adapter
-from .output_pipeline import unpack_out, buildPostprocessor, generate_output_adapter
+from .output_pipeline import buildPostprocessor, generate_output_adapter
+from .output_pipeline.unpackers import unpack_out
 
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.

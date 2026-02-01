@@ -24,7 +24,7 @@ def build_anchor_deltas(output_cfg: OutputConfig):
       - anchors (N,4) normalizados [ay, ax, ah, aw]
       - box_variance (4,) típicamente [0.1, 0.1, 0.2, 0.2]
       - input_width/height
-    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PÍXELES DEL TENSOR.
+    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PÍXELES DEL TENSOR. <-- Hasta ahora
     """
     def _fn(raw_output: Any, runtime=None) -> np.ndarray:
         if runtime is None or getattr(runtime, "anchors", None) is None:
