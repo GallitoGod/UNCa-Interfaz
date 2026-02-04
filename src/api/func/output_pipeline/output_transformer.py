@@ -8,7 +8,7 @@ from api.func.reader_pipeline.config_schema import OutputConfig, RuntimeSession
 
 def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_thr: float) -> np.ndarray:
     """
-    NMS clase-agnostico sobre boxes en xyxy.
+    NMS sobre boxes en xyxy.
     boxes: (N,4), scores: (N,)
     Devuelve indices a conservar (ordenados por score desc).
     """
@@ -116,12 +116,12 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Cal
     # ---------parametros-con-defaults-razonables---------
     # Filtro por confianza centralizado (por defecto off para tflite_detpost, on para el resto)
     default_conf_filter = not is_tflite_post
-    apply_conf_filter: bool = bool(getattr(output_cfg, "apply_confidence_filter", default_conf_filter))
+    apply_conf_filter: bool = bool(getattr(output_cfg, "apply_conf_filter", default_conf_filter))
 
     # NMS (por defecto off para tflite_detpost, on para el resto)
     default_apply_nms = not is_tflite_post
     apply_nms: bool = bool(getattr(output_cfg, "apply_nms", default_apply_nms))
-    iou_thr: float = float(getattr(output_cfg, "iou_threshold", 0.5))
+    iou_thr: float = float(getattr(output_cfg, "nms_threshold", 0.5))
     nms_per_class: bool = bool(getattr(output_cfg, "nms_per_class", False))
 
     # Top-K opcional
@@ -133,7 +133,7 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Cal
         if not rows_xyxy:
             return []
 
-        arr = np.asarray(rows_xyxy, dtype=np.float32)
+        arr = np.asarray(rows_xyxy, dtype=np.float32) # <--- esto tendria que llegar como un array de numpy en primera instancia 
         if arr.ndim != 2 or arr.shape[1] < 6:
             raise ValueError(f"output_transformer: se esperaban filas con >=6 columnas (xyxy, score, class). shape={arr.shape}")
 
