@@ -108,10 +108,10 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Cal
 
     Notas:
       - Para modelos con TFLite DetectionPostProcess (ya traen NMS/umbral),
-        por defecto desactivamos re-filtrado y re-NMS; se puede forzar via config.
+        por defecto se desactiva re-filtrado y re-NMS.
     """
     fmt = (getattr(output_cfg, "pack_format", "") or "").lower()
-    is_tflite_post = fmt in ("tflite_detpost")
+    is_tflite_post = (fmt == "tflite_detpost")
 
     # ---------parametros-con-defaults-razonables---------
     # Filtro por confianza centralizado (por defecto off para tflite_detpost, on para el resto)
@@ -129,13 +129,16 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Cal
     top_k: Optional[int] = int(top_k_opt) if isinstance(top_k_opt, (int, float)) and int(top_k_opt) > 0 else None
 
     # ---------funcion-de-postproceso---------
-    def _postprocess(rows_xyxy: Sequence[Sequence[float]]) -> List[List[float]]:
-        if not rows_xyxy:
+    def _postprocess(arr: np.ndarray) -> List[List[float]]:
+        if arr.size == 0:
             return []
 
-        arr = np.asarray(rows_xyxy, dtype=np.float32) # <--- esto tendria que llegar como un array de numpy en primera instancia 
         if arr.ndim != 2 or arr.shape[1] < 6:
-            raise ValueError(f"output_transformer: se esperaban filas con >=6 columnas (xyxy, score, class). shape={arr.shape}")
+            raise ValueError(f"""output_transformer: 
+                Se esperaban filas con 6 columnas (xyxy, score, class). 
+                Shape = {arr.shape}
+                Tipo de dato = {type(arr)}
+            """)
 
         # 1) Filtro por confianza (umbral leido EN CADA LLAMADA -> slider “en vivo”)
         if apply_conf_filter:

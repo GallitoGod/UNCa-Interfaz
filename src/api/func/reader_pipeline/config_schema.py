@@ -34,7 +34,7 @@ class InputConfig(BaseModel):
     letterbox: bool = Field(default=False)
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
-    color_order: Optional[str] = "RGB"
+    color_order: Literal["RGB", "BGR", "GRAY"] = "RGB"
     input_tensor: InputTensorConfig = None 
 
 class RuntimeSession(BaseModel):
