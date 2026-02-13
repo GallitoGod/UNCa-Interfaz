@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 from api.func.reader_pipeline.config_schema import TensorStructure
 
 def _generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
@@ -33,10 +33,10 @@ def _generate_box_converter(fmt: str, coords: dict) -> Callable[[list], list]:
     else:
         raise ValueError(f"Formato desconocido: {fmt}")
 
-def generate_output_adapter(tensor_structure: TensorStructure):
-    convert_box = _generate_box_converter(
-        tensor_structure.box_format, tensor_structure.coordinates
-    )
+def generate_output_adapter(tensor_structure: Optional[TensorStructure]):
+    box = tensor_structure.box_format or "xyxy"
+    coordinates = tensor_structure.coordinates or {"x1": 0, "y1": 1, "x2": 2, "y2": 3}
+    convert_box = _generate_box_converter(box, coordinates)
 
     conf_idx = tensor_structure.confidence_index
     cls_idx = tensor_structure.class_index

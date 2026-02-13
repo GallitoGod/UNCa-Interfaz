@@ -1,6 +1,8 @@
+# model_controller.py
 import os
+import time
 import numpy as np
-from .logger import setup_model_logger
+from .logger import setup_model_logger, PerfMeter
 from .reader_pipeline import Model_loader
 from .reader_pipeline import load_model_config
 from .reader_pipeline import Reactive_output_config
@@ -34,7 +36,7 @@ class ModelController:
     '''
 
     '''
-    0) Instrumentacion minima (una sola vez por carga de modelo)
+    0) Instrumentacion minima (una sola vez por carga de modelo)    <--- COMPLETADO
         Loggear model_id, format (onnx/tflite/tf), input_shape, dtype, preprocess usado.
         Loggear tiempos por etapa: t_pre, t_inf, t_post, t_draw, t_total.
         Loggear fps_avg y p95 (o al menos promedio + peor caso).
@@ -131,6 +133,9 @@ class ModelController:
         self.model_format = None
         self.config = None
         self.logger = None
+        self.perf = PerfMeter(window=300)
+        self._frame_idx = 0
+        self._log_every = 60
 
     def load_model(self, model_path: str):
         try:
@@ -146,42 +151,78 @@ class ModelController:
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
             
             self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
-            self.logger.info("Modelo cargado correctamente")
+            self.logger.info("Modelo cargado correctamente.")
+            self.logger.info(
+                f"""Caracteristicas:
+                        Input:
+                            Layout: {self.config.InputTensorConfig.layout}
+                            dtype:  {self.config.InputTensorConfig.dtype}
+                            box format: {self.config.TensorStructure.box_format}
+                        Output:
+                            unpacker: {self.config.OutputConfig.pack_format}
+                """)
         except Exception as e:
             self.logger.exception(f"{e}")
 
 
-    def inference(self, img):
-        try:
-            pre = self.preprocess_fn(img)
-            adapted_input = self.input_adapter(pre)
-            raw_output = self.predict_fn(adapted_input)
-            unpacked = self.unpack_fn(raw_output, getattr(self.config, "runtime", None))
-            if not isinstance(unpacked, (list, tuple)):
-                unpacked = [unpacked]
-            adapted_output = [self.output_adapter(list(r)) for r in unpacked]
-            if not isinstance(adapted_output, (list, tuple)):
-                adapted_output = [adapted_output]
-            iw, ih = self.config.runtime.input_width,  self.config.runtime.input_height
-            ow, oh = self.config.runtime.orig_width,   self.config.runtime.orig_height
-            md = self.config.runtime.metadata_letter or {}
-            self.logger.debug("[DBG] input/orig: input=%dx%d orig=%dx%d", iw, ih, ow, oh)
-            self.logger.debug("[DBG] letter: %s", md)
 
-            # ver 3 cajas ANTES del undo (espacio del tensor, 0..W_in/0..H_in)
-            self.logger.debug(f"[DBG] tensor-space (pre-undo): {np.asarray(adapted_output[:3])}")
-            result = self.postprocess_fn(adapted_output) 
-            self.logger.info(f"Inferencia ejecutada: {len(result)} detecciones")
-            return result    
-        except ValueError as e:
-            self.logger.exception(f"{e}") 
-    
+    def inference(self, img):
+        t0 = time.perf_counter()
+
+        t_pre0 = time.perf_counter()
+        pre = self.preprocess_fn(img)
+        adapted_input = self.input_adapter(pre)
+        t_pre1 = time.perf_counter()
+
+        t_inf0 = time.perf_counter()
+        raw_output = self.predict_fn(adapted_input)
+        t_inf1 = time.perf_counter()
+
+        t_post0 = time.perf_counter()
+        unpacked = self.unpack_fn(raw_output, getattr(self.config, "runtime", None))
+        if not isinstance(unpacked, (list, tuple)):
+            unpacked = [unpacked]
+        adapted_output = [self.output_adapter(list(r)) for r in unpacked]
+        iw, ih = self.config.runtime.input_width,  self.config.runtime.input_height
+        ow, oh = self.config.runtime.orig_width,   self.config.runtime.orig_height
+        md = self.config.runtime.metadata_letter or {}
+        self.logger.debug("[DBG] input/orig: input=%dx%d orig=%dx%d", iw, ih, ow, oh)
+        self.logger.debug("[DBG] letter: %s", md)
+        self.logger.debug(f"[DBG] tensor-space (pre-undo): {np.asarray(adapted_output[:3])}")
+        result = self.postprocess_fn(adapted_output)
+        self.logger.info(f"Inferencia ejecutada: {len(result)} detecciones")
+        t_post1 = time.perf_counter()
+
+        t1 = time.perf_counter()
+
+        pre_ms   = (t_pre1 - t_pre0) * 1000
+        inf_ms   = (t_inf1 - t_inf0) * 1000
+        post_ms  = (t_post1 - t_post0) * 1000
+        total_ms = (t1 - t0) * 1000
+
+        self.perf.push(pre_ms, inf_ms, post_ms, total_ms)
+
+        self._frame_idx += 1
+        if self._frame_idx % self._log_every == 0:
+            s = self.perf.stats()
+            if s:
+                self.logger.info(
+                    "PERF n=%d avg=%.2fms p95=%.2fms fps=%.2f | pre=%.2f inf=%.2f post=%.2f",
+                    s["n"], s["avg_ms"], s["p95_ms"], s["fps_avg"],
+                    s["pre_avg_ms"], s["inf_avg_ms"], s["post_avg_ms"],
+                )
+        return result   
+
+
+
     def update_confidence(self, new_threshold: float):
         try:
             self.config.output.confidence_threshold = new_threshold
             self.logger.info(f"Confianza actualizada a {self.config.output.confidence_threshold}.")
         except Exception as e:
             self.logger.exception("No se pudo actualizar el umbral de confianza.")
+
+
 
     def unload_model(self):
         self.predict_fn = None

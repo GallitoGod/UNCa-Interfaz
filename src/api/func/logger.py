@@ -1,5 +1,7 @@
-
+# logger.py
 import logging
+from collections import deque
+import numpy as np
 import os
 
 def setup_model_logger(model_name: str, log_dir: str = "logs"):
@@ -46,3 +48,46 @@ def setup_model_logger(model_name: str, log_dir: str = "logs"):
 # |                          | `ERROR`   | No se puede desempaquetar la salida                             |
 # | `Postprocessor`          | `INFO`    | Salida final transformada                                       |
 # |                          | `ERROR`   | Fallo en NMS, umbral inválido, etc                              |
+
+
+class PerfMeter:
+    """
+    Guarda los ultimos N tiempos y calcula fps promedio y p95.
+    Pensado para benchmark en loop.
+    """
+    def __init__(self, window=300):
+        self.window = window
+        self.t_pre  = deque(maxlen=window)
+        self.t_inf  = deque(maxlen=window)
+        self.t_post = deque(maxlen=window)
+        self.t_total= deque(maxlen=window)
+
+    def push(self, pre_ms, inf_ms, post_ms, total_ms) -> None:
+        self.t_pre.append(pre_ms)
+        self.t_inf.append(inf_ms)
+        self.t_post.append(post_ms)
+        self.t_total.append(total_ms)
+
+    def stats(self) -> dict | None:
+        if not self.t_total:
+            return None
+        total = np.asarray(self.t_total, dtype=np.float32)
+
+        avg_ms = float(total.mean())
+        p95_ms = float(np.percentile(total, 95))
+        fps_avg = 1000.0 / avg_ms if avg_ms > 0 else 0.0
+    
+        pre_avg  = float(np.mean(np.asarray(self.t_pre,  dtype=np.float32))) if self.t_pre else 0.0
+        inf_avg  = float(np.mean(np.asarray(self.t_inf,  dtype=np.float32))) if self.t_inf else 0.0
+        post_avg = float(np.mean(np.asarray(self.t_post, dtype=np.float32))) if self.t_post else 0.0
+
+        return {
+            "avg_ms": avg_ms,
+            "p95_ms": p95_ms,
+            "fps_avg": fps_avg,
+            "pre_avg_ms": pre_avg,
+            "inf_avg_ms": inf_avg,
+            "post_avg_ms": post_avg,
+            "n": len(total),
+        }
+
