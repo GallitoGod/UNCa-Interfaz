@@ -37,6 +37,18 @@ class InputConfig(BaseModel):
     color_order: Literal["RGB", "BGR", "GRAY"] = "RGB"
     input_tensor: InputTensorConfig = None 
 
+class warmup_runs(BaseModel):
+    pass
+
+class benchmark_runs(BaseModel):
+    pass
+
+class onnx(BaseModel):
+    providers: None
+
+class tflite(BaseModel):
+    delegates: Literal["gpu"]
+
 class RuntimeSession(BaseModel):
     input_width: int = 0
     input_height: int = 0
@@ -50,7 +62,9 @@ class RuntimeSession(BaseModel):
     }
     channels: int = 3
     out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
-    #DEVICE: Optional[Literal["CPU", "GPU", "TPU", "NPU"]] = "CPU" <--- TENER EN CUENTA EN EL FUTURO
+    device: Literal["gpu", "cpu"] = "cpu"
+    backend: Literal["onnxruntime", "tflite", "tensorflow"]
+    threads: Literal["intra_op", "inter_op", "num_threads"]
 
 class ModelConfig(BaseModel):
     model_type: Literal["detection", "classification", "segmentation"]

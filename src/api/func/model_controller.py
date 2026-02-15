@@ -90,7 +90,7 @@ class ModelController:
             evita I/O (no guardar a disco por iteracion)
     '''
     '''
-    6) “Guard rails” para no auto-engañarse con GPU
+    6) “Guard rails” para no tener auto-engaño con GPU
         Si device=="gpu" pero provider/delegate no se activa:
             levantar WARNING fuerte en logs (porque sino parece que corre en GPU y no)
         Opcion runtime.strict_device=true:
