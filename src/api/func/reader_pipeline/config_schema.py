@@ -1,12 +1,19 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Dict, Union
+from typing import List, Optional, Literal, Dict, Union, Any
 
-class InputTensorConfig(BaseModel):
+TYPE = Literal["detection", "classification", "segmentation"]
+BACKEND = Literal["onnxruntime", "tflite", "tensorflow"]
+
+class InputDetection(BaseModel):
     layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
     dtype: Literal["float32", "uint8", "int8"] = "float32"
     quantized: bool = False
 
-class TensorStructure(BaseModel):
+class TensorDetection(BaseModel):
+    '''
+        Tengo que darle valores por defecto para que en OutputConfig pueda usar 
+    Filed(default=TensorDetection).
+    '''
     box_format: Literal["xyxy", "cxcywh", "yxyx"]
     coordinates: Dict[str, int]
     confidence_index: int
@@ -20,7 +27,7 @@ class OutputConfig(BaseModel):
     top_k: int = False
     nms_per_class: bool = False
     nms_threshold: float = 0.45
-    tensor_structure: Optional[TensorStructure]
+    tensor_structure: Optional[TensorDetection]
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
 
 class InputConfig(BaseModel):
@@ -35,39 +42,64 @@ class InputConfig(BaseModel):
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
     color_order: Literal["RGB", "BGR", "GRAY"] = "RGB"
-    input_tensor: InputTensorConfig = None 
+    input_config: InputDetection = None # <---  Aca era 'input_tensor', lo cual no es correcto.
 
-class warmup_runs(BaseModel):
-    pass
-
-class benchmark_runs(BaseModel):
-    pass
-
-class onnx(BaseModel):
-    providers: None
-
-class tflite(BaseModel):
-    delegates: Literal["gpu"]
-
-class RuntimeSession(BaseModel):
+class RuntimeShapes(BaseModel):
     input_width: int = 0
     input_height: int = 0
     orig_width: int = 0
     orig_height: int = 0
     metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
-    "scale": 1.0,
-    "pad_left": 0.0,
-    "pad_top": 0.0,
-    "letterbox_used": False
+        "scale": 1.0,
+        "pad_left": 0.0,
+        "pad_top": 0.0,
+        "letterbox_used": False
     }
     channels: int = 3
     out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
-    device: Literal["gpu", "cpu"] = "cpu"
-    backend: Literal["onnxruntime", "tflite", "tensorflow"]
-    threads: Literal["intra_op", "inter_op", "num_threads"]
+
+class ThreadsConfig(BaseModel):
+    # ONNXRuntime
+    intra_op: Optional[int] = None
+    inter_op: Optional[int] = None
+    # TFLite / general
+    num_threads: Optional[int] = None
+
+class WarmupConfig(BaseModel):
+    runs: int = 0  # 0 = off
+    enabled: bool = True  # opcional, por si se quiere apagar aunque runs>0
+
+class BenchmarkConfig(BaseModel):
+    enabled: bool = False
+    runs: int = 0
+
+class OnnxRuntimeConfig(BaseModel):
+    providers: List[str] = Field(default_factory=list)
+    provider_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+class TfliteRuntimeConfig(BaseModel):
+    delegates: List[str] = Field(default_factory=list)
+    delegate_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+class RuntimeConfig(BaseModel):
+    runTimeShapes: Optional[RuntimeShapes]
+    backend: BACKEND = "onnxruntime"
+    device: Literal["cpu", "gpu"] = "cpu"
+    threads: ThreadsConfig = Field(default_factory=ThreadsConfig)
+
+    onnx: Optional[OnnxRuntimeConfig] = None
+    tflite: Optional[TfliteRuntimeConfig] = None
+
+    warmup: WarmupConfig = Field(default_factory=WarmupConfig)
+    benchmark: BenchmarkConfig = Field(default_factory=BenchmarkConfig)
 
 class ModelConfig(BaseModel):
-    model_type: Literal["detection", "classification", "segmentation"]
+    model_type: TYPE
     input: InputConfig
     output: OutputConfig
-    runtime: RuntimeSession = Field(default_factory=RuntimeSession)
+    runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
+
+'''
+    Hay muchos cambios en nombres de configuraciones, se van a dar varios fallos en todo el sistema 
+cuando se empiece a testear. Simplemente hay que poner los nombres actuales.
+'''

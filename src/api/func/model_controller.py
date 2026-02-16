@@ -143,7 +143,7 @@ class ModelController:
             self.config = load_model_config(model_path)
             self.config.output = Reactive_output_config(**self.config.output.model_dump())
 
-            self.predict_fn = Model_loader.load(model_path, self.model_format)
+            self.predict_fn = Model_loader.load(model_path, self.config.runtime) #  <---  Ahora utiliza runtime.
             self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
             self.unpack_fn = unpack_out(self.config.output)
