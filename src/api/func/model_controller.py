@@ -2,7 +2,7 @@
 import os
 import time
 import numpy as np
-from .logger import setup_model_logger, PerfMeter
+from .logger import setup_model_logger, PerfMeter, run_warmup, make_dummy_input
 from .reader_pipeline import Model_loader
 from .reader_pipeline import load_model_config
 from .reader_pipeline import Reactive_output_config
@@ -146,6 +146,9 @@ class ModelController:
             self.predict_fn = Model_loader.load(model_path, self.config.runtime) #  <---  Ahora utiliza runtime.
             self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
+            w = self.config.runtime.warmup
+            if w.enabled and w.runs > 0:
+                run_warmup(self.predict_fn, make_dummy_input(self.preprocess_fn, self.input_adapter, self.config), runs=w.runs, logger=self.logger)
             self.unpack_fn = unpack_out(self.config.output)
             self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)

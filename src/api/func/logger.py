@@ -91,3 +91,18 @@ class PerfMeter:
             "n": len(total),
         }
 
+
+def run_warmup(predict_fn, dummy_input, runs: int, logger=None):
+    for _ in range(runs):
+        _ = predict_fn(dummy_input)
+    if logger:
+        logger.info(f"Warmup OK: {runs} runs")
+
+
+def make_dummy_input(preprocess_fn, input_adapter, input_cfg):
+    h0, w0 = input_cfg.height, input_cfg.width
+    img = np.zeros((h0, w0, 3), dtype=np.uint8)
+
+    img_prep = preprocess_fn(img)
+    x = input_adapter(img_prep)
+    return x
