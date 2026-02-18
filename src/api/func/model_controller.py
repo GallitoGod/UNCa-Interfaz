@@ -42,14 +42,14 @@ class ModelController:
         Loggear fps_avg y p95 (o al menos promedio + peor caso).
     '''
     '''
-    1) Config JSON: runtime controlado por modelo (NO hardcode)
+    1) Config JSON: runtime controlado por modelo (NO hardcode)     <--- COMPLETADO
         Agregar en schema/config algo asi (idea, no literal):
-        runtime.device: "cpu" | "gpu"
-        runtime.backend: "onnxruntime" | "tflite" | "tensorflow" (si aplica)
-        runtime.threads: intra_op, inter_op, num_threads
-        runtime.onnx.providers: lista ordenada (ej ["CUDAExecutionProvider","CPUExecutionProvider"])
-        runtime.tflite.delegates: ["gpu"] o vacio
-        runtime.warmup_runs, runtime.benchmark_runs
+        runtime.device: "cpu" | "gpu".
+        runtime.backend: "onnxruntime" | "tflite" | "tensorflow" (si aplica).
+        runtime.threads: intra_op, inter_op, num_threads.
+        runtime.onnx.providers: lista ordenada (ej ["CUDAExecutionProvider","CPUExecutionProvider"]).
+        runtime.tflite.delegates: ["gpu"] o vacio.
+        runtime.warmup_runs.
     '''
     '''
     2) ONNX Runtime: GPU habilitable y fallback
@@ -143,12 +143,13 @@ class ModelController:
             self.config = load_model_config(model_path)
             self.config.output = Reactive_output_config(**self.config.output.model_dump())
 
-            self.predict_fn = Model_loader.load(model_path, self.config.runtime) #  <---  Ahora utiliza runtime.
+            self.predict_fn = Model_loader.load(model_path, self.config.runtime, self.logger)
             self.preprocess_fn = build_preprocessor(self.config.input, self.config.runtime)
             self.input_adapter = generate_input_adapter(self.config.input)
             w = self.config.runtime.warmup
             if w.enabled and w.runs > 0:
-                run_warmup(self.predict_fn, make_dummy_input(self.preprocess_fn, self.input_adapter, self.config), runs=w.runs, logger=self.logger)
+                dummy_input = make_dummy_input(self.preprocess_fn, self.input_adapter, self.config)
+                run_warmup(self.predict_fn, dummy_input, runs=w.runs, logger=self.logger)
             self.unpack_fn = unpack_out(self.config.output)
             self.output_adapter = generate_output_adapter(self.config.output.tensor_structure)
             self.postprocess_fn = buildPostprocessor(self.config.output, self.config.runtime)
@@ -165,7 +166,7 @@ class ModelController:
                             unpacker: {self.config.OutputConfig.pack_format}
                 """)
         except Exception as e:
-            self.logger.exception(f"{e}")
+            self.logger.exception(e)
 
 
 

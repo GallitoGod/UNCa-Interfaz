@@ -69,10 +69,6 @@ class WarmupConfig(BaseModel):
     runs: int = 0  # 0 = off
     enabled: bool = True  # opcional, por si se quiere apagar aunque runs>0
 
-class BenchmarkConfig(BaseModel):
-    enabled: bool = False
-    runs: int = 0
-
 class OnnxRuntimeConfig(BaseModel):
     providers: List[str] = Field(default_factory=list)
     provider_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
@@ -91,7 +87,6 @@ class RuntimeConfig(BaseModel):
     tflite: Optional[TfliteRuntimeConfig] = None
 
     warmup: WarmupConfig = Field(default_factory=WarmupConfig)
-    benchmark: BenchmarkConfig = Field(default_factory=BenchmarkConfig)
 
 class ModelConfig(BaseModel):
     model_type: TYPE
