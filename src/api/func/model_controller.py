@@ -52,7 +52,7 @@ class ModelController:
         runtime.warmup_runs.
     '''
     '''
-    2) ONNX Runtime: GPU habilitable y fallback
+    2) ONNX Runtime: GPU habilitable y fallback     <--- COMPLETADO
         En onnx_load.py (donde se crea InferenceSession):
         Detectar si el paquete es onnxruntime-gpu y si CUDAExecutionProvider esta disponible.
         Crear sesion con providers desde config:
@@ -64,7 +64,7 @@ class ModelController:
         Loggear al cargar: sess.get_providers() y ort.get_available_providers()
     '''
     '''
-    3) TFLite: threads + delegate (si esta disponible)
+    3) TFLite: threads + delegate (si esta disponible)      <--- COMPLETADO
         En tflite_load.py:
         Exponer num_threads desde config (siempre).
         Si device=="gpu":
@@ -76,7 +76,7 @@ class ModelController:
         En loader TF:
         Loggear tf.config.list_physical_devices('GPU')
         (Opcional) habilitar memory growth si hay GPU
-        Loggear si efectivamente se esta usando GPU en warmup (aunque sea indirecto)
+        Loggear si efectivamente se esta usando GPU (aunque sea indirecto)
     '''
     '''
     5) Warmup y benchmark correcto (para todos los backends)

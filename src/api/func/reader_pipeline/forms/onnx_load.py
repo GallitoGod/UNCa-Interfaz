@@ -52,7 +52,8 @@ def onnxLoader(model_path: str, runtime_cfg, logger=None):
         input_name = session.get_inputs()[0].name
 
     except Exception as e:
-        logger.exception(e)
+        if logger:
+            logger.exception(e)
 
     def predict_fn(x):
         # devuelve numpy arrays - NO tolist

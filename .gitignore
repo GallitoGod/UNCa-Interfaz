@@ -1,10 +1,11 @@
 src/__pycache__/
 src/api/__pycache__/
-src/api/forms/__pycache__/
+src/api/func/reader_pipeline/forms/__pycache__/
 src/api/func/__pycache__/
 src/api/func/input_pipeline/__pycache__/
 src/api/func/input_pipeline/tests/__pycache__/
 src/api/func/output_pipeline/__pycache__/
+src/api/func/output_pipeline/unpackers/__pycache__/
 src/api/func/output_pipeline/tests/__pycache__/
 src/api/func/tests/__pycache__/
 src/api/func/reader_pipeline/__pycache__/
