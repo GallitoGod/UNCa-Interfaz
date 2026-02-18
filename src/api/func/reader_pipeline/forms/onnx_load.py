@@ -1,3 +1,6 @@
+# onnx_load.py
+from __future__ import annotations
+
 import onnxruntime as ort
 
 def onnxLoader(model_path: str, runtime_cfg, logger=None):

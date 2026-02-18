@@ -8,9 +8,9 @@ class Model_loader:
     @staticmethod
     def load(model_path, runtime: RuntimeConfig, logger=None):
         if runtime.backend == "tensorflow":
-            return Keras(model_path)
+            return Keras(model_path, runtime, logger)
         elif runtime.backend == "tflite":
-            return Tflite(model_path)
+            return Tflite(model_path, runtime, logger)
         elif runtime.backend == "onnxruntime":
             return Onnx(model_path, runtime, logger)
         else:
