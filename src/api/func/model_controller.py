@@ -72,38 +72,14 @@ class ModelController:
         Loggear al cargar: delegate=GPU/None, num_threads, y si esta usando XNNPACK (si se puede detectar).
     '''
     '''
-    4) TensorFlow/Keras: verificacion GPU y control de memoria
+    4) TensorFlow/Keras: verificacion GPU y control de memoria      <--- COMPLETADO
         En loader TF:
         Loggear tf.config.list_physical_devices('GPU')
         (Opcional) habilitar memory growth si hay GPU
         Loggear si efectivamente se esta usando GPU (aunque sea indirecto)
     '''
     '''
-    5) Warmup y benchmark correcto (para todos los backends)
-        Implementar warmup_runs antes de medir (ej 10–30).
-        Medir N iteraciones (ej 200) y calcular:
-            promedio FPS
-            p95/p99 de t_total (latencia)
-        Asegurar que el benchmark:
-            usa la misma imagen en loop
-            fija el mismo pipeline de pre/post
-            evita I/O (no guardar a disco por iteracion)
-    '''
-    '''
-    6) “Guard rails” para no tener auto-engaño con GPU
-        Si device=="gpu" pero provider/delegate no se activa:
-            levantar WARNING fuerte en logs (porque sino parece que corre en GPU y no)
-        Opcion runtime.strict_device=true:
-            si pedis GPU y no esta, fallar explicitamente (en vez de fallback silencioso)
-    '''
-    '''
-    7) Perfilado rapido para detectar cuello de botella real
-        Reportar por iteracion o por batch: %pre, %inf, %post, %draw.
-        Si postprocess domina:
-            priorizar NMS/vectorizacion, reducir copias, evitar conversiones innecesarias.
-    '''
-    '''
-    8) Optimizacion “barata” que casi siempre suma FPS (sin GPU todavia)
+    PARA TENER EN CUENTA: Optimizacion “barata” que casi siempre suma FPS (sin GPU todavia)
         Evitar reallocs: reutilizar buffers numpy cuando sea posible.
         Evitar conversiones dtype repetidas (ej uint8→float32 cada frame si no hace falta).
         Minimizar copias CPU (especialmente np.copy, astype sin necesidad).
@@ -112,7 +88,7 @@ class ModelController:
             que el draw sea opcional en benchmark (porque puede limitar FPS).
     '''
     '''
-    9) Validacion final “de verdad”
+    PARA TENER EN CUENTA: Validacion final “de verdad”
         Correr benchmark con:
             device=cpu y device=gpu (misma computadora)
             y comparar t_inf y t_total
