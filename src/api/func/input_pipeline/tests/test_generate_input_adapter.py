@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
 from api.func.input_pipeline.input_adapter import generate_input_adapter
-from api.func.reader_pipeline.config_schema import InputConfig, InputTensorConfig
+from api.func.reader_pipeline.config_schema import InputConfig, InputDetection
 
 def test_adapter_rgb_hwc():
     cfg = InputConfig(
         width=1920,
         height=1080,
-        input_tensor=InputTensorConfig(layout="HWC", dtype="float32"),
+        input_tensor=InputDetection(layout="HWC", dtype="float32"),
         color_order="RGB",
         channels=3
     )
@@ -21,7 +21,7 @@ def test_adapter_bgr_hwc():
     cfg = InputConfig(
         width=1920,
         height=1080,
-        input_tensor=InputTensorConfig(layout="HWC", dtype="float32"),
+        input_tensor=InputDetection(layout="HWC", dtype="float32"),
         color_order="BGR",
         channels=3
     )
@@ -35,7 +35,7 @@ def test_adapter_gray_hwc():
     cfg = InputConfig(
         width=1920,
         height=1080,
-        input_tensor=InputTensorConfig(layout="HWC", dtype="float32"),
+        input_tensor=InputDetection(layout="HWC", dtype="float32"),
         color_order="GRAY",
         channels=1
     )
@@ -49,7 +49,7 @@ def test_adapter_invalid_channles():
     cfg = InputConfig(
         width=1920,
         height=1080,
-        input_tensor=InputTensorConfig(layout="HWC", dtype="float32"),
+        input_tensor=InputDetection(layout="HWC", dtype="float32"),
         color_order="RGB",
         channels=4
     )
@@ -60,7 +60,7 @@ def test_adapter_invalid_colors():
     cfg = InputConfig(
         width=1920,
         height=1080,
-        input_tensor=InputTensorConfig(layout="HWC", dtype="float32"),
+        input_tensor=InputDetection(layout="HWC", dtype="float32"),
         color_order="CMYK",     #Cualquiera no? Bueno, es la idea
         channels=3
     )

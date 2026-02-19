@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, List, Sequence, Optional
 import numpy as np
 
-from api.func.reader_pipeline.config_schema import OutputConfig, RuntimeSession
+from api.func.reader_pipeline.config_schema import OutputConfig, RuntimeConfig
 
 
 def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_thr: float) -> np.ndarray:
@@ -46,7 +46,7 @@ def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_thr: float) -> np.ndarr
     return np.asarray(keep, dtype=np.int64)
 
 
-def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeSession) -> None:
+def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) -> None:
     """
     Modifica IN-PLACE las columnas 0..3 (xyxy) de 'dets_xyxy' para convertir
     de coordenadas en el ESPACIO DEL TENSOR (input_width x input_height)
@@ -94,7 +94,7 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeSession)
     boxes[:, 3] = np.clip(y2, 0.0, H0)
 
 
-def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeSession) -> Callable[[Sequence[Sequence[float]]], List[List[float]]]:
+def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]]], List[List[float]]]:
     """
     Devuelve un callable que toma detecciones en layout:
         [x1, y1, x2, y2, score, class_id]   (floats)  EN EL ESPACIO DEL TENSOR,

@@ -49,12 +49,12 @@ class RuntimeShapes(BaseModel):
     input_height: int = 0
     orig_width: int = 0
     orig_height: int = 0
-    metadata_letter: Optional[Dict[str, Union[float, bool]]] = {
+    metadata_letter: Optional[Dict[str, Union[float, bool]]] = Field(default_factory= lambda: {
         "scale": 1.0,
         "pad_left": 0.0,
         "pad_top": 0.0,
         "letterbox_used": False
-    }
+    })
     channels: int = 3
     out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
 
@@ -78,7 +78,7 @@ class TfliteRuntimeConfig(BaseModel):
     delegate_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
 class RuntimeConfig(BaseModel):
-    runTimeShapes: Optional[RuntimeShapes]
+    runTimeShapes: Optional[RuntimeShapes] = Field(default_factory=RuntimeShapes)
     backend: BACKEND = "onnxruntime"
     device: Literal["cpu", "gpu"] = "cpu"
     threads: ThreadsConfig = Field(default_factory=ThreadsConfig)
