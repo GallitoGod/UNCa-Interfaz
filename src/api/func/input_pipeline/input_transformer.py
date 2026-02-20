@@ -6,14 +6,14 @@ import cv2
 def build_letterbox(pad_color, runtime):
     """
     Letterbox preprocessor builder.
-    - Lee input_width/input_height desde runtime.runTimeShapes (source of truth).
+    - Lee input_width/input_height desde runtime.runtimeShapes (source of truth).
     - Calcula scale/pads cuando cambia el tamaño del frame (cache por shape).
-    - Aplica resize + padding y actualiza runtime.runTimeShapes.metadata_letter.
+    - Aplica resize + padding y actualiza runtime.runtimeShapes.metadata_letter.
     """
 
-    shapes = runtime.runTimeShapes
+    shapes = runtime.runtimeShapes
     if shapes is None:
-        raise ValueError("RuntimeConfig.runTimeShapes no puede ser None para letterbox")
+        raise ValueError("RuntimeConfig.runtimeShapes no puede ser None para letterbox")
 
     iw = int(shapes.input_width)
     ih = int(shapes.input_height)
@@ -69,8 +69,8 @@ def build_letterbox(pad_color, runtime):
 
 def build_preprocessor(config: InputConfig, runtime: RuntimeConfig) -> Callable[[np.ndarray], np.ndarray]:
     try:
-        runtime.input_width  = int(config.width)
-        runtime.input_height = int(config.height)
+        runtime.runtimeShapes.input_width  = int(config.width)
+        runtime.runtimeShapes.input_height = int(config.height)
 
         steps = []
         if config.letterbox and config.preserve_aspect_ratio:
@@ -91,10 +91,10 @@ def build_preprocessor(config: InputConfig, runtime: RuntimeConfig) -> Callable[
 
         def preprocess(img):
             h, w = img.shape[:2]
-            runtime.orig_width  = int(w)
-            runtime.orig_height = int(h)
+            runtime.runtimeShapes.orig_width  = int(w)
+            runtime.runtimeShapes.orig_height = int(h)
             if not (config.letterbox and config.preserve_aspect_ratio):
-                runtime.metadata_letter = {
+                runtime.runtimeShapes.metadata_letter = {
                     "scale": 1.0,
                     "pad_left": 0.0,
                     "pad_top":  0.0,

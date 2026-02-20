@@ -78,7 +78,7 @@ class TfliteRuntimeConfig(BaseModel):
     delegate_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
 class RuntimeConfig(BaseModel):
-    runTimeShapes: Optional[RuntimeShapes] = Field(default_factory=RuntimeShapes)
+    runtimeShapes: Optional[RuntimeShapes] = Field(default_factory=RuntimeShapes)
     backend: BACKEND = "onnxruntime"
     device: Literal["cpu", "gpu"] = "cpu"
     threads: ThreadsConfig = Field(default_factory=ThreadsConfig)

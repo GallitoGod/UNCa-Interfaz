@@ -1,7 +1,7 @@
-from config_schema import RuntimeConfig
-from forms.keras_load import kerasLoader as Keras
-from forms.tflite_load import tfliteLoader as Tflite
-from forms.onnx_load import onnxLoader as Onnx
+from .config_schema import RuntimeConfig
+from .forms.keras_load import kerasLoader as Keras
+from .forms.tflite_load import tfliteLoader as Tflite
+from .forms.onnx_load import onnxLoader as Onnx
 
 class Model_loader:
 
