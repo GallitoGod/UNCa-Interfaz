@@ -42,14 +42,14 @@ class InputConfig(BaseModel):
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
     color_order: Literal["RGB", "BGR", "GRAY"] = "RGB"
-    input_config: InputDetection = None # <---  Aca era 'input_tensor', lo cual no es correcto.
+    input_str: InputDetection = None # <---  Aca era 'input_tensor', lo cual no es correcto.
 
 class RuntimeShapes(BaseModel):
     input_width: int = 0
     input_height: int = 0
     orig_width: int = 0
     orig_height: int = 0
-    metadata_letter: Optional[Dict[str, Union[float, bool]]] = Field(default_factory= lambda: {
+    metadata_letter: Dict[str, Union[float, bool]] = Field(default_factory= lambda: {
         "scale": 1.0,
         "pad_left": 0.0,
         "pad_top": 0.0,

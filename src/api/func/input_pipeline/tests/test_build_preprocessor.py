@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from api.func.input_pipeline.input_transformer import build_preprocessor
-from api.func.reader_pipeline.config_schema import InputConfig
+from api.func.reader_pipeline.config_schema import InputConfig, RuntimeConfig, RuntimeShapes
 
 
 class DummyRuntime:
@@ -28,8 +28,22 @@ def test_preprocessor_with_letterbox_and_scaling_and_normalization():
         preserve_aspect_ratio=True,             #preserve_aspect_ratio: Optional[bool] = True               
         color_order="RGB",                      #color_order: Optional[Literal["RGB", "BGR", "GRAY"]] = "RGB"
         input_tensor= None                      #input_tensor: Optional[InputTensorConfig] = None                       
-    )                                           
-    runtime = DummyRuntime()
+    )                        
+    rmSh = RuntimeShapes(
+        input_width = 0,
+        input_height = 0,
+        orig_width = 0,
+        orig_height = 0,
+        metadata_letter = {
+            "scale": 1.0,
+            "pad_left": 0.0,
+            "pad_top": 0.0,
+            "letterbox_used": False
+        },
+        channels = 3,
+        out_coords_space = "normalized_0_1"
+    )           
+    runtime = RuntimeConfig(runtimeShapes=rmSh)
     preprocess_fn = build_preprocessor(cfg, runtime)
 
     img = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
@@ -42,7 +56,7 @@ def test_preprocessor_with_letterbox_and_scaling_and_normalization():
     assert np.allclose(out, (1.0 - 0.5) / 0.5, atol=1e-6)
 
     # metadata_letter debe haberse seteado
-    assert runtime.metadata_letter["letterbox_used"] is True
+    assert runtime.runtimeShapes.metadata_letter["letterbox_used"] is True
 
 
 def test_preprocessor_without_letterbox():
@@ -60,15 +74,28 @@ def test_preprocessor_without_letterbox():
         color_order="RGB",
         input_tensor=None
     )
-
-    runtime = DummyRuntime()
+    rmSh = RuntimeShapes(
+        input_width = 0,
+        input_height = 0,
+        orig_width = 0,
+        orig_height = 0,
+        metadata_letter = {
+            "scale": 1.0,
+            "pad_left": 0.0,
+            "pad_top": 0.0,
+            "letterbox_used": False
+        },
+        channels = 3,
+        out_coords_space = "normalized_0_1"
+    )           
+    runtime = RuntimeConfig(runtimeShapes=rmSh)
     preprocess_fn = build_preprocessor(cfg, runtime)
 
     img = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
     out = preprocess_fn(img)
 
     assert out.shape == (240, 320, 3)
-    assert runtime.metadata_letter["letterbox_used"] is False
+    assert runtime.runtimeShapes.metadata_letter["letterbox_used"] is False
 
 
 def test_preprocessor_invalid_config():
