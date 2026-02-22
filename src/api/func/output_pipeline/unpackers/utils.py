@@ -87,3 +87,9 @@ def decode_anchor_deltas_to_yxyx(
 '''
     Hay una deuda con el sistema en la normalizacion, tengo que arreglarlo en algun momento.
 '''
+
+def rt_shapes(runtime):
+    sh = runtime.runtimeShapes
+    if sh is None:
+        raise ValueError("RuntimeConfig.runtimeShapes es requerido para unpackers")
+    return sh

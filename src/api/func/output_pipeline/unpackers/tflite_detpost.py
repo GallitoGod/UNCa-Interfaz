@@ -1,7 +1,7 @@
 # api/func/output_pipeline/unpackers/tflite_detpost.py
 from __future__ import annotations
 import numpy as np
-from .utils import to_2d, scale_xyxy_inplace, stack_as_float32_matrix
+from .utils import to_2d, scale_xyxy_inplace, stack_as_float32_matrix, rt_shapes
 
 
 
@@ -16,7 +16,8 @@ def build_tflite_detpost(output_cfg):
     Salida:  filas [ymin, xmin, ymax, xmax, score, class_id]
     Nota: no se re-aplica umbral (ya viene filtrado).
     """
-    def fn(raw_output, runtime=None):
+    def fn(raw_output, sh=None):
+        runtime = rt_shapes(sh)
         boxes, scores, classes = raw_output[0], raw_output[1], raw_output[2]
         count = int(np.asarray(raw_output[3]).reshape(-1)[0]) if len(raw_output) >= 4 else None
 

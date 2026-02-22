@@ -1,11 +1,12 @@
 # api/func/output_pipeline/unpackers/boxes_scores.py
 from __future__ import annotations
 import numpy as np
-from .utils import to_2d, scale_xyxy_inplace, stack_as_float32_matrix
+from .utils import to_2d, scale_xyxy_inplace, stack_as_float32_matrix, rt_shapes
 
 
 def build_boxes_scores(output_cfg):
-    def fn(raw_output, runtime=None):
+    def fn(raw_output, sh=None):
+        runtime = rt_shapes(sh)
         a, b = raw_output[0], raw_output[1]
         A, B = np.asarray(a), np.asarray(b)
 

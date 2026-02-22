@@ -1,7 +1,7 @@
 # api/func/output_pipeline/unpackers/yolo_flat.py
 from __future__ import annotations
 import numpy as np
-from .utils import to_2d, scale_cxcywh_inplace, stack_as_float32_matrix
+from .utils import to_2d, scale_cxcywh_inplace, stack_as_float32_matrix, rt_shapes
 
 def build_yolo_flat(output_cfg):
     """
@@ -9,7 +9,8 @@ def build_yolo_flat(output_cfg):
     Salida:  filas [cx, cy, w, h, score=obj*max_class, class_id]
     Nota: conserva cxcywh (el adapter se encargara de colocarlo correctamente).
     """
-    def fn(raw_output, runtime=None):
+    def fn(raw_output, sh=None):
+        runtime = rt_shapes(sh)
         arr = to_2d(raw_output).astype(np.float32, copy=False)  # (N, 5+C)
         if arr.size == 0 or arr.shape[1] < 6:
             return np.empty((0, 6), dtype=np.float32)

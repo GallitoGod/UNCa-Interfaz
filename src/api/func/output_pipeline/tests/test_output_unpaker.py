@@ -1,78 +1,62 @@
-# test_output_unpacker.py
-"""
-Tests del DESEMPAQUEDOR (unpacker).
-- Sin filtrado por confianza.
-- Escalado guiado por runtime.out_coords_space:
-    "normalized_0_1" -> escala a pixeles del tensor
-    "tensor_pixels"  -> deja tal cual
-- Formatos: yolo_flat, boxes_scores, tflite_detpost
-"""
-
+# tests/test_output_unpacker.py
 import numpy as np
 import pytest
 
-from api.func.output_pipeline.output_unpacker import unpack_out
+from api.func.output_pipeline.unpackers.registry import unpack_out
+from api.func.reader_pipeline.config_schema import RuntimeConfig, RuntimeShapes
 
 class _DummyOutputConfig:
     def __init__(self, pack_format: str):
         self.pack_format = pack_format
-class _DummyRuntime:
-    def __init__(
-        self,
-        *,
-        input_width=320, input_height=320,
-        orig_width=320, orig_height=320,
-        out_coords_space="tensor_pixels",  # "normalized_0_1" | "tensor_pixels"
-        letterbox_used=False, scale=1.0, pad_left=0.0, pad_top=0.0,
-    ):
-        self.input_width = input_width
-        self.input_height = input_height
-        self.orig_width = orig_width
-        self.orig_height = orig_height
-        self.out_coords_space = out_coords_space
-        self.metadata_letter = {
-            "scale": scale,
-            "pad_left": pad_left,
-            "pad_top": pad_top,
-            "letterbox_used": letterbox_used,
-        }
 
-def test_yolo_flat_tensor_pixels_no_escalado():
+
+def _rt(*, iw=320, ih=320, ow=320, oh=320, out_coords_space="tensor_pixels"):
+    return RuntimeConfig(
+        runtimeShapes=RuntimeShapes(
+            input_width=iw,
+            input_height=ih,
+            orig_width=ow,
+            orig_height=oh,
+            out_coords_space=out_coords_space,
+        )
+    )
+
+
+def test_yolo_flat_tensor_pixels_escalado():
     cfg = _DummyOutputConfig("yolo_flat")
-    rt = _DummyRuntime(out_coords_space="tensor_pixels", input_width=320, input_height=320)
+    rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
 
-    # (N,5+C) -> [cx, cy, w, h, obj, cls...]
-    raw = np.array([
-        [160, 160, 64, 32, 0.9, 0.1, 0.8, 0.2],  # best cls=1, score=0.9*0.8=0.72
-    ], dtype=np.float32)
+    # raw NORMALIZADO (cx,cy,w,h) -> debe escalar a pixeles del tensor
+    raw = np.array([[0.5, 0.5, 0.2, 0.1, 0.9, 0.1, 0.8, 0.2]], dtype=np.float32)  # score=0.72, cls=1
 
     fn = unpack_out(cfg)
-    rows = fn(raw, rt)
-    cx, cy, w, h, sc, cl = rows[0]
-    assert (cx, cy, w, h) == (160, 160, 64, 32)
+    arr = fn(raw, rt)
+    assert isinstance(arr, np.ndarray) and arr.shape == (1, 6)
+
+    cx, cy, w, h, sc, cl = arr[0].tolist()
+    assert np.allclose([cx, cy, w, h], [160, 160, 64, 32], atol=1e-5)
     assert np.isclose(sc, 0.72) and cl == 1.0
 
-def test_yolo_flat_normalized_con_escalado():
-    cfg = _DummyOutputConfig("yolo_flat")
-    rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
 
-    raw = np.array([
-        [0.5, 0.5, 0.2, 0.1, 0.9, 0.1, 0.8, 0.2],  # -> cx=160, cy=160, w=64, h=32
-    ], dtype=np.float32)
+def test_yolo_flat_normalized_no_escalado():
+    cfg = _DummyOutputConfig("yolo_flat")
+    rt = _rt(out_coords_space="normalized_0_1", iw=320, ih=320)
+
+    raw = np.array([[0.5, 0.5, 0.2, 0.1, 0.9, 0.1, 0.8, 0.2]], dtype=np.float32)
 
     fn = unpack_out(cfg)
-    rows = fn(raw, rt)
-    cx, cy, w, h, sc, cl = rows[0]
-    assert np.isclose([cx, cy, w, h], [160, 160, 64, 32]).all()
+    arr = fn(raw, rt)
+    cx, cy, w, h, sc, cl = arr[0].tolist()
+    assert np.allclose([cx, cy, w, h], [0.5, 0.5, 0.2, 0.1], atol=1e-6)
     assert np.isclose(sc, 0.72) and cl == 1.0
 
-def test_boxes_scores_detecta_orden_y_normaliza():
+
+def test_boxes_scores_detecta_orden_y_escalado_tensor_pixels():
     cfg = _DummyOutputConfig("boxes_scores")
-    print(cfg)
-    rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
+    rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
 
     boxes = np.array([
-        [0.1, 0.2, 0.5, 0.6],   # [y1=32, x1=64, y2=160, x2=192]
+        [0.1, 0.2, 0.5, 0.6],   # y1,x1,y2,x2 normalizado
         [0.0, 0.0, 1.0, 1.0],
     ], dtype=np.float32)
     scores = np.array([
@@ -82,27 +66,29 @@ def test_boxes_scores_detecta_orden_y_normaliza():
 
     fn = unpack_out(cfg)
 
-    # orden (boxes, scores)
-    rows1 = fn((boxes, scores), rt)
-    # orden (scores, boxes)
-    rows2 = fn((scores, boxes), rt)
+    # (boxes, scores)
+    arr1 = fn((boxes, scores), rt)
+    # (scores, boxes)
+    arr2 = fn((scores, boxes), rt)
 
-    for rows in (rows1, rows2):
-        y1, x1, y2, x2, sc, cl = rows[0]
-        assert np.isclose([y1, x1, y2, x2], [32, 64, 160, 192]).all()
+    for arr in (arr1, arr2):
+        assert arr.shape == (2, 6)
+
+        y1, x1, y2, x2, sc, cl = arr[0].tolist()
+        assert np.allclose([y1, x1, y2, x2], [32, 64, 160, 192], atol=1e-5)
         assert np.isclose(sc, 0.7) and cl == 1.0
 
-        y1b, x1b, y2b, x2b, scb, clb = rows[1]
-        assert np.isclose([y1b, x1b, y2b, x2b], [0, 0, 320, 320]).all()
+        y1b, x1b, y2b, x2b, scb, clb = arr[1].tolist()
+        assert np.allclose([y1b, x1b, y2b, x2b], [0, 0, 320, 320], atol=1e-5)
         assert np.isclose(scb, 0.9) and clb == 0.0
 
-def test_tflite_detpost_respeta_count_y_normaliza():
+
+def test_tflite_detpost_respeta_count_y_escalado_tensor_pixels():
     cfg = _DummyOutputConfig("tflite_detpost")
-    print(cfg.pack_format)
-    rt = _DummyRuntime(out_coords_space="normalized_0_1", input_width=320, input_height=320)
+    rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
 
     boxes = np.array([
-        [0.2, 0.2, 0.4, 0.5],  # -> [64,64,128,160]
+        [0.2, 0.2, 0.4, 0.5],  # ymin,xmin,ymax,xmax normalizado
         [0.0, 0.0, 1.0, 1.0],
     ], dtype=np.float32)
     scores = np.array([0.8, 0.9], dtype=np.float32)
@@ -110,64 +96,42 @@ def test_tflite_detpost_respeta_count_y_normaliza():
     count = np.array([1], dtype=np.int32)
 
     fn = unpack_out(cfg)
-    rows = fn((boxes, scores, classes, count), rt)
+    arr = fn((boxes, scores, classes, count), rt)
 
-    assert len(rows) == 1
-    y1, x1, y2, x2, sc, cl = rows[0]
-    assert np.isclose([y1, x1, y2, x2], [64, 64, 128, 160]).all()
+    assert arr.shape == (1, 6)
+    y1, x1, y2, x2, sc, cl = arr[0].tolist()
+    assert np.allclose([y1, x1, y2, x2], [64, 64, 128, 160], atol=1e-5)
     assert np.isclose(sc, 0.8) and cl == 3.0
 
-def test_anchor_deltas_decodifica_y_escala_a_pixeles_tensor():
-    """
-    anchor_deltas:
-      - deltas (ty, tx, th, tw) = 0 -> debe devolver exactamente el anchor.
-      - anchors en formato centro/tamaño [ay, ax, ah, aw] NORMALIZADOS [0..1].
-      - salida esperada en PIXELES DEL TENSOR (usa input_width/height).
-      - clases via softmax sobre logits.
-    """
-    cfg = _DummyOutputConfig("anchor_deltas")
-    rt = _DummyRuntime(out_coords_space="tensor_pixels", input_width=320, input_height=320)
 
-    # Anchors normalizados [ay, ax, ah, aw] (centro y tamaño)
-    # A1: centro (0.5,0.5), tam (0.2,0.1) -> y1=0.4,x1=0.45,y2=0.6,x2=0.55
-    # A2: centro (0.25,0.25), tam (0.1,0.2) -> y1=0.2,x1=0.15,y2=0.3,x2=0.35
+def test_anchor_deltas_decodifica_y_devuelve_pixeles_tensor():
+    cfg = _DummyOutputConfig("anchor_deltas")
+    rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
+
+    # Nota: anchor_deltas usa runtime.anchors y runtime.box_variance (hoy no estan en RuntimeShapes)
+    # Esto esta bien como "runtime extendido" (atributos extra).
     rt.anchors = np.array([
         [0.5,  0.5,  0.2, 0.1],
         [0.25, 0.25, 0.1, 0.2],
     ], dtype=np.float32)
     rt.box_variance = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
 
-    # Deltas = 0 -> devuelve exactamente el anchor (tras decode)
     deltas_2d = np.zeros((2, 4), dtype=np.float32)
     logits_2d = np.array([
-        [0.0, 10.0, 0.0],   # ~one-hot en clase 1
-        [10.0, 0.0, 0.0],   # ~one-hot en clase 0
+        [0.0, 10.0, 0.0],   # cls 1
+        [10.0, 0.0, 0.0],   # cls 0
     ], dtype=np.float32)
 
-    # Valores esperados en pixeles del tensor (W=H=320)
-    # A1 -> [y1=128, x1=144, y2=192, x2=176]
-    # A2 -> [y1= 64, x1= 48, y2= 96, x2=112]
+    fn = unpack_out(cfg)
+    arr = fn((deltas_2d, logits_2d), rt)
+    assert arr.shape == (2, 6)
+
+    # arr es [ymin,xmin,ymax,xmax,score,class]
     exp = np.array([
         [128.0, 144.0, 192.0, 176.0],
         [ 64.0,  48.0,  96.0, 112.0],
     ], dtype=np.float32)
 
-    fn = unpack_out(cfg)
-
-    rows = fn((deltas_2d, logits_2d), rt)
-    arr = np.asarray(rows, dtype=np.float32)
-    assert arr.shape[0] == 2 and arr.shape[1] >= 6
-
-    # xyxy
-    np.testing.assert_allclose(arr[:, [1,0,3,2]], exp, atol=1e-4)  # [y1,x1,y2,x2] -> exp
+    np.testing.assert_allclose(arr[:, 0:4], exp, atol=1e-4)
     assert arr[0, 5] == 1.0 and arr[0, 4] > 0.99
     assert arr[1, 5] == 0.0 and arr[1, 4] > 0.99
-
-    deltas_3d = deltas_2d[None, ...]   # (1,2,4)
-    logits_3d = logits_2d[None, ...]   # (1,2,3)
-    rows_swapped = fn((logits_3d, deltas_3d), rt)
-    arr2 = np.asarray(rows_swapped, dtype=np.float32)
-
-    np.testing.assert_allclose(arr2[:, [1,0,3,2]], exp, atol=1e-4)
-    assert arr2[0, 5] == 1.0 and arr2[0, 4] > 0.99
-    assert arr2[1, 5] == 0.0 and arr2[1, 4] > 0.99

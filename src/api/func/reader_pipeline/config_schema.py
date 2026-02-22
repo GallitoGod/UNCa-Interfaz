@@ -10,15 +10,11 @@ class InputDetection(BaseModel):
     quantized: bool = False
 
 class TensorDetection(BaseModel):
-    '''
-        Tengo que darle valores por defecto para que en OutputConfig pueda usar 
-    Filed(default=TensorDetection).
-    '''
-    box_format: Literal["xyxy", "cxcywh", "yxyx"]
-    coordinates: Dict[str, int]
-    confidence_index: int
-    class_index: int
-    num_classes: Optional[int]
+    box_format: Literal["xyxy", "cxcywh", "yxyx"] = "xyxy"
+    coordinates: Dict[str, int] = {"x1":1, "y1": 2, "x2": 3, "y2": 4}
+    confidence_index: int = 6
+    class_index: int = 5
+    num_classes: Optional[int] = None
 
 class OutputConfig(BaseModel):
     apply_conf_filter: bool = True
@@ -27,7 +23,7 @@ class OutputConfig(BaseModel):
     top_k: int = False
     nms_per_class: bool = False
     nms_threshold: float = 0.45
-    tensor_structure: Optional[TensorDetection]
+    tensor_structure: TensorDetection = Field(default_factory=TensorDetection)
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
 
 class InputConfig(BaseModel):

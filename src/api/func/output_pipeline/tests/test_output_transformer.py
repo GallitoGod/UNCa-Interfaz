@@ -68,11 +68,12 @@ def test_confidence_threshold_en_vivo():
         [30, 30, 40, 40, 0.70, 1.0],
         [50, 50, 60, 60, 0.90, 2.0],
     ]
-    out1 = post(rows)
+    arr = np.array(rows, dtype=np.float32)
+    out1 = post(arr)
     assert len(out1) == 1 and np.isclose(out1[0][4], 0.90)
 
     cfg.confidence_threshold = 0.5
-    out2 = post(rows)
+    out2 = post(arr)
     assert len(out2) == 2
     assert np.allclose([r[4] for r in out2], [0.90, 0.70], atol=1e-6)
 
@@ -91,12 +92,12 @@ def test_nms_agnostico_vs_por_clase():
         [0,   0,   100, 100, 0.9, 0.0],  # cls 0
         [10,  10,  110, 110, 0.8, 1.0],  # cls 1 (alto solape)
     ]
-
+    arr = np.array(rows, dtype=np.float32)
     post_a = buildPostprocessor(cfg_a, rt)
     post_c = buildPostprocessor(cfg_c, rt)
 
-    out_a = post_a(rows)
-    out_c = post_c(rows)
+    out_a = post_a(arr)
+    out_c = post_c(arr)
 
     assert len(out_a) == 1   # agnostico elimina una
     assert len(out_c) == 2   # por clase conserva ambas
@@ -113,7 +114,8 @@ def test_topk_prev_nms():
         [4, 4, 14, 14, 0.8, 0.0],
         [6, 6, 16, 16, 0.7, 0.0],
     ]
-    out = post(rows)
+    arr = np.array(rows, dtype=np.float32)
+    out = post(arr)
     assert len(out) == 2
     assert np.allclose([o[4] for o in out], [0.9, 0.8], atol=1e-6)
 
@@ -127,7 +129,8 @@ def test_undo_letterbox():
     post = buildPostprocessor(cfg, rt)
 
     rows = [[50, 95, 60, 105, 0.9, 1.0]]  # (x,y) tensor -> (100,50) original
-    out = post(rows)
+    arr = np.array(rows, dtype=np.float32)
+    out = post(arr)
     x1, y1, x2, y2 = out[0][:4]
     assert np.isclose([x1, y1, x2, y2], [100, 50, 120, 70], atol=1e-6).all()
 
@@ -141,13 +144,19 @@ def test_undo_resize_directo():
     post = buildPostprocessor(cfg, rt)
 
     rows = [[160, 80, 200, 120, 0.8, 0.0]]
-    out = post(rows)
+    arr = np.array(rows, dtype=np.float32)
+    out = post(arr)
     x1, y1, x2, y2 = out[0][:4]
     assert np.isclose([x1, y1, x2, y2], [320, 90, 400, 135], atol=1e-6).all()
 
 def test_tflite_detpost_por_defecto_no_refiltra_ni_nms():
-    cfg = _DummyOutputConfig("tflite_detpost", confidence_threshold=0.95,
-                             apply_confidence_filter=None, apply_nms=None)
+    cfg = _DummyOutputConfig(
+        "tflite_detpost",
+        pack_format="tflite_detpost",
+        confidence_threshold=0.95,
+        apply_confidence_filter=None,
+        apply_nms=None
+    )
     rt = _DummyRuntime()
     post = buildPostprocessor(cfg, rt)
 
@@ -155,5 +164,6 @@ def test_tflite_detpost_por_defecto_no_refiltra_ni_nms():
         [10, 10, 20, 20, 0.5, 0.0],
         [30, 30, 40, 40, 0.6, 1.0],
     ]
-    out = post(rows)
+    arr = np.array(rows, dtype=np.float32)
+    out = post(arr)
     assert len(out) == 2  # se respetan tal cual

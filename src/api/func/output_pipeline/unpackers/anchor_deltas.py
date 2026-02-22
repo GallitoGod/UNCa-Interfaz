@@ -2,7 +2,7 @@
 from typing import Any, List
 import numpy as np
 from api.func.reader_pipeline.config_schema import OutputConfig
-from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix
+from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix, rt_shapes
 
 '''
     Nota 1 — to_2d en anchor_deltas: cuidado con batch
@@ -26,7 +26,8 @@ def build_anchor_deltas(output_cfg: OutputConfig):
       - input_width/height
     Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PÍXELES DEL TENSOR. <-- Hasta ahora
     """
-    def _fn(raw_output: Any, runtime=None) -> np.ndarray:
+    def _fn(raw_output: Any, sh=None) -> np.ndarray:
+        runtime = rt_shapes(sh)
         if runtime is None or getattr(runtime, "anchors", None) is None:
             raise ValueError("anchor_deltas: falta runtime.anchors (N,4) normalizados.")
         variance = getattr(runtime, "box_variance", None)

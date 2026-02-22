@@ -9,8 +9,6 @@ Contrato probado:
 
 import numpy as np
 import pytest
-
-
 from api.func.output_pipeline.output_adapter import _generate_box_converter
 
 

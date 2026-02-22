@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 import numpy as np
-from .utils import to_2d
+from .utils import to_2d, rt_shapes
 
 def build_raw(output_cfg):
     """
@@ -15,7 +15,8 @@ def build_raw(output_cfg):
       - vector 1D -> (1,F)
       - tupla/lista de outputs -> (1,K) concatenado (debug)
     """
-    def fn(raw_output: Any, runtime=None) -> np.ndarray:
+    def fn(raw_output: Any, sh=None) -> np.ndarray:
+        runtime = rt_shapes(sh)
         # Caso: multiples outputs
         if isinstance(raw_output, (list, tuple)) and len(raw_output) > 0 and not np.isscalar(raw_output[0]):
             try:
