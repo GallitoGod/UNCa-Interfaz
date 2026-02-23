@@ -4,12 +4,21 @@ import numpy as np
 from api.func.reader_pipeline.config_schema import OutputConfig
 from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix, rt_shapes
 
+
+'''
+    IMPORTANTE:
+        anchor_deltas todavia no funciona. Tengo que encontrar la forma de 
+    mantener un sistema liviano tipo runtime_states para no agregar todo a runtimeConfig.
+        Por ahora solo quiero ver que tan bien anda la API. En otro momento voy a arreglar este desempaquetador.
+'''
+
+
 '''
     Nota 1 — to_2d en anchor_deltas: cuidado con batch
-    Si te llega (1,N,4), to_2d lo convierte a (N,4) perfecto. Bien.
+    Si llega (1,N,4), to_2d lo convierte a (N,4) perfecto. Bien.
     
     Nota 2 — politica de escalado
-    Puse en docstring que anchor_deltas devuelve “PÍXELES DEL TENSOR”.
+    Puse en docstring que anchor_deltas devuelve “PIXELES DEL TENSOR”.
     Eso esta perfecto, pero mas adelante voy a pasar a lazy scaling, este unpacker va a ser el primero en cambiar a normalized.
 '''
 
@@ -22,9 +31,9 @@ def build_anchor_deltas(output_cfg: OutputConfig):
         class_scores: (1,N,C) o (N,C)  -> logits o probas
     Requiere en runtime:
       - anchors (N,4) normalizados [ay, ax, ah, aw]
-      - box_variance (4,) típicamente [0.1, 0.1, 0.2, 0.2]
+      - box_variance (4,) tipicamente [0.1, 0.1, 0.2, 0.2]
       - input_width/height
-    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PÍXELES DEL TENSOR. <-- Hasta ahora
+    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PIXELES DEL TENSOR. <-- Hasta ahora
     """
     def _fn(raw_output: Any, sh=None) -> np.ndarray:
         runtime = rt_shapes(sh)
@@ -65,7 +74,7 @@ def build_anchor_deltas(output_cfg: OutputConfig):
         # 2) decodificar deltas -> yxyx NORMALIZADO
         ymin, xmin, ymax, xmax = decode_anchor_deltas_to_yxyx(deltas_2d, anchors, np.asarray(variance))
 
-        # 3) escalar a píxeles del tensor (lo espera el post para undo)
+        # 3) escalar a pixeles del tensor (lo espera el post para undo)
         W, H = int(runtime.input_width), int(runtime.input_height)
         ymin *= H; ymax *= H
         xmin *= W; xmax *= W

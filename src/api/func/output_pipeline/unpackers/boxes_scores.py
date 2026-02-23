@@ -8,15 +8,16 @@ def build_boxes_scores(output_cfg):
     def fn(raw_output, sh=None):
         runtime = rt_shapes(sh)
         a, b = raw_output[0], raw_output[1]
-        A, B = np.asarray(a), np.asarray(b)
+        A = to_2d(a)
+        B = to_2d(b)
 
         # Detectar boxes por ultima dimension = 4
         if A.shape[-1] == 4:
-            boxes = to_2d(a).astype(np.float32, copy=False)  # (N,4) [ymin,xmin,ymax,xmax]
-            scores = to_2d(b).astype(np.float32, copy=False) # (N,C)
+            boxes = A.astype(np.float32, copy=True)  # (N,4) [ymin,xmin,ymax,xmax]
+            scores = B.astype(np.float32, copy=False) # (N,C)
         else:
-            boxes = to_2d(b).astype(np.float32, copy=False)
-            scores = to_2d(a).astype(np.float32, copy=False)
+            boxes = B.astype(np.float32, copy=True)
+            scores = A.astype(np.float32, copy=False)
 
         if boxes.size == 0:
             return np.empty((0, 6), dtype=np.float32)

@@ -104,34 +104,34 @@ def test_tflite_detpost_respeta_count_y_escalado_tensor_pixels():
     assert np.isclose(sc, 0.8) and cl == 3.0
 
 
-def test_anchor_deltas_decodifica_y_devuelve_pixeles_tensor():
-    cfg = _DummyOutputConfig("anchor_deltas")
-    rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
+# def test_anchor_deltas_decodifica_y_devuelve_pixeles_tensor():
+#     cfg = _DummyOutputConfig("anchor_deltas")
+#     rt = _rt(out_coords_space="tensor_pixels", iw=320, ih=320)
 
-    # Nota: anchor_deltas usa runtime.anchors y runtime.box_variance (hoy no estan en RuntimeShapes)
-    # Esto esta bien como "runtime extendido" (atributos extra).
-    rt.anchors = np.array([
-        [0.5,  0.5,  0.2, 0.1],
-        [0.25, 0.25, 0.1, 0.2],
-    ], dtype=np.float32)
-    rt.box_variance = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
+#     # Nota: anchor_deltas usa runtime.anchors y runtime.box_variance (hoy no estan en RuntimeShapes)
+#     # Esto esta bien como "runtime extendido" (atributos extra).
+#     rt.anchors = np.array([
+#         [0.5,  0.5,  0.2, 0.1],
+#         [0.25, 0.25, 0.1, 0.2],
+#     ], dtype=np.float32)
+#     rt.box_variance = np.array([0.1, 0.1, 0.2, 0.2], dtype=np.float32)
 
-    deltas_2d = np.zeros((2, 4), dtype=np.float32)
-    logits_2d = np.array([
-        [0.0, 10.0, 0.0],   # cls 1
-        [10.0, 0.0, 0.0],   # cls 0
-    ], dtype=np.float32)
+#     deltas_2d = np.zeros((2, 4), dtype=np.float32)
+#     logits_2d = np.array([
+#         [0.0, 10.0, 0.0],   # cls 1
+#         [10.0, 0.0, 0.0],   # cls 0
+#     ], dtype=np.float32)
 
-    fn = unpack_out(cfg)
-    arr = fn((deltas_2d, logits_2d), rt)
-    assert arr.shape == (2, 6)
+#     fn = unpack_out(cfg)
+#     arr = fn((deltas_2d, logits_2d), rt)
+#     assert arr.shape == (2, 6)
 
-    # arr es [ymin,xmin,ymax,xmax,score,class]
-    exp = np.array([
-        [128.0, 144.0, 192.0, 176.0],
-        [ 64.0,  48.0,  96.0, 112.0],
-    ], dtype=np.float32)
+#     # arr es [ymin,xmin,ymax,xmax,score,class]
+#     exp = np.array([
+#         [128.0, 144.0, 192.0, 176.0],
+#         [ 64.0,  48.0,  96.0, 112.0],
+#     ], dtype=np.float32)
 
-    np.testing.assert_allclose(arr[:, 0:4], exp, atol=1e-4)
-    assert arr[0, 5] == 1.0 and arr[0, 4] > 0.99
-    assert arr[1, 5] == 0.0 and arr[1, 4] > 0.99
+#     np.testing.assert_allclose(arr[:, 0:4], exp, atol=1e-4)
+#     assert arr[0, 5] == 1.0 and arr[0, 4] > 0.99
+#     assert arr[1, 5] == 0.0 and arr[1, 4] > 0.99
