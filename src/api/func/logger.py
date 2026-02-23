@@ -1,6 +1,7 @@
 # logger.py
 import logging
 from collections import deque
+from typing import Optional, Dict, Any
 import numpy as np
 import os
 
@@ -68,7 +69,7 @@ class PerfMeter:
         self.t_post.append(post_ms)
         self.t_total.append(total_ms)
 
-    def stats(self) -> dict | None:
+    def stats(self) -> Optional[Dict[str, Any]]:
         if not self.t_total:
             return None
         total = np.asarray(self.t_total, dtype=np.float32)

@@ -8,7 +8,7 @@ from .reader_pipeline import load_model_config
 from .reader_pipeline import Reactive_output_config
 from .input_pipeline import build_preprocessor, generate_input_adapter
 from .output_pipeline import buildPostprocessor, generate_output_adapter
-from .output_pipeline.unpackers import unpack_out
+from .output_pipeline.unpackers.registry import unpack_out
 
 '''   
     Tiene que comportarce como un controlador del backend dependiente de los eventos del cliente.
@@ -163,9 +163,9 @@ class ModelController:
         if not isinstance(unpacked, (list, tuple)):
             unpacked = [unpacked]
         adapted_output = [self.output_adapter(list(r)) for r in unpacked]
-        iw, ih = self.config.runtime.input_width,  self.config.runtime.input_height
-        ow, oh = self.config.runtime.orig_width,   self.config.runtime.orig_height
-        md = self.config.runtime.metadata_letter or {}
+        iw, ih = self.config.runtime.runtimeShapes.input_width,  self.config.runtime.runtimeShapes.input_height
+        ow, oh = self.config.runtime.runtimeShapes.orig_width,   self.config.runtime.runtimeShapes.orig_height
+        md = self.config.runtime.runtimeShapes.metadata_letter or {}
         self.logger.debug("[DBG] input/orig: input=%dx%d orig=%dx%d", iw, ih, ow, oh)
         self.logger.debug("[DBG] letter: %s", md)
         self.logger.debug(f"[DBG] tensor-space (pre-undo): {np.asarray(adapted_output[:3])}")
