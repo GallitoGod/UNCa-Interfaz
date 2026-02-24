@@ -12,7 +12,7 @@
     "auto_pad_color": [114, 114, 114],
     "preserve_aspect_ratio": true,
     "color_order": "RGB",
-    "input_tensor": {
+    "input_str": {
       "layout": "NCHW",
       "dtype": "float32",
       "quantized": false
@@ -38,5 +38,37 @@
       "num_classes": 80
     },
     "pack_format": "raw"
+  },
+  "runtime": {
+    "runtimeShapes": {
+      "input_width": 0,
+      "input_height": 0,
+      "orig_width": 0,
+      "orig_height": 0,
+      "metadata_letter": {
+        "scale": 1.0,
+        "pad_left": 0.0,
+        "pad_top": 0.0,
+        "letterbox_used": false
+      },
+      "channels": 3,
+      "out_coords_space": "normalized_0_1"
+    },
+    "backend": "onnxruntime",
+    "device": "cpu",
+    "threads": {
+      "intra_op": null,
+      "inter_op": null,
+      "num_threads": null
+    },
+    "onnx": {
+      "providers": [],
+      "provider_options": {}
+    },
+    "tflite": null,
+    "warmup": {
+      "runs": 0,
+      "enabled": true
+    }
   }
 }

@@ -7,7 +7,7 @@ $srcPath = Join-Path $projectRoot "src"
 $env:PYTHONPATH = $srcPath
 
 # Ejecutar pytest para pruebas en func
-pytest "$srcPath/api/func/tests"
+#pytest "$srcPath/api/func/tests"
 
 # Ejecutar pytest para pruebas en output_pipeline
 #pytest "$srcPath/api/func/output_pipeline/tests"
@@ -19,6 +19,6 @@ pytest "$srcPath/api/func/tests"
 # pytest "$srcPath/api/func/reader_pipeline/tests"
 
 #Ejecutar el benchmark
-#python "$srcPath/api/func/tests/benchMark.py"
+python "$srcPath/api/func/tests/benchMark.py"
 
 

@@ -48,15 +48,17 @@ def onnxLoader(model_path: str, runtime_cfg, logger=None):
         else:
             session = ort.InferenceSession(model_path, sess_options=so, providers=providers)
 
-        logger.info("ORT available providers:", available)
-        logger.info("ORT desired providers:", desired)
-        logger.info("ORT session providers:", session.get_providers())
-
         input_name = session.get_inputs()[0].name
+
+        logger.info(f"ORT available providers: {available}")
+        logger.info(f"ORT desired providers: {desired}")
+        logger.info(f"ORT session providers: {session.get_providers()}")
+
 
     except Exception as e:
         if logger:
             logger.exception(e)
+        raise
 
     def predict_fn(x):
         # devuelve numpy arrays - NO tolist

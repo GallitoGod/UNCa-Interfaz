@@ -57,8 +57,9 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
         return
 
     boxes = dets_xyxy[:, :4] 
+    rs = getattr(runtime, "runtimeShapes", None)
 
-    md = getattr(runtime, "metadata_letter", {}) or {}
+    md = getattr(rs, "metadata_letter", {}) or {}
     letterbox_usado = bool(md.get("letterbox_used", False))
 
     if letterbox_usado:
@@ -69,10 +70,10 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
         boxes[:, [0, 2]] = (boxes[:, [0, 2]] - pl) / (s + 1e-12)  # x1, x2
         boxes[:, [1, 3]] = (boxes[:, [1, 3]] - pt) / (s + 1e-12)  # y1, y2
     else:
-        W_in = float(getattr(runtime, "input_width",  1) or 1)
-        H_in = float(getattr(runtime, "input_height", 1) or 1)
-        W0   = float(getattr(runtime, "orig_width",   0))
-        H0   = float(getattr(runtime, "orig_height",  0))
+        W_in = float(getattr(rs) or 1)
+        H_in = float(getattr(rs, "input_height", 1) or 1)
+        W0   = float(getattr(rs, "orig_width",   0))
+        H0   = float(getattr(rs, "orig_height",  0))
 
         sx = (W0 / W_in) if W_in > 0 else 1.0
         sy = (H0 / H_in) if H_in > 0 else 1.0
@@ -80,8 +81,8 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
         boxes[:, [0, 2]] *= sx
         boxes[:, [1, 3]] *= sy
 
-    W0 = float(getattr(runtime, "orig_width",  0))
-    H0 = float(getattr(runtime, "orig_height", 0))
+    W0 = float(getattr(rs, "orig_width",  0))
+    H0 = float(getattr(rs, "orig_height", 0))
 
     x1 = np.minimum(boxes[:, 0], boxes[:, 2])
     y1 = np.minimum(boxes[:, 1], boxes[:, 3])
@@ -130,6 +131,7 @@ def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeConfig) -> Call
 
     # ---------funcion-de-postproceso---------
     def _postprocess(arr: np.ndarray) -> List[List[float]]:
+        arr = np.asarray(arr, dtype=np.float32)
         if arr.size == 0:
             return []
 
