@@ -70,7 +70,7 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
         boxes[:, [0, 2]] = (boxes[:, [0, 2]] - pl) / (s + 1e-12)  # x1, x2
         boxes[:, [1, 3]] = (boxes[:, [1, 3]] - pt) / (s + 1e-12)  # y1, y2
     else:
-        W_in = float(getattr(rs) or 1)
+        W_in = float(getattr(rs, "input_width", 1) or 1)
         H_in = float(getattr(rs, "input_height", 1) or 1)
         W0   = float(getattr(rs, "orig_width",   0))
         H0   = float(getattr(rs, "orig_height",  0))
