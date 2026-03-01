@@ -55,14 +55,14 @@
       "out_coords_space": "normalized_0_1"
     },
     "backend": "onnxruntime",
-    "device": "cpu",
+    "device": "gpu",
     "threads": {
       "intra_op": null,
       "inter_op": null,
       "num_threads": null
     },
     "onnx": {
-      "providers": [],
+      "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"],
       "provider_options": {}
     },
     "tflite": null,

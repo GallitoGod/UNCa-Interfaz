@@ -148,7 +148,7 @@ class ModelController:
         me doy una idea del porque: el preprocesado es mas barato porque la entrada es NHWC float32 y el 
         postprocesado es caro por boxes_scores + undo letterbox/escala, probablemente deberia volver a ver 
         la implementacion del undo letterbox (loops o copias merman el rendimiento).
-        Inferencia sigue siendo grande, pero ahora post también es un cuello importante.
+        Inferencia sigue siendo grande, pero ahora post tambien es un cuello importante.
 
         Aparte se ve un problema en las escalas de pixeles de los boxes.
         El output parece estar mal interpretado (coords negativas / >1), asi que hay un bug de mapeo/espacio de coordenadas.

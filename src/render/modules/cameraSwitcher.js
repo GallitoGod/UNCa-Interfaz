@@ -15,7 +15,7 @@ export async function switchCamera(cameraSelect) {
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
     if (!videoDevices.length) {
-      console.error('No se detectaron cámaras');
+      console.error('No se detectaron camaras');
       return;
     }
 
@@ -28,7 +28,7 @@ export async function switchCamera(cameraSelect) {
     await startSelectedCamera(videoDevices[0].deviceId);
 
   } catch (err) {
-    console.error('Error inicializando cámaras:', err);
+    console.error('Error inicializando camaras:', err);
   }
 }
 
@@ -54,14 +54,14 @@ async function startSelectedCamera(deviceId) {
     activeWebSocket = initVideoStream(video);
 
   } catch (err) {
-    console.error('Error al cambiar cámara:', err);
+    console.error('Error al cambiar camara:', err);
   }
 }
 
 function populateCameraSelect(selectElement, devices) {
   selectElement.innerHTML = devices.map((device, index) => `
     <option value="${device.deviceId}">
-      ${device.label || `Cámara ${index + 1}`}
+      ${device.label || `Camara ${index + 1}`}
     </option>
   `).join('');
 }

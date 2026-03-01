@@ -7,18 +7,18 @@ export function initVideoStream(videoElement) {
     let animationFrameId;
   
     ws.onopen = () => {
-      console.log('Conexión WebSocket establecida');
+      console.log('Conexion WebSocket establecida');
       startFrameCapture();
     };
   
     ws.onclose = () => {
       cancelAnimationFrame(animationFrameId);
-      console.log('Conexión WebSocket cerrada');
+      console.log('Conexion WebSocket cerrada');
     };
   
     ws.onmessage = (event) => {
       const prediction = JSON.parse(event.data).prediction;
-      console.log("Predicción recibida:", prediction);
+      console.log("Prediccion recibida:", prediction);
     };
 
     function startFrameCapture() {

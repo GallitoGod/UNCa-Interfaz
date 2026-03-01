@@ -56,7 +56,7 @@ def build_anchor_deltas(output_cfg: OutputConfig):
             deltas_2d = to_2d(b)
             cls_2d    = to_2d(a)
         else:
-            raise ValueError("anchor_deltas: no se encontró tensor (N,4) para box_deltas")
+            raise ValueError("anchor_deltas: no se encontro tensor (N,4) para box_deltas")
 
         anchors = np.asarray(runtime.anchors, dtype=np.float32)
         if anchors.shape[0] != deltas_2d.shape[0]:
