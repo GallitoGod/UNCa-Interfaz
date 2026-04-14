@@ -25,6 +25,7 @@ Si no hay logs claros, va a ser un infierno debuguear.
 
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import numpy as np
 from PIL import Image
@@ -44,6 +45,15 @@ app = FastAPI(
     description="API para carga de modelos y ejecucion de inferencias sobre imagenes.",
     version="1.0.0"
 )
+
+# Electron carga desde file:// — sin esto todos los fetch() y WS fallan por CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 controller = ModelController()
 
 class ModelPathRequest(BaseModel):
@@ -194,6 +204,10 @@ async def video_stream(websocket: WebSocket):
                         _draw_detections(img_bgr, detections)
                 except Exception:
                     pass  # Enviar frame sin anotar si falla la inferencia
+
+            # Las cámaras web envían píxeles sin espejo — se aplica aquí para
+            # que el usuario vea el efecto espejo natural en el outputCanvas
+            img_bgr = cv2.flip(img_bgr, 1)
 
             _, buf = cv2.imencode(".jpg", img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
             b64_frame = base64.b64encode(buf.tobytes()).decode("utf-8")
