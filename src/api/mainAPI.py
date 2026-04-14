@@ -35,8 +35,10 @@ import base64
 from pathlib import Path
 from api.func.model_controller import ModelController
 
-MODELS_DIR = Path("models")
-CONFIGS_DIR = Path("configs")
+# Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
+_ROOT = Path(__file__).resolve().parent.parent.parent
+MODELS_DIR = _ROOT / "models"
+CONFIGS_DIR = _ROOT / "configs"
 
 MODEL_EXTENSIONS = {".onnx", ".tflite", ".h5", ".keras", ".pt", ".pth"}
 
