@@ -1,23 +1,30 @@
-fastapi
+"""
+Utilizar un interprete de python 3.8, hacer un entorno venv y utilizar el comando:
+    pip install -r requirements.txt
+"""
+
+# ── Core API ──────────────────────────────
 fastapi[standard]
 uvicorn
+websockets
+
+# ── Inferencia ────────────────────────────
 tensorflow
-onnxruntime-gpu==1.17.1
+onnxruntime-gpu==1.17.1      # CUDA 11.8 — usar onnxruntime-gpu==1.18.x para CUDA 12.x
+torch>=2.0.0
+
+# ── Procesamiento de imagenes ─────────────
 Pillow>=7.1.2
-numpy>=1.18.5,<1.24.0
+numpy>=1.23.0
 opencv-python
 python-multipart
-pandas
-torch>=1.7.0,!=1.12.0
 
-
-# Base de yolov7 ----------------------------
-
-matplotlib>=3.2.2
-opencv-python>=4.1.1
-PyYAML>=5.3.1
-requests>=2.23.0
-scipy>=1.4.1
-torchvision>=0.8.1,!=0.13.0
-tqdm>=4.41.0
-protobuf<4.21.3
+# ── Entrenamiento YOLOv7 (no necesario para inferencia) ──
+# matplotlib>=3.2.2
+# PyYAML>=5.3.1
+# requests>=2.23.0
+# scipy>=1.4.1
+# torchvision>=0.8.1
+# tqdm>=4.41.0
+# protobuf<4.21.3
+# pandas
