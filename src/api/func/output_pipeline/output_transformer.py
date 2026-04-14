@@ -56,8 +56,16 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
     if dets_xyxy.size == 0:
         return
 
-    boxes = dets_xyxy[:, :4] 
+    boxes = dets_xyxy[:, :4]
     rs = getattr(runtime, "runtimeShapes", None)
+
+    # Si las coords vienen normalizadas [0,1], escalar a pixeles del tensor antes de deshacer el letterbox.
+    out_coords_space = getattr(rs, "out_coords_space", "normalized_0_1")
+    if out_coords_space == "normalized_0_1":
+        W_in = float(getattr(rs, "input_width", 1) or 1)
+        H_in = float(getattr(rs, "input_height", 1) or 1)
+        boxes[:, [0, 2]] *= W_in
+        boxes[:, [1, 3]] *= H_in
 
     md = getattr(rs, "metadata_letter", {}) or {}
     letterbox_usado = bool(md.get("letterbox_used", False))

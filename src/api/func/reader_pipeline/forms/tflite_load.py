@@ -31,7 +31,12 @@ def _try_load_gpu_delegate(logger=None):
             continue
 
     if logger:
-        logger.warning("TFLite: GPU delegate no disponible (fallback CPU).")
+        logger.warning(
+            "TFLite: GPU delegate no disponible en esta plataforma/instalacion. "
+            "NOTA: el delegate GPU de TFLite esta disenado para mobile (OpenGL ES / Metal) "
+            "y NO se incluye en los builds estandar de pip para Windows desktop. "
+            "Fallback a CPU con XNNPACK."
+        )
     return None
 
 
@@ -91,12 +96,16 @@ def tfliteLoader(model_path: str, runtime_cfg: Any = None, logger=None) -> Calla
     expects_batch1 = (len(in_shape) >= 1 and in_shape[0] == 1)  # Heuristica
 
     if logger:
-        logger.info(
-            f"TFLite loaded | device_req={device} | gpu_delegate={'ON' if gpu_enabled else 'OFF'} "
-            f"| num_threads={num_threads} | input_shape={in_shape} | input_dtype={in_dtype} "
-            f"| outputs={len(out_indices)}"
-        )
-        logger.info("TFLite: XNNPACK detect: unknown/best-effort (depende del build de TF/TFLite).")
+        gpu_status  = "ON" if gpu_enabled else "NO DISPONIBLE"
+        xnnpack_status = "NO (GPU delegate activo)" if gpu_enabled else "SI (delegate CPU por defecto en TFLite moderno)"
+        cpu_threads_note = f"num_threads={num_threads}" if num_threads else "num_threads=auto (TFLite decide)"
+
+        logger.info(f"TFLite: version TF: {tf.__version__}")
+        logger.info(f"TFLite: device solicitado: {device.upper()}")
+        logger.info(f"TFLite: GPU delegate: {gpu_status}")
+        logger.info(f"TFLite: XNNPACK (aceleracion CPU): {xnnpack_status}")
+        logger.info(f"TFLite: {cpu_threads_note}")
+        logger.info(f"TFLite: input_shape={in_shape} | input_dtype={in_dtype} | outputs={len(out_indices)}")
 
     def tflite_predict(x: Any):
         arr = np.asarray(x)

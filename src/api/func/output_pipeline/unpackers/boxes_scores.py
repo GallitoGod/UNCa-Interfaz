@@ -25,14 +25,13 @@ def build_boxes_scores(output_cfg):
         best_cls = np.argmax(scores, axis=1).astype(np.int32)
         best_p   = scores[np.arange(scores.shape[0]), best_cls].astype(np.float32, copy=False)
 
-        ymin, xmin, ymax, xmax = boxes.T  # boxes en orden y,x,y,x
+        ymin, xmin, ymax, xmax = boxes.T  # boxes en orden y,x,y,x → reordenar a x1,y1,x2,y2
 
-        # terminar de definir el contrato de normalizacion con el sistema...
-        if runtime is not None and getattr(runtime, "out_coords_space", "tensor_pixels") == "tensor_pixels":
+        if runtime is not None and getattr(runtime, "out_coords_space", "normalized_0_1") == "tensor_pixels":
             scale_xyxy_inplace(xmin, ymin, xmax, ymax, (runtime.input_width, runtime.input_height))
 
         return stack_as_float32_matrix([
-            ymin, xmin, ymax, xmax,
+            xmin, ymin, xmax, ymax,  # contrato del sistema: [x1, y1, x2, y2]
             best_p,
             best_cls.astype(np.float32, copy=False)
         ])

@@ -238,7 +238,15 @@ class ModelController:
             unpacked = unpacked[None, :]
         # -----------------------------------------------
 
-        adapted_output = [self.output_adapter(r) for r in unpacked]
+        # boxes_scores ya entrega [x1,y1,x2,y2,conf,cls] en formato estandar del sistema.
+        # Aplicar el adapter encima reordena mal las coords (swapea x/y de vuelta a yxyx).
+        # raw y yolo_flat si necesitan el adapter porque salen en el espacio del tensor sin reordenar.
+        _NEEDS_ADAPTER = {"raw", "yolo_flat", "tflite_detpost", "anchor_deltas"}
+        pack_fmt = (getattr(self.config.output, "pack_format", "raw") or "raw").lower()
+        if pack_fmt in _NEEDS_ADAPTER:
+            adapted_output = [self.output_adapter(r) for r in unpacked]
+        else:
+            adapted_output = unpacked  # ya en [x1,y1,x2,y2,conf,cls]
 
         iw, ih = self.config.runtime.runtimeShapes.input_width,  self.config.runtime.runtimeShapes.input_height
         ow, oh = self.config.runtime.runtimeShapes.orig_width,   self.config.runtime.runtimeShapes.orig_height

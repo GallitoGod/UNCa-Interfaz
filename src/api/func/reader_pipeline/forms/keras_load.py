@@ -11,24 +11,38 @@ def _configure_tf_runtime(logger=None, enable_memory_growth: bool = True):
     IMPORTANTE: esto debe ejecutarse ANTES de que TF inicialice el runtime GPU "de verdad".
     Si ya se uso TF antes, puede tirar RuntimeError al setear memory growth.
     """
+    if not logger:
+        return
+
+    logger.info(f"TF: version: {tf.__version__}")
+    logger.info(f"TF: construido con CUDA: {tf.test.is_built_with_cuda()}")
+
     gpus = tf.config.list_physical_devices("GPU")
-    if logger:
-        logger.info(f"TF: GPUs fisicas: {gpus}")
+    cpus = tf.config.list_physical_devices("CPU")
+    logger.info(f"TF: CPUs fisicas: {[d.name for d in cpus]}")
+    logger.info(f"TF: GPUs fisicas detectadas: {len(gpus)} | {[d.name for d in gpus] if gpus else 'ninguna'}")
 
-    if enable_memory_growth and gpus:
+    if gpus:
         for gpu in gpus:
-            try:
-                tf.config.experimental.set_memory_growth(gpu, True)
-                if logger:
-                    logger.info(f"TF: crecimiento de memoria habilitado para {gpu.name}")
-            except Exception as e:
-                # Suele fallar si TF ya inicializo el runtime. Lo digo por experiencia :(
-                if logger:
-                    logger.warning(f"TF: no se pudo establecer el crecimiento de la memoria para {gpu.name}: {e}")
+            if enable_memory_growth:
+                try:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                    logger.info(f"TF: memory growth habilitado para {gpu.name}")
+                except Exception as e:
+                    # Suele fallar si TF ya inicializo el runtime. Lo digo por experiencia :(
+                    logger.warning(f"TF: no se pudo habilitar memory growth para {gpu.name}: {e}")
+            else:
+                logger.info(f"TF: memory growth deshabilitado por config para {gpu.name}")
 
-    if logger:
         lgpus = tf.config.list_logical_devices("GPU")
-        logger.info(f"TF: GPUs logicas: {lgpus}")
+        logger.info(f"TF: GPUs logicas disponibles: {[d.name for d in lgpus]}")
+        logger.info("TF: device efectivo: GPU (TF rutea ops automaticamente cuando hay GPU con CUDA)")
+    else:
+        logger.warning(
+            "TF: no se detectaron GPUs fisicas. "
+            "Verificar que tensorflow este compilado con CUDA y que los drivers esten instalados. "
+            "Device efectivo: CPU"
+        )
 
 
 def _log_device_placement(model: tf.keras.Model, logger=None):
@@ -80,10 +94,6 @@ def kerasLoader(model_path: str, runtime_cfg: Any = None, logger=None) -> Callab
         return model(x, training=False)
 
     if logger:
-        try:
-            logger.info(f"TF: construido con CUDA: {tf.test.is_built_with_cuda()}")
-        except Exception:
-            pass
         _log_device_placement(model, logger=logger)
 
     def predict_fn(x):

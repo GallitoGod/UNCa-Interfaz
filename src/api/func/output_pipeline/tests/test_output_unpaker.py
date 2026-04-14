@@ -74,12 +74,13 @@ def test_boxes_scores_detecta_orden_y_escalado_tensor_pixels():
     for arr in (arr1, arr2):
         assert arr.shape == (2, 6)
 
-        y1, x1, y2, x2, sc, cl = arr[0].tolist()
-        assert np.allclose([y1, x1, y2, x2], [32, 64, 160, 192], atol=1e-5)
+        # boxes_scores reordena de [y1,x1,y2,x2] a [x1,y1,x2,y2] (xyxy, contrato del sistema)
+        x1, y1, x2, y2, sc, cl = arr[0].tolist()
+        assert np.allclose([x1, y1, x2, y2], [64, 32, 192, 160], atol=1e-5)
         assert np.isclose(sc, 0.7) and cl == 1.0
 
-        y1b, x1b, y2b, x2b, scb, clb = arr[1].tolist()
-        assert np.allclose([y1b, x1b, y2b, x2b], [0, 0, 320, 320], atol=1e-5)
+        x1b, y1b, x2b, y2b, scb, clb = arr[1].tolist()
+        assert np.allclose([x1b, y1b, x2b, y2b], [0, 0, 320, 320], atol=1e-5)
         assert np.isclose(scb, 0.9) and clb == 0.0
 
 

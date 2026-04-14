@@ -23,8 +23,7 @@ def build_yolo_flat(output_cfg):
         best_p   = cls[np.arange(cls.shape[0]), best_cls]
         score    = (obj * best_p).astype(np.float32, copy=False)
 
-        # terminar de definir el contrato de normalizacion con el sistema...
-        if runtime is not None and getattr(runtime, "out_coords_space", "tensor_pixels") == "tensor_pixels":
+        if runtime is not None and getattr(runtime, "out_coords_space", "normalized_0_1") == "tensor_pixels":
             scale_cxcywh_inplace(cx, cy, w, h, (runtime.input_width, runtime.input_height))
 
         return stack_as_float32_matrix([

@@ -25,7 +25,7 @@ def test_load_model_config_valido(tmp_path):
             "auto_pad_color": [114, 114, 114],
             "preserve_aspect_ratio": True,
             "color_order": "RGB",
-            "input_tensor": {
+            "input_str": {
                 "layout": "HWC",
                 "dtype": "float32",
                 "quantized": False
@@ -35,10 +35,7 @@ def test_load_model_config_valido(tmp_path):
             "confidence_threshold": 0.5,
             "nms_threshold": 0.45,
             "apply_nms": False,
-            "tensor_structure": None,
-            "output_tensor": {
-                "output_format": "raw"
-            }
+            "pack_format": "raw"
         }
     }
 

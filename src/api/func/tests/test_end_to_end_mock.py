@@ -43,8 +43,9 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
     fake_input_adapter = MagicMock(side_effect=lambda x: f"adapt_in:{x}")
     fake_predict = MagicMock(side_effect=lambda x: f"raw:{x}")
 
+    import numpy as np
     def _fake_unpack(raw, runtime=None):
-        return [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]]
+        return np.array([[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]], dtype=np.float32)
     fake_unpack = MagicMock(side_effect=_fake_unpack)
 
     fake_output_adapter = MagicMock(side_effect=lambda row: row)
@@ -78,10 +79,14 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
         assert args[0] == "raw:adapt_in:pre:image_data"
         assert args[1] is fake_config.runtime
 
-        fake_output_adapter.assert_called_once_with([10.0, 10.0, 20.0, 20.0, 0.9, 0.0])
-        fake_post.assert_called_once_with([[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]])
+        assert fake_output_adapter.call_count == 1
+        np.testing.assert_array_almost_equal(
+            fake_output_adapter.call_args[0][0],
+            [10.0, 10.0, 20.0, 20.0, 0.9, 0.0]
+        )
+        assert fake_post.call_count == 1
 
-        assert result == [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]]
+        np.testing.assert_array_almost_equal(result, [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]])
 
 
 def test_update_confidence_strict_runtime(fake_config):

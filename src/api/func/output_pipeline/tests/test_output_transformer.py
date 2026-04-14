@@ -38,24 +38,30 @@ class _DummyOutputConfig:
         self.top_k = top_k
         self.pack_format = pack_format
 
-class _DummyRuntime:
+class _DummyRuntimeShapes:
     def __init__(
         self,
         *,
         input_width=320, input_height=320,
         orig_width=320, orig_height=320,
         letterbox_used=False, scale=1.0, pad_left=0.0, pad_top=0.0,
+        out_coords_space="tensor_pixels",
     ):
         self.input_width = input_width
         self.input_height = input_height
         self.orig_width = orig_width
         self.orig_height = orig_height
+        self.out_coords_space = out_coords_space
         self.metadata_letter = {
             "scale": scale,
             "pad_left": pad_left,
             "pad_top": pad_top,
             "letterbox_used": letterbox_used,
         }
+
+class _DummyRuntime:
+    def __init__(self, **kwargs):
+        self.runtimeShapes = _DummyRuntimeShapes(**kwargs)
 
 def test_confidence_threshold_en_vivo():
     cfg = _DummyOutputConfig("yolo_flat", confidence_threshold=0.75,
