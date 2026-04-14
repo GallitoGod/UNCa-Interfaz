@@ -1,21 +1,21 @@
-"""
-Utilizar un interprete de python 3.8
-Pasos para el uso del sistema (commit 163):
-   JS                                                                            
-  npm install                                                                                                                                                      
+# """
+# Utilizar un interprete de python 3.8
+# Pasos para el uso del sistema (commit 163):
+#    JS                                                                            
+#   npm install                                                                                                                                                      
                                                                                                                                                                    
-   Python (en un venv Python 3.8)
-  python -m venv .venv                                                                                                                                             
-  .venv\Scripts\activate                                                                                                                                         
-  pip install -r requirements.txt
+#    Python (en un venv Python 3.8)
+#   python -m venv .venv                                                                                                                                             
+#   .venv\Scripts\activate                                                                                                                                         
+#   pip install -r requirements.txt
 
-  Y para correr:
-   Terminal 1 — backend
-  uvicorn api.mainAPI:app --host 127.0.0.1 --port 8000
+#   Y para correr:
+#    Terminal 1 — backend
+#   uvicorn api.mainAPI:app --host 127.0.0.1 --port 8000
 
-   Terminal 2 — frontend
-  npm start
-"""
+#    Terminal 2 — frontend
+#   npm start
+# """
 
 # ── Core API ──────────────────────────────
 fastapi[standard]
