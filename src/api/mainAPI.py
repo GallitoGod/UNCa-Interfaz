@@ -198,6 +198,9 @@ async def video_stream(websocket: WebSocket):
             if img_bgr is None:
                 continue
 
+            # Flipear antes de inferir y dibujar para que los labels queden legibles
+            img_bgr = cv2.flip(img_bgr, 1)
+
             if controller.predict_fn is not None:
                 try:
                     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -206,10 +209,6 @@ async def video_stream(websocket: WebSocket):
                         _draw_detections(img_bgr, detections)
                 except Exception:
                     pass  # Enviar frame sin anotar si falla la inferencia
-
-            # Las cámaras web envían píxeles sin espejo — se aplica aquí para
-            # que el usuario vea el efecto espejo natural en el outputCanvas
-            img_bgr = cv2.flip(img_bgr, 1)
 
             _, buf = cv2.imencode(".jpg", img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
             b64_frame = base64.b64encode(buf.tobytes()).decode("utf-8")
