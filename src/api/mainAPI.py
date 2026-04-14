@@ -75,18 +75,17 @@ def update_confidence(data: ConfidenceUpdateRequest):
 
 @app.post("/predict")
 async def run_inference(file: UploadFile = File(...)):
+    if controller.predict_fn is None:
+        return JSONResponse(status_code=400, content={"status": "error", "detail": "No hay modelo cargado. Llamar a /model/load primero."})
     try:
         image_bytes = await file.read()
         image = Image.open(BytesIO(image_bytes))
         image_np = np.array(image)
 
-        # El controlador se encarga del color_order
         if image_np.shape[-1] == 4:
             image_np = image_np[..., :3]
-        
 
         result = controller.inference(image_np)
-        result = [det.tolist() for det in result]
         return {"status": "ok", "detections": result}
 
     except Exception as e:

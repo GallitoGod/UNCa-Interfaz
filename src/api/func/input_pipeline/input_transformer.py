@@ -79,15 +79,29 @@ def build_preprocessor(config: InputConfig, runtime: RuntimeConfig) -> Callable[
         else:
             steps.append(lambda img: cv2.resize(img, (config.width, config.height)))
 
-        if config.scale:
-            steps.append(lambda img: img.astype(np.float32) / 255.0)
+        _mean = np.array(config.mean, dtype=np.float32).reshape(1, 1, -1)
+        _std  = np.array(config.std,  dtype=np.float32).reshape(1, 1, -1)
 
-        if config.normalize:
-            mean = np.array(config.mean).reshape(1, 1, -1)
-            std  = np.array(config.std).reshape(1, 1, -1)
-            if np.any(std == 0):
-                raise ValueError("std no puede contener ceros para la normalizacion")
-            steps.append(lambda img: (img - mean) / std)
+        if config.normalize and np.any(_std == 0):
+            raise ValueError("std no puede contener ceros para la normalizacion")
+
+        trivial_normalize = (
+            not config.normalize or
+            (np.allclose(_mean, 0.0) and np.allclose(_std, 1.0))
+        )
+
+        if config.scale and not trivial_normalize:
+            # Fusiona escala + normalizacion en una sola pasada:
+            # (img/255 - mean) / std  ==  img * factor + offset
+            _factor = np.float32(1.0 / 255.0) / _std
+            _offset = -_mean / _std
+            steps.append(lambda img: img.astype(np.float32) * _factor + _offset)
+        elif config.scale:
+            # Normalizacion trivial (mean=0, std=1): solo escala
+            steps.append(lambda img: img.astype(np.float32) * np.float32(1.0 / 255.0))
+        elif not trivial_normalize:
+            # Sin escala, normalize no trivial
+            steps.append(lambda img: (img.astype(np.float32) - _mean) / _std)
 
         def preprocess(img):
             h, w = img.shape[:2]
