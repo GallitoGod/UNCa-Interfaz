@@ -2,6 +2,7 @@ from .config_schema import RuntimeConfig
 from .forms.keras_load import kerasLoader as Keras
 from .forms.tflite_load import tfliteLoader as Tflite
 from .forms.onnx_load import onnxLoader as Onnx
+from .forms.pytorch_load import pytorchLoader as Pytorch
 
 class Model_loader:
 
@@ -13,6 +14,8 @@ class Model_loader:
             return Tflite(model_path, runtime, logger)
         elif runtime.backend == "onnxruntime":
             return Onnx(model_path, runtime, logger)
+        elif runtime.backend == "pytorch":
+            return Pytorch(model_path, runtime, logger)
         else:
             raise ValueError(f"Fallo al cargar el modelo: {runtime.backend}, {model_path}")
         

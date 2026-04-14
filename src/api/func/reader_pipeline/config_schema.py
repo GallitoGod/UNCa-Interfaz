@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict, Union, Any
 
 TYPE = Literal["detection", "classification", "segmentation"]
-BACKEND = Literal["onnxruntime", "tflite", "tensorflow"]
+BACKEND = Literal["onnxruntime", "tflite", "tensorflow", "pytorch"]
 
 class InputDetection(BaseModel):
     layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
