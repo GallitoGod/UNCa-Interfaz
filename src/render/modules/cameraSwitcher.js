@@ -50,6 +50,7 @@ async function startSelectedCamera(deviceId) {
     const video = document.getElementById('video');
     video.srcObject = stream;
     currentStream = stream;
+    await video.play();
 
     activeWebSocket = initVideoStream(video);
 

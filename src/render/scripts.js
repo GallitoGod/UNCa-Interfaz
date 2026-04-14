@@ -2,7 +2,7 @@ import { switchCamera } from './modules/cameraSwitcher.js';
 import { startRecording, stopRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
-import { selectedModel } from './modules/constants.js';
+import { confidenceUrl } from './modules/constants.js';
 const d = document;
 
 /*
@@ -73,8 +73,23 @@ d.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Actualiza el label en tiempo real mientras se arrastra
   confidenceSlider.addEventListener("input", function () {
     confidenceValue.textContent = `${this.value}%`;
+  });
+
+  // Envía al backend solo al soltar
+  confidenceSlider.addEventListener("change", async function () {
+    const value = parseFloat(this.value) / 100;
+    try {
+      await fetch(confidenceUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+    } catch (err) {
+      console.error("Error al actualizar confianza:", err);
+    }
   });
 
   advancedSettingsBtn.addEventListener("click", () => {
@@ -103,9 +118,8 @@ d.addEventListener('DOMContentLoaded', () => {
     settingsModal.classList.remove("active");
   });
 
-  modelSelect.addEventListener('Change', () => {
-    selectedModel = modelSelect.value;
-    selectModel();
+  modelSelect.addEventListener('change', () => {
+    selectModel(modelSelect.value);
   });
   
   fileButton.addEventListener('click', () => {
