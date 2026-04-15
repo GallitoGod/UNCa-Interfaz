@@ -1,34 +1,41 @@
 # logger.py
 import logging
+from logging.handlers import RotatingFileHandler
 from collections import deque
 from typing import Optional, Dict, Any
 import numpy as np
 import os
+
+# Rotacion: cada archivo crece hasta MAX_BYTES; se conservan BACKUP_COUNT
+# archivos anteriores. Maximo en disco = MAX_BYTES * (BACKUP_COUNT + 1) por modelo.
+_MAX_BYTES    = 512 * 1024   # 512 KB por archivo
+_BACKUP_COUNT = 2            # + el archivo actual = 3 archivos → max ~1.5 MB por modelo
 
 def setup_model_logger(model_name: str, log_dir: str = "logs"):
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, f"{model_name}.log")
 
     logger = logging.getLogger(model_name)
-    logger.setLevel(logging.DEBUG)  # Captura todo, desde DEBUG
+    logger.setLevel(logging.DEBUG)
 
     if not logger.handlers:
-        # Handler para archivo
-        fh = logging.FileHandler(log_path)
-        fh.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        # Handler para archivo con rotacion automatica
+        fh = RotatingFileHandler(
+            log_path,
+            maxBytes=_MAX_BYTES,
+            backupCount=_BACKUP_COUNT,
+            encoding="utf-8",
         )
-        fh.setFormatter(file_formatter)
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        ))
         logger.addHandler(fh)
 
         # Handler para consola
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-        console_formatter = logging.Formatter(
-            "%(levelname)s - %(message)s"
-        )
-        ch.setFormatter(console_formatter)
+        ch.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
         logger.addHandler(ch)
 
     return logger
