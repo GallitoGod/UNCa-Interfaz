@@ -5,11 +5,6 @@ let activeWebSocket = null;
 
 export async function switchCamera(cameraSelect) {
   try {
-    if (activeWebSocket) {
-      activeWebSocket.close();
-      activeWebSocket = null;
-    }
-
     await navigator.mediaDevices.getUserMedia({ video: true });
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -34,6 +29,11 @@ export async function switchCamera(cameraSelect) {
 
 async function startSelectedCamera(deviceId) {
   try {
+    // Cerrar WebSocket anterior antes de abrir uno nuevo
+    if (activeWebSocket) {
+      activeWebSocket.close();
+      activeWebSocket = null;
+    }
     if (currentStream) {
       currentStream.getTracks().forEach(track => track.stop());
     }
@@ -52,9 +52,15 @@ async function startSelectedCamera(deviceId) {
     currentStream = stream;
     await video.play();
 
+    // Ocultar el mensaje de "sin video" cuando el stream arranca
+    const noVideoMsg = document.querySelector('.no-video-message');
+    if (noVideoMsg) noVideoMsg.style.display = 'none';
+
     activeWebSocket = initVideoStream(video);
 
   } catch (err) {
+    const noVideoMsg = document.querySelector('.no-video-message');
+    if (noVideoMsg) noVideoMsg.style.display = '';
     console.error('Error al cambiar camara:', err);
   }
 }

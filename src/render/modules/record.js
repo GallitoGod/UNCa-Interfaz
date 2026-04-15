@@ -1,10 +1,10 @@
 let mediaRecorder = null;
 let recordedChunks = [];
-let isRecording = false;
+export let isRecording = false;
 
 export function startRecording(recordButton, video) {
   if (!video.srcObject) {
-    console.error('there is no video stream available to record.');
+    console.error('No hay stream de video disponible para grabar.');
     return;
   }
 
@@ -23,21 +23,20 @@ export function startRecording(recordButton, video) {
     recordedChunks = [];
 
     const videoURL = URL.createObjectURL(videoBlob);
-
     const a = document.createElement('a');
     a.href = videoURL;
     a.download = 'grabacion.webm';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    console.log('Recording completed and saved.');
+    console.log('Grabacion completada y guardada.');
   };
 
   mediaRecorder.start();
   isRecording = true;
   recordButton.textContent = 'Detener';
   recordButton.style.backgroundColor = '#ff4136';
-  console.log('Recording started.');
+  console.log('Grabacion iniciada.');
 }
 
 export function stopRecording(recordButton) {
@@ -46,6 +45,6 @@ export function stopRecording(recordButton) {
     isRecording = false;
     recordButton.textContent = 'Iniciar';
     recordButton.style.backgroundColor = '#3b82f6';
-    console.log('Recording stopped.');
+    console.log('Grabacion detenida.');
   }
 }

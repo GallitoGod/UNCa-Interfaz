@@ -4,42 +4,54 @@ export function initVideoStream(videoElement) {
     const outputCanvas = document.getElementById("outputCanvas");
     const outputCtx    = outputCanvas.getContext("2d");
 
-    // Canvas oculto para capturar frames del elemento video
     const captureCanvas = document.createElement("canvas");
     const captureCtx    = captureCanvas.getContext("2d");
 
-    const ws = new WebSocket(streamUrl);
-    let animationFrameId;
+    let ws;
+    let animationFrameId   = null;
     let waitingForResponse = false;
+    let intentionallyClosed = false;
+    let retryDelay = 1000;
 
-    ws.onopen = () => {
-        console.log("WebSocket conectado");
-        startFrameLoop();
-    };
+    function connect() {
+        ws = new WebSocket(streamUrl);
 
-    ws.onclose = () => {
-        cancelAnimationFrame(animationFrameId);
-        console.log("WebSocket cerrado");
-    };
-
-    ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-    };
-
-    ws.onmessage = (event) => {
-        // El servidor devuelve el frame anotado en base64 JPEG
-        const img = new Image();
-        img.onload = () => {
-            if (outputCanvas.width  !== img.width ||
-                outputCanvas.height !== img.height) {
-                outputCanvas.width  = img.width;
-                outputCanvas.height = img.height;
-            }
-            outputCtx.drawImage(img, 0, 0);
+        ws.onopen = () => {
+            console.log("WebSocket conectado");
+            retryDelay = 1000;
+            startFrameLoop();
         };
-        img.src = "data:image/jpeg;base64," + event.data;
-        waitingForResponse = false;
-    };
+
+        ws.onclose = () => {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            if (!intentionallyClosed) {
+                console.log(`WebSocket cerrado. Reconectando en ${retryDelay}ms...`);
+                setTimeout(connect, retryDelay);
+                retryDelay = Math.min(retryDelay * 2, 10000);
+            } else {
+                console.log("WebSocket cerrado.");
+            }
+        };
+
+        ws.onerror = (err) => {
+            console.error("WebSocket error:", err);
+        };
+
+        ws.onmessage = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                if (outputCanvas.width  !== img.width ||
+                    outputCanvas.height !== img.height) {
+                    outputCanvas.width  = img.width;
+                    outputCanvas.height = img.height;
+                }
+                outputCtx.drawImage(img, 0, 0);
+            };
+            img.src = "data:image/jpeg;base64," + event.data;
+            waitingForResponse = false;
+        };
+    }
 
     function startFrameLoop() {
         function tick() {
@@ -64,5 +76,13 @@ export function initVideoStream(videoElement) {
         tick();
     }
 
-    return ws;
+    connect();
+
+    return {
+        close() {
+            intentionallyClosed = true;
+            cancelAnimationFrame(animationFrameId);
+            if (ws) ws.close();
+        }
+    };
 }

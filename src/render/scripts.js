@@ -1,84 +1,64 @@
 import { switchCamera } from './modules/cameraSwitcher.js';
-import { startRecording, stopRecording } from './modules/record.js';
+import { startRecording, stopRecording, isRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
-import { confidenceUrl } from './modules/constants.js';
+import { confidenceUrl, colorsUrl, inferenceLogsUrl } from './modules/constants.js';
 const d = document;
 
-/*
-  Personalizacion de colores y estilos desde el cliente:
-    Crear un menu de configuracion donde se puedan cambiar los color, grosor, etiquetas, etc. Luego,
-  enviar estos valores a la API junto con cada imagen.
-    Cuando se cambian los estilos, por nada en el mundo cambiar la IA, solo los estilos. Tendria que buscar alguna
-  forma de hacer mas dicifil el cambio de la IA en medio de las predicciones.
-
-    IDEAS:
-      - Podria usar un input color en el HTML para elegirlo dinamicamente:
-        <input type="color" id="color-picker">
-      - Cambiar el color y enviarlo con cada prediccion:
-        let color = document.getElementById('color-picker').value;
-        let rgbcColor = hexToRgb(color);
-        function hexToRgb(hex) {
-          let bigint = parseInt(hex.substring(1), 16);
-          let r = (bigint >> 16) & 255;
-          let g = (bigint >> 8) & 255;
-          let b = bigint & 255;
-          return `${r},${g},${b}`;       // ALGO ASI PODRIA SER
-        }
-      - Podria usar localStorage para guardar las configuraciones de usurio, si es que electron puede claro.
-*/
-
 d.addEventListener('DOMContentLoaded', () => {
-  const darkModeToggle = d.getElementById('dark-mode-toggle');
-  const tabButtons = d.querySelectorAll(".tab-button");
-  const tabContents = d.querySelectorAll(".tab-content");
-  const confidenceSlider = d.getElementById("confidence-slider");
-  const confidenceValue = d.getElementById("confidence-value");
+  const darkModeToggle    = d.getElementById('dark-mode-toggle');
+  const tabButtons        = d.querySelectorAll(".tab-button");
+  const tabContents       = d.querySelectorAll(".tab-content");
+  const confidenceSlider  = d.getElementById("confidence-slider");
+  const confidenceValue   = d.getElementById("confidence-value");
   const advancedSettingsBtn = d.getElementById("advanced-settings-btn");
-  const settingsModal = d.getElementById("settings-modal");
-  const closeModalBtn = d.getElementById("close-modal");
-  const saveSettingsBtn = d.getElementById("save-settings");
-  const bboxColorInput = d.getElementById("bbox-color");
-  const labelColorInput = d.getElementById("label-color");
-  const bboxColorPreview = d.getElementById("bbox-color-preview");
+  const settingsModal     = d.getElementById("settings-modal");
+  const closeModalBtn     = d.getElementById("close-modal");
+  const saveSettingsBtn   = d.getElementById("save-settings");
+  const bboxColorInput    = d.getElementById("bbox-color");
+  const labelColorInput   = d.getElementById("label-color");
+  const bboxColorPreview  = d.getElementById("bbox-color-preview");
   const labelColorPreview = d.getElementById("label-color-preview");
-  const cameraSelect = d.getElementById('camera-select');
-  const recordButton = d.getElementById('record-btn');
-  const video = d.getElementById('video');
-  const fileButton = d.getElementById('personalized-upload');
-  const inputFile = d.getElementById('file-upload');
-  const modelSelect = d.getElementById('ia-model');
+  const cameraSelect      = d.getElementById('camera-select');
+  const recordButton      = d.getElementById('record-btn');
+  const video             = d.getElementById('video');
+  const fileButton        = d.getElementById('personalized-upload');
+  const inputFile         = d.getElementById('file-upload');
+  const modelSelect       = d.getElementById('ia-model');
+  const videoContainer    = d.querySelector('.video-container');
+  const logToggleBtn      = d.getElementById('log-toggle-btn');
+  const logPanel          = d.getElementById('log-panel');
+  const logList           = d.getElementById('log-list');
+
+  let logPollingInterval = null;
 
   bboxColorPreview.style.backgroundColor = bboxColorInput.value;
   labelColorPreview.style.backgroundColor = labelColorInput.value;
   getModels();
 
+  // ── Tema oscuro ──────────────────────────────────────────────────────────
   darkModeToggle.addEventListener("change", function () {
     document.documentElement.classList.toggle("dark", this.checked);
   });
 
+  // ── Tabs ─────────────────────────────────────────────────────────────────
   tabButtons.forEach((button) => {
     button.addEventListener("click", function () {
       const tabName = this.getAttribute("data-tab");
-
       tabButtons.forEach((btn) => btn.classList.remove("active"));
       this.classList.add("active");
-
       tabContents.forEach((content) => {
         content.classList.remove("active");
-        if (content.id === `${tabName}-tab`) {
-          content.classList.add("active");
-        }
+        if (content.id === `${tabName}-tab`) content.classList.add("active");
       });
     });
   });
 
-  // Actualiza el label en tiempo real mientras se arrastra
+  // ── Confianza ─────────────────────────────────────────────────────────────
   confidenceSlider.addEventListener("input", function () {
     confidenceValue.textContent = `${this.value}%`;
   });
 
-  // Envía al backend solo al soltar
   confidenceSlider.addEventListener("change", async function () {
     const value = parseFloat(this.value) / 100;
     try {
@@ -92,6 +72,18 @@ d.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── Pantalla completa (doble clic en el area de video) ───────────────────
+  videoContainer.addEventListener('dblclick', () => {
+    if (!document.fullscreenElement) {
+      videoContainer.requestFullscreen().catch(err => {
+        console.error('Error al entrar en pantalla completa:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  // ── Modal de configuracion avanzada ──────────────────────────────────────
   advancedSettingsBtn.addEventListener("click", () => {
     settingsModal.classList.add("active");
   });
@@ -101,9 +93,7 @@ d.addEventListener('DOMContentLoaded', () => {
   });
 
   settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) {
-      settingsModal.classList.remove("active");
-    }
+    if (e.target === settingsModal) settingsModal.classList.remove("active");
   });
 
   bboxColorInput.addEventListener("input", function () {
@@ -114,24 +104,73 @@ d.addEventListener('DOMContentLoaded', () => {
     labelColorPreview.style.backgroundColor = this.value;
   });
 
-  saveSettingsBtn.addEventListener("click", () => {
+  // Guardar colores → envia al backend para que los use en _draw_detections
+  saveSettingsBtn.addEventListener("click", async () => {
+    try {
+      await fetch(colorsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bbox_color:  bboxColorInput.value,
+          label_color: labelColorInput.value,
+        }),
+      });
+    } catch (err) {
+      console.error("Error al guardar configuracion de colores:", err);
+    }
     settingsModal.classList.remove("active");
   });
 
+  // ── Selector de modelo ────────────────────────────────────────────────────
   modelSelect.addEventListener('change', () => {
     selectModel(modelSelect.value);
   });
-  
+
+  // ── Cargar video desde archivo ────────────────────────────────────────────
   fileButton.addEventListener('click', () => {
     inputFile.click();
-  })
+  });
+
+  // ── Camara ────────────────────────────────────────────────────────────────
   switchCamera(cameraSelect);
 
+  // ── Grabacion (usa la flag exportada para evitar la comparacion por texto) ─
   recordButton.addEventListener('click', () => {
-    if (recordButton.textContent === 'Iniciar') {
+    if (!isRecording) {
       startRecording(recordButton, video);
     } else {
       stopRecording(recordButton);
     }
   });
+
+  // ── Registro de errores de inferencia ────────────────────────────────────
+  logToggleBtn.addEventListener('click', () => {
+    const isOpen = logPanel.classList.toggle('active');
+    if (isOpen) {
+      fetchInferenceLogs();
+      logPollingInterval = setInterval(fetchInferenceLogs, 5000);
+    } else {
+      clearInterval(logPollingInterval);
+      logPollingInterval = null;
+    }
+  });
+
+  async function fetchInferenceLogs() {
+    try {
+      const res = await fetch(inferenceLogsUrl);
+      const { logs } = await res.json();
+      if (!logs || logs.length === 0) {
+        logList.innerHTML = '<li class="log-empty">Sin errores registrados.</li>';
+      } else {
+        logList.innerHTML = logs.slice().reverse().map(entry => `
+          <li class="log-item">
+            <span class="log-timestamp">${entry.timestamp}</span>
+            ${entry.error}
+          </li>
+        `).join('');
+      }
+    } catch (err) {
+      console.error("Error al obtener logs:", err);
+    }
+  }
 });

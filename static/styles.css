@@ -518,6 +518,72 @@ input:checked + .slider:before {
   cursor: pointer;
 }
 
+/* ── Pantalla completa ──────────────────────────────────────────────────── */
+.video-container {
+  cursor: pointer;
+}
+
+.video-container:fullscreen {
+  border-radius: 0;
+  border: none;
+  aspect-ratio: unset;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ── Registro de errores ────────────────────────────────────────────────── */
+.log-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.log-panel {
+  display: none;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.log-panel.active {
+  display: block;
+}
+
+.log-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+
+.log-item {
+  font-size: 0.75rem;
+  color: var(--destructive);
+  padding: 0.25rem 0.5rem;
+  border-radius: calc(var(--radius) - 0.25rem);
+  background-color: rgba(239, 68, 68, 0.1);
+  word-break: break-all;
+}
+
+.log-item .log-timestamp {
+  color: var(--muted);
+  font-size: 0.7rem;
+  display: block;
+  margin-bottom: 0.125rem;
+}
+
+.log-empty {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.5rem;
+}
+
 @media (max-width: 768px) {
   .app-header {
     flex-direction: column;
