@@ -518,6 +518,31 @@ input:checked + .slider:before {
   cursor: pointer;
 }
 
+/* ── Metricas HUD ───────────────────────────────────────────────────────── */
+.metrics-hud {
+  display: none;
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: #4ade80;
+  z-index: 10;
+  pointer-events: none;
+  line-height: 1.7;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.metrics-hud.active {
+  display: flex;
+}
+
 /* ── Pantalla completa ──────────────────────────────────────────────────── */
 .video-container {
   cursor: pointer;

@@ -7,4 +7,5 @@ export const selectModelUrl   = `${localHost}/select_model`;
 export const confidenceUrl    = `${localHost}/config/confidence`;
 export const colorsUrl        = `${localHost}/config/colors`;
 export const inferenceLogsUrl = `${localHost}/logs/inference`;
+export const metricsUrl       = `${localHost}/metrics`;
 export const streamUrl        = `${websocketBase}/video_stream`;

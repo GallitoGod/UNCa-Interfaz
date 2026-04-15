@@ -16,15 +16,9 @@ Nadie puede entender el programa sin abrir el codigo. No hay descripciones ni ej
 bien anotados con descripciones.
 '''
 
-'''
-3. Poca trazabilidad / logging
-Cuando algo falle en produccion, por ejemplo porque un modelo devuelve un shape inesperado, no sabria a donde fallo.
-Si no hay logs claros, va a ser un infierno debuguear.
-    Solucion: Usar logging de Python con niveles (info, warning, error) en puntos como: carga, inferencia, adaptacion, etc.
-'''
-
 from collections import deque
 import datetime
+import time
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +30,7 @@ from io import BytesIO
 import base64
 from pathlib import Path
 from api.func.model_controller import ModelController
+from api.func.logger import PerfMeter
 
 # Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -66,8 +61,11 @@ _draw_config: dict = {
     "label_color": (0,   0,   0),  # negro para texto sobre bbox
 }
 
-# Últimos 50 errores de inferencia (in-memory)
+# Ultimos 50 errores de inferencia (in-memory)
 _inference_errors: deque = deque(maxlen=50)
+
+# Metricas de rendimiento por frame (ultimos 120 frames ≈ 4 s a 30 fps)
+_perf_meter = PerfMeter(window=120)
 
 
 class ModelPathRequest(BaseModel):

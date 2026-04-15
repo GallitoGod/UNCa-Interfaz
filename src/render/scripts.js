@@ -2,7 +2,7 @@ import { switchCamera } from './modules/cameraSwitcher.js';
 import { startRecording, stopRecording, isRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
-import { confidenceUrl, colorsUrl, inferenceLogsUrl } from './modules/constants.js';
+import { confidenceUrl, colorsUrl, inferenceLogsUrl, metricsUrl } from './modules/constants.js';
 const d = document;
 
 d.addEventListener('DOMContentLoaded', () => {
@@ -29,8 +29,15 @@ d.addEventListener('DOMContentLoaded', () => {
   const logToggleBtn      = d.getElementById('log-toggle-btn');
   const logPanel          = d.getElementById('log-panel');
   const logList           = d.getElementById('log-list');
+  const metricsToggleBtn  = d.getElementById('metrics-toggle-btn');
+  const metricsHud        = d.getElementById('metrics-hud');
+  const metricFps         = d.getElementById('metric-fps');
+  const metricInf         = d.getElementById('metric-inf');
+  const metricTotal       = d.getElementById('metric-total');
+  const metricP95         = d.getElementById('metric-p95');
 
-  let logPollingInterval = null;
+  let logPollingInterval     = null;
+  let metricsInterval        = null;
 
   bboxColorPreview.style.backgroundColor = bboxColorInput.value;
   labelColorPreview.style.backgroundColor = labelColorInput.value;
@@ -142,6 +149,39 @@ d.addEventListener('DOMContentLoaded', () => {
       stopRecording(recordButton);
     }
   });
+
+  // ── Metricas HUD ─────────────────────────────────────────────────────────
+  metricsToggleBtn.addEventListener('click', () => {
+    const isOpen = metricsHud.classList.toggle('active');
+    if (isOpen) {
+      fetchMetrics();
+      metricsInterval = setInterval(fetchMetrics, 1000);
+    } else {
+      clearInterval(metricsInterval);
+      metricsInterval = null;
+    }
+  });
+
+  async function fetchMetrics() {
+    try {
+      const res = await fetch(metricsUrl);
+      const data = await res.json();
+      if (data.status === 'ok' && data.metrics) {
+        const m = data.metrics;
+        metricFps.textContent   = `FPS:   ${m.fps_avg.toFixed(1)}`;
+        metricInf.textContent   = `Inf:   ${m.inf_avg_ms.toFixed(1)} ms`;
+        metricTotal.textContent = `Total: ${m.avg_ms.toFixed(1)} ms`;
+        metricP95.textContent   = `P95:   ${m.p95_ms.toFixed(1)} ms`;
+      } else {
+        metricFps.textContent   = 'FPS:   --';
+        metricInf.textContent   = 'Inf:   -- ms';
+        metricTotal.textContent = 'Total: -- ms';
+        metricP95.textContent   = 'P95:   -- ms';
+      }
+    } catch (err) {
+      console.error("Error al obtener metricas:", err);
+    }
+  }
 
   // ── Registro de errores de inferencia ────────────────────────────────────
   logToggleBtn.addEventListener('click', () => {
