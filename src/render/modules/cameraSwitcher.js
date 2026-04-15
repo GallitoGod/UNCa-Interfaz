@@ -65,6 +65,19 @@ async function startSelectedCamera(deviceId) {
   }
 }
 
+export function stopCurrentStream() {
+  if (activeWebSocket) {
+    activeWebSocket.close();
+    activeWebSocket = null;
+  }
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = null;
+  }
+  const video = document.getElementById('video');
+  if (video) video.srcObject = null;
+}
+
 function populateCameraSelect(selectElement, devices) {
   selectElement.innerHTML = devices.map((device, index) => `
     <option value="${device.deviceId}">

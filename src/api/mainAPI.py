@@ -18,19 +18,15 @@ bien anotados con descripciones.
 
 from collections import deque
 import datetime
-import time
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import numpy as np
-from PIL import Image
 import cv2
-from io import BytesIO
 import base64
 from pathlib import Path
 from api.func.model_controller import ModelController
-from api.func.logger import PerfMeter
 
 # Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -63,9 +59,6 @@ _draw_config: dict = {
 
 # Ultimos 50 errores de inferencia (in-memory)
 _inference_errors: deque = deque(maxlen=50)
-
-# Metricas de rendimiento por frame (ultimos 120 frames ≈ 4 s a 30 fps)
-_perf_meter = PerfMeter(window=120)
 
 
 class ModelPathRequest(BaseModel):
@@ -180,30 +173,7 @@ def update_colors(data: DrawConfigRequest):
 
 
 # ════════════════════════════════════════
-# 3 Enviar imagen y obtener deteccion
-# ════════════════════════════════════════
-
-@app.post("/predict")
-async def run_inference(file: UploadFile = File(...)):
-    if controller.predict_fn is None:
-        return JSONResponse(status_code=400, content={"status": "error", "detail": "No hay modelo cargado. Llamar a /model/load primero."})
-    try:
-        image_bytes = await file.read()
-        image = Image.open(BytesIO(image_bytes))
-        image_np = np.array(image)
-
-        if image_np.shape[-1] == 4:
-            image_np = image_np[..., :3]
-
-        result = controller.inference(image_np)
-        return {"status": "ok", "detections": result}
-
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
-
-
-# ════════════════════════════════════════
-# 4 Descargar modelo
+# 3 Descargar modelo
 # ════════════════════════════════════════
 
 @app.post("/model/unload")
@@ -213,7 +183,7 @@ def unload_model():
 
 
 # ════════════════════════════════════════
-# 5 WebSocket streaming con inferencia
+# 4 WebSocket streaming con inferencia
 # ════════════════════════════════════════
 
 @app.websocket("/video_stream")
@@ -263,9 +233,21 @@ async def video_stream(websocket: WebSocket):
 
 
 # ════════════════════════════════════════
-# 6 Obtener logs de inferencia
+# 5 Obtener logs de inferencia
 # ════════════════════════════════════════
 
 @app.get("/logs/inference")
 def get_inference_logs():
     return {"logs": list(_inference_errors)}
+
+
+# ════════════════════════════════════════
+# 6 Metricas de rendimiento
+# ════════════════════════════════════════
+
+@app.get("/metrics")
+def get_metrics():
+    stats = controller.perf.stats()
+    if stats is None:
+        return {"status": "no_data", "metrics": None}
+    return {"status": "ok", "metrics": stats}

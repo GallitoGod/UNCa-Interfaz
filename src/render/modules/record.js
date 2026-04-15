@@ -2,13 +2,14 @@ let mediaRecorder = null;
 let recordedChunks = [];
 export let isRecording = false;
 
-export function startRecording(recordButton, video) {
-  if (!video.srcObject) {
-    console.error('No hay stream de video disponible para grabar.');
+export function startRecording(recordButton, outputCanvas) {
+  if (!outputCanvas) {
+    console.error('No hay canvas de salida disponible para grabar.');
     return;
   }
 
-  mediaRecorder = new MediaRecorder(video.srcObject, {
+  const stream = outputCanvas.captureStream(30);
+  mediaRecorder = new MediaRecorder(stream, {
     mimeType: 'video/webm',
   });
 

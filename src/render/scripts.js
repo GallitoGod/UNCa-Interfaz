@@ -2,6 +2,7 @@ import { switchCamera } from './modules/cameraSwitcher.js';
 import { startRecording, stopRecording, isRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
+import { handleFileUpload } from './modules/fileHandler.js';
 import { confidenceUrl, colorsUrl, inferenceLogsUrl, metricsUrl } from './modules/constants.js';
 const d = document;
 
@@ -22,6 +23,7 @@ d.addEventListener('DOMContentLoaded', () => {
   const cameraSelect      = d.getElementById('camera-select');
   const recordButton      = d.getElementById('record-btn');
   const video             = d.getElementById('video');
+  const outputCanvas      = d.getElementById('outputCanvas');
   const fileButton        = d.getElementById('personalized-upload');
   const inputFile         = d.getElementById('file-upload');
   const modelSelect       = d.getElementById('ia-model');
@@ -133,9 +135,15 @@ d.addEventListener('DOMContentLoaded', () => {
     selectModel(modelSelect.value);
   });
 
-  // ── Cargar video desde archivo ────────────────────────────────────────────
+  // ── Cargar video/imagen desde archivo ────────────────────────────────────
   fileButton.addEventListener('click', () => {
     inputFile.click();
+  });
+
+  inputFile.addEventListener('change', () => {
+    const file = inputFile.files[0];
+    if (file) handleFileUpload(file);
+    inputFile.value = '';
   });
 
   // ── Camara ────────────────────────────────────────────────────────────────
@@ -144,7 +152,7 @@ d.addEventListener('DOMContentLoaded', () => {
   // ── Grabacion (usa la flag exportada para evitar la comparacion por texto) ─
   recordButton.addEventListener('click', () => {
     if (!isRecording) {
-      startRecording(recordButton, video);
+      startRecording(recordButton, outputCanvas);
     } else {
       stopRecording(recordButton);
     }
