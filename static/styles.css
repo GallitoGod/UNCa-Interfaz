@@ -518,7 +518,6 @@ input:checked + .slider:before {
   cursor: pointer;
 }
 
-/* ── Metricas HUD ───────────────────────────────────────────────────────── */
 .metrics-hud {
   display: none;
   position: absolute;
@@ -543,7 +542,6 @@ input:checked + .slider:before {
   display: flex;
 }
 
-/* ── Pantalla completa ──────────────────────────────────────────────────── */
 .video-container {
   cursor: pointer;
 }
@@ -556,7 +554,6 @@ input:checked + .slider:before {
   height: 100vh;
 }
 
-/* ── Registro de errores ────────────────────────────────────────────────── */
 .log-section {
   display: flex;
   flex-direction: column;
@@ -628,4 +625,40 @@ input:checked + .slider:before {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+.camera-select-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.camera-select-row .select-control {
+  flex: 1;
+}
+
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background-color: var(--card);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.icon-button:active svg {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
 }

@@ -1,4 +1,4 @@
-import { switchCamera } from './modules/cameraSwitcher.js';
+import { initCameras, refreshCameras } from './modules/cameraSwitcher.js';
 import { startRecording, stopRecording, isRecording } from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
@@ -20,7 +20,8 @@ d.addEventListener('DOMContentLoaded', () => {
   const labelColorInput   = d.getElementById("label-color");
   const bboxColorPreview  = d.getElementById("bbox-color-preview");
   const labelColorPreview = d.getElementById("label-color-preview");
-  const cameraSelect      = d.getElementById('camera-select');
+  const cameraSelect          = d.getElementById('camera-select');
+  const refreshCamerasBtn     = d.getElementById('refresh-cameras-btn');
   const recordButton      = d.getElementById('record-btn');
   const video             = d.getElementById('video');
   const outputCanvas      = d.getElementById('outputCanvas');
@@ -147,7 +148,9 @@ d.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Camara ────────────────────────────────────────────────────────────────
-  switchCamera(cameraSelect);
+  initCameras(cameraSelect);
+
+  refreshCamerasBtn.addEventListener('click', () => refreshCameras(cameraSelect));
 
   // ── Grabacion (usa la flag exportada para evitar la comparacion por texto) ─
   recordButton.addEventListener('click', () => {

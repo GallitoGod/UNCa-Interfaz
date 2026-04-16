@@ -3,33 +3,65 @@ import { initVideoStream } from "./streamHandler.js";
 let currentStream = null;
 let activeWebSocket = null;
 
-export async function switchCamera(cameraSelect) {
+export async function initCameras(cameraSelect) {
   try {
     await navigator.mediaDevices.getUserMedia({ video: true });
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-
-    if (!videoDevices.length) {
-      console.error('No se detectaron camaras');
-      return;
-    }
-
-    populateCameraSelect(cameraSelect, videoDevices);
+    await _populateCameraSelect(cameraSelect);
 
     cameraSelect.addEventListener('change', async (event) => {
       await startSelectedCamera(event.target.value);
     });
 
-    await startSelectedCamera(videoDevices[0].deviceId);
-
+    if (cameraSelect.value) {
+      await startSelectedCamera(cameraSelect.value);
+    }
   } catch (err) {
     console.error('Error inicializando camaras:', err);
   }
 }
 
-async function startSelectedCamera(deviceId) {
+export async function refreshCameras(cameraSelect) {
   try {
-    // Cerrar WebSocket anterior antes de abrir uno nuevo
+    const previousId = cameraSelect.value;
+    await _populateCameraSelect(cameraSelect);
+
+    // Si la camara que estaba seleccionada sigue disponible, mantenerla
+    const stillAvailable = [...cameraSelect.options].some(o => o.value === previousId);
+    if (stillAvailable && previousId) {
+      cameraSelect.value = previousId;
+    }
+
+    if (cameraSelect.value) {
+      await startSelectedCamera(cameraSelect.value);
+    }
+  } catch (err) {
+    console.error('Error al actualizar camaras:', err);
+  }
+}
+
+async function _populateCameraSelect(cameraSelect) {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+  if (!videoDevices.length) {
+    console.error('No se detectaron camaras');
+    return;
+  }
+
+  const currentValue = cameraSelect.value;
+  cameraSelect.innerHTML = videoDevices.map((device, index) => `
+    <option value="${device.deviceId}">
+      ${device.label || `Camara ${index + 1}`}
+    </option>
+  `).join('');
+
+  // Restaurar seleccion si sigue existiendo
+  const stillExists = [...cameraSelect.options].some(o => o.value === currentValue);
+  if (stillExists) cameraSelect.value = currentValue;
+}
+
+export async function startSelectedCamera(deviceId) {
+  try {
     if (activeWebSocket) {
       activeWebSocket.close();
       activeWebSocket = null;
@@ -52,7 +84,6 @@ async function startSelectedCamera(deviceId) {
     currentStream = stream;
     await video.play();
 
-    // Ocultar el mensaje de "sin video" cuando el stream arranca
     const noVideoMsg = document.querySelector('.no-video-message');
     if (noVideoMsg) noVideoMsg.style.display = 'none';
 
@@ -76,12 +107,4 @@ export function stopCurrentStream() {
   }
   const video = document.getElementById('video');
   if (video) video.srcObject = null;
-}
-
-function populateCameraSelect(selectElement, devices) {
-  selectElement.innerHTML = devices.map((device, index) => `
-    <option value="${device.deviceId}">
-      ${device.label || `Camara ${index + 1}`}
-    </option>
-  `).join('');
 }
