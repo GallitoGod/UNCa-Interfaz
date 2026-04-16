@@ -62,13 +62,21 @@ class PerfMeter:
     """
     Guarda los ultimos N tiempos y calcula fps promedio y p95.
     Pensado para benchmark en loop.
+    Ventana chica (30) para que las metricas reflejen el estado actual rapidamente.
     """
-    def __init__(self, window=300):
+    def __init__(self, window=30):
         self.window = window
         self.t_pre  = deque(maxlen=window)
         self.t_inf  = deque(maxlen=window)
         self.t_post = deque(maxlen=window)
         self.t_total= deque(maxlen=window)
+
+    def reset(self) -> None:
+        """Descarta todos los tiempos acumulados. Llamar al cambiar de modelo."""
+        self.t_pre.clear()
+        self.t_inf.clear()
+        self.t_post.clear()
+        self.t_total.clear()
 
     def push(self, pre_ms, inf_ms, post_ms, total_ms) -> None:
         self.t_pre.append(pre_ms)

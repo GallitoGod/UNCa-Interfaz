@@ -172,6 +172,7 @@ class ModelController:
 
     def load_model(self, model_path: str):
         try:
+            self.perf.reset()
             self.logger = setup_model_logger(os.path.basename(model_path).split(".")[0])
 
             self.model_format = os.path.splitext(model_path)[1].lower()

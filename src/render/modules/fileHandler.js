@@ -23,6 +23,7 @@ function _handleVideo(file) {
   if (noVideoMsg) noVideoMsg.style.display = 'none';
 
   video.src = URL.createObjectURL(file);
+  video.muted = true;
   video.loop = true;
   video.play();
 
