@@ -22,9 +22,18 @@ from .output_pipeline.unpackers.registry import unpack_out
 '''
 class ModelController:
 
-    # TODO: el controlador debe terminar siendo un administrador de pipelines, nod debe conocer los detalles de cada pipeline
-    # como ya lo hace. Debe entender el JSON, percatar si es calsificacion, deteccion, etc y en base a ello elegir las pipelines correctas.
+    # TODO: el controlador debe terminar siendo un administrador de pipelines, no debe conocer los detalles de cada pipeline
+    # como ya lo hace. Debe entender el JSON, percatar si es clasificacion, deteccion, etc y en base a ello elegir las pipelines correctas.
     # Por lo que la siguiente actualizacion del controlador va a ser una reestructuracion completa para lograr cumplir ese objetivo.
+
+    # TODO [INSTANCIA]: Segmentacion de instancias (ej: YOLOv8-seg, Mask R-CNN).
+    #   A diferencia de la segmentacion semantica, combina deteccion de objetos + mascara por instancia.
+    #   Requiere correr dos postprocesados en cadena:
+    #     1_ Postprocesado de deteccion: obtener boxes + coeficientes de mascara por deteccion.
+    #     2_ Postprocesado de mascara: combinar coeficientes con prototipos (YOLOv8-seg) o recortar mascaras
+    #        directamente por ROI (Mask R-CNN). Binarizar con mask_threshold.
+    #   Campos adicionales en el schema: mask_threshold (float), mask_channels (int, ej: 32 en YOLOv8-seg).
+    #   El controlador deberia detectar model_type == "instance_segmentation" y despachar ambas pipelines.
     '''
         EL CONCEPTO:
 
@@ -36,122 +45,19 @@ class ModelController:
     '''
 
     '''
-    0) Instrumentacion minima (una sola vez por carga de modelo)    <--- COMPLETADO
-        Loggear model_id, format (onnx/tflite/tf), input_shape, dtype, preprocess usado.
-        Loggear tiempos por etapa: t_pre, t_inf, t_post, t_draw, t_total.
-        Loggear fps_avg y p95 (o al menos promedio + peor caso).
-    '''
-    '''
-    1) Config JSON: runtime controlado por modelo (NO hardcode)     <--- COMPLETADO
-        Agregar en schema/config algo asi (idea, no literal):
-        runtime.device: "cpu" | "gpu".
-        runtime.backend: "onnxruntime" | "tflite" | "tensorflow" (si aplica).
-        runtime.threads: intra_op, inter_op, num_threads.
-        runtime.onnx.providers: lista ordenada (ej ["CUDAExecutionProvider","CPUExecutionProvider"]).
-        runtime.tflite.delegates: ["gpu"] o vacio.
-        runtime.warmup_runs.
-    '''
-    '''
-    2) ONNX Runtime: GPU habilitable y fallback     <--- COMPLETADO
-        En onnx_load.py (donde se crea InferenceSession):
-        Detectar si el paquete es onnxruntime-gpu y si CUDAExecutionProvider esta disponible.
-        Crear sesion con providers desde config:
-            si device=="gpu": ["CUDAExecutionProvider","CPUExecutionProvider"]
-            si device=="cpu": ["CPUExecutionProvider"]
-        Setear threads desde config:
-            sess_options.intra_op_num_threads
-            sess_options.inter_op_num_threads
-        Loggear al cargar: sess.get_providers() y ort.get_available_providers()
-    '''
-    '''
-    3) TFLite: threads + delegate (si esta disponible)      <--- COMPLETADO
-        En tflite_load.py:
-        Exponer num_threads desde config (siempre).
-        Si device=="gpu":
-            intentar crear delegate GPU (si no se puede, loggear y fallback a CPU).
-        Loggear al cargar: delegate=GPU/None, num_threads, y si esta usando XNNPACK (si se puede detectar).
-    '''
-    '''
-    4) TensorFlow/Keras: verificacion GPU y control de memoria      <--- COMPLETADO
-        En loader TF:
-        Loggear tf.config.list_physical_devices('GPU')
-        (Opcional) habilitar memory growth si hay GPU
-        Loggear si efectivamente se esta usando GPU (aunque sea indirecto)
-    '''
-    '''
-    PARA TENER EN CUENTA: Optimizacion “barata” que casi siempre suma FPS (sin GPU todavia)
-        Evitar reallocs: reutilizar buffers numpy cuando sea posible.
-        Evitar conversiones dtype repetidas (ej uint8→float32 cada frame si no hace falta).
-        Minimizar copias CPU (especialmente np.copy, astype sin necesidad).
-        Juntar pasos de preprocess en una sola pasada (resize + normalize).
-        Si se dibuja boxes:
-            que el draw sea opcional en benchmark (porque puede limitar FPS).
-    '''
-    '''
-    PARA TENER EN CUENTA: Validacion final “de verdad”
-        Correr benchmark con:
-            device=cpu y device=gpu (misma computadora)
-            y comparar t_inf y t_total
-        Verificar en paralelo:
-            nvidia-smi mostrando uso real de GPU
-            providers/delegate en logs
-    '''
+    "Implementacion de un modulo de instanciacion dinamica guiado por gramaticas libres de contexto. 
+    El sistema utiliza esquemas formales para generar de forma determinista los contratos de pre y postprocesamiento
+      de los tensores para cualquier Red Neuronal. Esto desacopla la logica de inferencia del framework subyacente, garantizando
+      la validez semantica en tiempo de ejecucion y logrando una arquitectura de software totalmente agnostica."
 
-    '''
-        DEBUG - [DBG] input/orig: input=640x640 orig=1920x1080
-        DEBUG - [DBG] letter: {'scale': 0.3333333333333333, 'pad_left': 0.0, 'pad_top': 140.0, 'letterbox_used': True}
-        DEBUG - [DBG] tensor-space (pre-undo): [[4.1021619e+02 1.7992230e+02 6.3928540e+02 4.9856915e+02 8.2283282e-01
-        1.7000000e+01]
-        [3.6798859e-01 1.6471231e+02 2.0640732e+02 4.6118118e+02 7.9173315e-01
-        1.7000000e+01]
-        [2.8473242e+02 1.9341101e+02 4.3834485e+02 4.9710425e+02 7.5424951e-01
-        1.7000000e+01]]
-        DEBUG - [[1230.6485595703125, 119.76690673828125, 1917.856201171875, 1075.7073974609375, 0.8228328227996826, 17.0], [1.1039657592773438, 74.13693237304688, 619.221923828125, 963.5435180664062, 0.7917331457138062, 17.0], [854.197265625, 160.2330322265625, 1315.0345458984375, 1071.312744140625, 0.7542495131492615, 17.0], [379.1082763671875, 73.42080688476562, 888.6564331054688, 1068.0205078125, 0.6822399497032166, 17.0], [1.78564453125, 643.9934692382812, 426.9784240722656, 1069.9405517578125, 0.4531806409358978, 17.0]]
-        INFO - Inferencia ejecutada: 5 detecciones
-        Tiempo de carga total: 181.01 ms
-        Tiempo (wall) por 1 imagen: 54.04 ms
-        Total 200 imgs: 11.638 s | FPS (wall): 17.18
-        PerfMeter | n=211 avg=57.31ms p95=68.93ms fps=17.45 | pre=14.28 inf=41.90 post=1.13
+    Abstraccion de Modelos: Desacoplamiento total entre el motor de UNCALens y las topologías de las RNC.
 
-        BIEN, se puede ver que el postprocesado esta perfecto, el numero parece error blanco.
-        Tambien es importante ver el preprocesado, todavia puedo hacer mucho ahi, pero sin lugar a dudas
-        el problema se encuentra en las inferencias, no es mio, el modelo esta siendo ejecutado en un 
-        Ryzen 5 5600X, llega lo jodido: como hago que todo funcione en CUDA ????
-        
-        Pensaba que eso ya lo tenia resuelto pero por alguna razon el sistema no lee CUDAExecutionProvider
-        solo lee CPUExecutionProvider, si paso la inferencia a gpu la performance explota, mas que nada porque
-        correria en una GPU RTX 3060.
-    '''
+    Generacion Determinista: Uso de reglas de produccion formales para estructurar las configuraciones sin errores de sintaxis.
 
-    '''
-        INFO - Inferencia ejecutada: 28 detecciones
-        DEBUG - [DBG] input/orig: input=320x320 orig=1920x1080
-        DEBUG - [DBG] letter: {'scale': 0.16666666666666666, 'pad_left': 0.0, 'pad_top': 70.0, 'letterbox_used': True}
-        DEBUG - [DBG] tensor-space (pre-undo): [[-0.03878175  0.06809887 -1.0533311  -0.7728281   0.00197633  0.        ]
-        [ 0.19823961 -0.01707495 -1.803082   -1.4310396   0.00244074  0.        ]
-        [-0.0435522   0.36151633 -1.5297735  -0.7218313   0.00407261  0.        ]]
-        DEBUG - [[0.0, 0.0, 1.480668067932129, 0.0, 0.741368293762207, 18.0], [0.27678394317626953, 0.0, 1.798208475112915, 0.0, 0.7221113443374634, 18.0], [0.0, 0.0, 0.0, 0.0, 0.7220731973648071, 18.0], [0.22902309894561768, 0.0, 0.46020984649658203, 0.0, 0.7190607786178589, 18.0], [0.0, 0.0, 0.0, 0.0, 0.7027531862258911, 18.0]]
-        INFO - Inferencia ejecutada: 28 detecciones
-        DEBUG - [DBG] input/orig: input=320x320 orig=1920x1080
-        DEBUG - [DBG] letter: {'scale': 0.16666666666666666, 'pad_left': 0.0, 'pad_top': 70.0, 'letterbox_used': True}
-        DEBUG - [DBG] tensor-space (pre-undo): [[-0.03878175  0.06809887 -1.0533311  -0.7728281   0.00197633  0.        ]
-        [ 0.19823961 -0.01707495 -1.803082   -1.4310396   0.00244074  0.        ]
-        [-0.0435522   0.36151633 -1.5297735  -0.7218313   0.00407261  0.        ]]
-        DEBUG - [[0.0, 0.0, 1.480668067932129, 0.0, 0.741368293762207, 18.0], [0.27678394317626953, 0.0, 1.798208475112915, 0.0, 0.7221113443374634, 18.0], [0.0, 0.0, 0.0, 0.0, 0.7220731973648071, 18.0], [0.22902309894561768, 0.0, 0.46020984649658203, 0.0, 0.7190607786178589, 18.0], [0.0, 0.0, 0.0, 0.0, 0.7027531862258911, 18.0]]
-        INFO - Inferencia ejecutada: 28 detecciones
-        Tiempo de carga total: 201.38 ms
-        Tiempo (wall) por 1 imagen: 66.55 ms
-        Total 200 imgs: 15.682 s | FPS (wall): 12.75
-        PerfMeter | n=211 avg=76.93ms p95=128.21ms fps=13.00 | pre=4.66 inf=42.62 post=29.64
+    Validacion Semantica: Prevencion de fallos de memoria o de dimensiones de tensores en GPU al asegurar la 
+      integridad del archivo antes de la carga.
 
-        Bueno... Es curioso que para este modelo el preprocesado sea simple y el postprocesado complejo,
-        me doy una idea del porque: el preprocesado es mas barato porque la entrada es NHWC float32 y el 
-        postprocesado es caro por boxes_scores + undo letterbox/escala, probablemente deberia volver a ver 
-        la implementacion del undo letterbox (loops o copias merman el rendimiento).
-        Inferencia sigue siendo grande, pero ahora post tambien es un cuello importante.
-
-        Aparte se ve un problema en las escalas de pixeles de los boxes.
-        El output parece estar mal interpretado (coords negativas / >1), asi que hay un bug de mapeo/espacio de coordenadas.
+    Arquitectura Agnostica: Estandarizacion de la entrada/salida sin importar el origen del modelo (ONNX, TFLite, Keras, etc.).
     '''
 
 

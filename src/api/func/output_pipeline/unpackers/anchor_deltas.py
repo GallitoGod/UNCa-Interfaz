@@ -1,7 +1,7 @@
 # api/func/output_pipeline/unpackers/build_anchor_deltas.py
 from typing import Any, List
 import numpy as np
-from api.func.reader_pipeline.config_schema import OutputConfig
+from api.func.reader_pipeline.config_schema import AnyOutputConfig
 from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix, rt_shapes
 
 
@@ -23,7 +23,7 @@ from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix,
 '''
 
 
-def build_anchor_deltas(output_cfg: OutputConfig):
+def build_anchor_deltas(output_cfg: AnyOutputConfig):
     """
     Entrada cruda (sin DetectionPostProcess):
       raw_output: (box_deltas, class_scores)  o  (class_scores, box_deltas)

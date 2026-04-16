@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, List, Sequence, Optional
 import numpy as np
 
-from api.func.reader_pipeline.config_schema import OutputConfig, RuntimeConfig
+from api.func.reader_pipeline.config_schema import AnyOutputConfig, RuntimeConfig
 
 
 def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_thr: float) -> np.ndarray:
@@ -103,7 +103,7 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
     boxes[:, 3] = np.clip(y2, 0.0, H0)
 
 
-def buildPostprocessor(output_cfg: OutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]]], List[List[float]]]:
+def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]]], List[List[float]]]:
     """
     Devuelve un callable que toma detecciones en layout:
         [x1, y1, x2, y2, score, class_id]   (floats)  EN EL ESPACIO DEL TENSOR,

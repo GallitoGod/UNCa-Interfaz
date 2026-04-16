@@ -1,7 +1,7 @@
-from .config_schema import OutputConfig
+from .config_schema import DetectionOutput
 from typing import Callable
 
-class Reactive_output_config(OutputConfig):
+class Reactive_output_config(DetectionOutput):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._on_change_callback = None

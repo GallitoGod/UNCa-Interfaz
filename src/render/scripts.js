@@ -4,6 +4,7 @@ import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
 import { handleFileUpload } from './modules/fileHandler.js';
 import { confidenceUrl, colorsUrl, inferenceLogsUrl, metricsUrl } from './modules/constants.js';
+import { initModelsManager } from './modules/modelsManager.js';
 const d = document;
 
 d.addEventListener('DOMContentLoaded', () => {
@@ -45,6 +46,24 @@ d.addEventListener('DOMContentLoaded', () => {
   bboxColorPreview.style.backgroundColor = bboxColorInput.value;
   labelColorPreview.style.backgroundColor = labelColorInput.value;
   getModels();
+
+  // ── Navegacion de vistas ──────────────────────────────────────────────────
+  const navBtns   = d.querySelectorAll('.nav-btn');
+  const views     = d.querySelectorAll('.view');
+  let modelsReady = false;
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.view;
+      navBtns.forEach(b => b.classList.toggle('active', b === btn));
+      views.forEach(v => v.classList.toggle('active', v.id === `${target}-view`));
+
+      if (target === 'models' && !modelsReady) {
+        initModelsManager();
+        modelsReady = true;
+      }
+    });
+  });
 
   // ── Tema oscuro ──────────────────────────────────────────────────────────
   darkModeToggle.addEventListener("change", function () {
