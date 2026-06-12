@@ -105,16 +105,13 @@ class SemanticSegmentationOutput(StrictModel):
 # ---------------------------------------------------------------------------
 
 class RuntimeShapes(StrictModel):
+    # SOLO constantes de carga: todo lo que esta aca se escribe UNA vez al armar el
+    # pipeline (load_model) y despues solo se lee. El estado por-frame (orig_width,
+    # orig_height, scale/pads del letterbox) NO vive mas aca: el preprocesador lo
+    # devuelve como dict 'meta' que viaja junto al tensor hasta el postprocesador.
+    # Esto elimina el estado mutable compartido y habilita streams concurrentes.
     input_width: int = 0
     input_height: int = 0
-    orig_width: int = 0
-    orig_height: int = 0
-    metadata_letter: Dict[str, Union[float, bool]] = Field(default_factory=lambda: {
-        "scale": 1.0,
-        "pad_left": 0.0,
-        "pad_top": 0.0,
-        "letterbox_used": False
-    })
     channels: int = 3
     out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
     # Estado runtime para anchor_deltas (NO van en el JSON: se generan al cargar el modelo)

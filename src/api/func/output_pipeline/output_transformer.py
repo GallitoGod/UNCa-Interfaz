@@ -46,12 +46,20 @@ def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_thr: float) -> np.ndarr
     return np.asarray(keep, dtype=np.int64)
 
 
-def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) -> None:
+def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig, meta: dict) -> None:
     """
     Modifica IN-PLACE las columnas 0..3 (xyxy) de 'dets_xyxy' para convertir
     de coordenadas en el ESPACIO DEL TENSOR (input_width x input_height)
     a coordenadas en el ESPACIO DE LA IMAGEN ORIGINAL (orig_width x orig_height),
     deshaciendo letterbox si corresponde.
+
+    Separacion de fuentes (clave del diseno sin estado compartido):
+      - 'runtime' aporta SOLO constantes de carga: out_coords_space e
+        input_width/height, que no cambian durante el stream.
+      - 'meta' aporta lo PER-FRAME: orig_width/height del frame que origino estas
+        detecciones y los parametros del letterbox que se le aplico. Lo produce
+        el preprocesador y viaja junto al frame, asi dos streams concurrentes
+        no se pisan los datos.
     """
     if dets_xyxy.size == 0:
         return
@@ -67,30 +75,28 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
         boxes[:, [0, 2]] *= W_in
         boxes[:, [1, 3]] *= H_in
 
-    md = getattr(rs, "metadata_letter", {}) or {}
-    letterbox_usado = bool(md.get("letterbox_used", False))
+    # Tamano original del frame: viene en el meta del preprocesador
+    W0 = float(meta.get("orig_width",  0))
+    H0 = float(meta.get("orig_height", 0))
 
-    if letterbox_usado:
-        s  = float(md.get("scale", 1.0))
-        pl = float(md.get("pad_left", 0.0))
-        pt = float(md.get("pad_top",  0.0))
+    if bool(meta.get("letterbox_used", False)):
+        # Deshacer letterbox: primero restar el padding, despues dividir por el scale
+        s  = float(meta.get("scale", 1.0))
+        pl = float(meta.get("pad_left", 0.0))
+        pt = float(meta.get("pad_top",  0.0))
 
         boxes[:, [0, 2]] = (boxes[:, [0, 2]] - pl) / (s + 1e-12)  # x1, x2
         boxes[:, [1, 3]] = (boxes[:, [1, 3]] - pt) / (s + 1e-12)  # y1, y2
     else:
+        # Resize directo: re-escalar cada eje por la relacion (original / tensor)
         W_in = float(getattr(rs, "input_width", 1) or 1)
         H_in = float(getattr(rs, "input_height", 1) or 1)
-        W0   = float(getattr(rs, "orig_width",   0))
-        H0   = float(getattr(rs, "orig_height",  0))
 
         sx = (W0 / W_in) if W_in > 0 else 1.0
         sy = (H0 / H_in) if H_in > 0 else 1.0
 
         boxes[:, [0, 2]] *= sx
         boxes[:, [1, 3]] *= sy
-
-    W0 = float(getattr(rs, "orig_width",  0))
-    H0 = float(getattr(rs, "orig_height", 0))
 
     x1 = np.minimum(boxes[:, 0], boxes[:, 2])
     y1 = np.minimum(boxes[:, 1], boxes[:, 3])
@@ -103,10 +109,13 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig) 
     boxes[:, 3] = np.clip(y2, 0.0, H0)
 
 
-def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]]], List[List[float]]]:
+def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]], dict], List[List[float]]]:
     """
-    Devuelve un callable que toma detecciones en layout:
-        [x1, y1, x2, y2, score, class_id]   (floats)  EN EL ESPACIO DEL TENSOR,
+    Devuelve un callable que toma (detecciones, meta):
+      - detecciones en layout [x1, y1, x2, y2, score, class_id] (floats)
+        EN EL ESPACIO DEL TENSOR.
+      - meta: dict por-frame generado por el preprocesador (orig_width/height +
+        parametros del letterbox) — necesario para el paso 4 (undo).
     y aplica los pasos finales:
 
       1) Filtro por confianza (centralizado aqui) — lee el umbral EN CADA LLAMADA.
@@ -138,7 +147,9 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
     top_k: Optional[int] = int(top_k_opt) if isinstance(top_k_opt, (int, float)) and int(top_k_opt) > 0 else None
 
     # ---------funcion-de-postproceso---------
-    def _postprocess(arr: np.ndarray) -> List[List[float]]:
+    # Recibe el meta del frame como segundo argumento: el postprocesador no lee
+    # NINGUN estado per-frame de 'runtime' (solo constantes de carga).
+    def _postprocess(arr: np.ndarray, meta: dict) -> List[List[float]]:
         arr = np.asarray(arr, dtype=np.float32)
         if arr.size == 0:
             return []
@@ -181,8 +192,9 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
                 arr = arr[keep] if keep.size else arr[:0]
 
         # 4) Undo del preprocesado → coordenadas en la imagen original
+        #    (usa el meta de ESTE frame, no estado compartido)
         if arr.shape[0] > 0:
-            _undo_transform_xyxy_inplace(arr, runtime)
+            _undo_transform_xyxy_inplace(arr, runtime, meta)
 
         # 5) Orden final por score desc (estable para UI/logs)
         if arr.shape[0] > 1:

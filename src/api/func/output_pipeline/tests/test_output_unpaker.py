@@ -10,13 +10,13 @@ class _DummyOutputConfig:
         self.pack_format = pack_format
 
 
-def _rt(*, iw=320, ih=320, ow=320, oh=320, out_coords_space="tensor_pixels"):
+def _rt(*, iw=320, ih=320, out_coords_space="tensor_pixels"):
+    # Los unpackers solo usan constantes de carga (input_width/height y
+    # out_coords_space); el tamano original del frame ya no vive aca.
     return RuntimeConfig(
         runtimeShapes=RuntimeShapes(
             input_width=iw,
             input_height=ih,
-            orig_width=ow,
-            orig_height=oh,
             out_coords_space=out_coords_space,
         )
     )

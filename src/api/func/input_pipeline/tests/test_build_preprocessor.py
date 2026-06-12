@@ -3,60 +3,56 @@ import pytest
 from api.func.input_pipeline.input_transformer import build_preprocessor
 from api.func.reader_pipeline.config_schema import InputConfig, RuntimeConfig, RuntimeShapes
 
+# El preprocesador devuelve (tensor, meta). runtimeShapes solo guarda constantes
+# de carga (input_width/height); el estado por-frame viaja en el meta.
 
-class DummyRuntime:
-    def __init__(self):
-        self.metadata_letter = {
-            "scale": 1.0,
-            "pad_left": 0.0,
-            "pad_top": 0.0,
-            "letterbox_used": False
-        }
+
+def _make_runtime():
+    # RuntimeShapes ya no tiene orig_width/orig_height/metadata_letter:
+    # esos datos son por-frame y viven en el meta que devuelve el preprocesador.
+    return RuntimeConfig(runtimeShapes=RuntimeShapes(
+        input_width=0,
+        input_height=0,
+        channels=3,
+        out_coords_space="normalized_0_1",
+    ))
 
 
 def test_preprocessor_with_letterbox_and_scaling_and_normalization():
     cfg = InputConfig(
-        width=640,                              #width: int
-        height=360,                             #height: int
-        channels= 3,                            #channels: int
-        normalize=True,                         #normalize: bool = True                  
-        mean=[0.5, 0.5, 0.5],                   #mean: List[float] = [0.0, 0.0, 0.0]
-        std=[0.5, 0.5, 0.5],                    #std: List[float] = [1.0, 1.0, 1.0]
-        scale=True,                             #scale: bool = True
-        letterbox=True,                         #letterbox: bool = Field(default=False)                   
-        auto_pad_color=(0, 0, 0),               #auto_pad_color: Optional[List[int]] = [114, 114, 114]
-        preserve_aspect_ratio=True,             #preserve_aspect_ratio: Optional[bool] = True               
-        color_order="RGB",                      #color_order: Optional[Literal["RGB", "BGR", "GRAY"]] = "RGB"
-        input_str= None                         #input_str: Optional[InputTensor] = None                       
-    )                        
-    rmSh = RuntimeShapes(
-        input_width = 0,
-        input_height = 0,
-        orig_width = 0,
-        orig_height = 0,
-        metadata_letter = {
-            "scale": 1.0,
-            "pad_left": 0.0,
-            "pad_top": 0.0,
-            "letterbox_used": False
-        },
-        channels = 3,
-        out_coords_space = "normalized_0_1"
-    )           
-    runtime = RuntimeConfig(runtimeShapes=rmSh)
+        width=640,
+        height=360,
+        channels=3,
+        normalize=True,
+        mean=[0.5, 0.5, 0.5],
+        std=[0.5, 0.5, 0.5],
+        scale=True,
+        letterbox=True,
+        auto_pad_color=(0, 0, 0),
+        preserve_aspect_ratio=True,
+        color_order="RGB",
+        input_str=None,
+    )
+    runtime = _make_runtime()
     preprocess_fn = build_preprocessor(cfg, runtime)
 
     img = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
-    out = preprocess_fn(img)
+    out, meta = preprocess_fn(img)
 
-    # Tamaño final debe coincidir con config
+    # Tamano final debe coincidir con config
     assert out.shape == (360, 640, 3)
 
     # Debe estar normalizado: valor medio ~ 1.0 para una imagen blanca
     assert np.allclose(out, (1.0 - 0.5) / 0.5, atol=1e-6)
 
-    # metadata_letter debe haberse seteado
-    assert runtime.runtimeShapes.metadata_letter["letterbox_used"] is True
+    # El meta del frame refleja el letterbox aplicado y el tamano original
+    assert meta["letterbox_used"] is True
+    assert meta["orig_width"] == 1920
+    assert meta["orig_height"] == 1080
+
+    # build_preprocessor dejo las constantes de carga en runtimeShapes
+    assert runtime.runtimeShapes.input_width == 640
+    assert runtime.runtimeShapes.input_height == 360
 
 
 def test_preprocessor_without_letterbox():
@@ -72,49 +68,39 @@ def test_preprocessor_without_letterbox():
         auto_pad_color=(0, 0, 0),
         preserve_aspect_ratio=False,
         color_order="RGB",
-        input_str=None
+        input_str=None,
     )
-    rmSh = RuntimeShapes(
-        input_width = 0,
-        input_height = 0,
-        orig_width = 0,
-        orig_height = 0,
-        metadata_letter = {
-            "scale": 1.0,
-            "pad_left": 0.0,
-            "pad_top": 0.0,
-            "letterbox_used": False
-        },
-        channels = 3,
-        out_coords_space = "normalized_0_1"
-    )           
-    runtime = RuntimeConfig(runtimeShapes=rmSh)
+    runtime = _make_runtime()
     preprocess_fn = build_preprocessor(cfg, runtime)
 
     img = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
-    out = preprocess_fn(img)
+    out, meta = preprocess_fn(img)
 
     assert out.shape == (240, 320, 3)
-    assert runtime.runtimeShapes.metadata_letter["letterbox_used"] is False
+    # Sin letterbox: el post debera re-escalar por (orig/input), no por scale/pads
+    assert meta["letterbox_used"] is False
+    assert meta["orig_width"] == 1920
+    assert meta["orig_height"] == 1080
 
 
 def test_preprocessor_invalid_config():
-    # Provocar un error en normalizacion (std=0 genera division por cero)
+    # Provocar un error en normalizacion (std=0 genera division por cero).
+    # Se usa un runtime real para que el fallo venga del std y no de otra cosa.
     cfg = InputConfig(
         width=320,
         height=240,
-        channels= 3,                           
-        normalize=True,                                      
-        mean=[0, 0, 0],                
-        std=[0, 0, 0],                  
+        channels=3,
+        normalize=True,
+        mean=[0, 0, 0],
+        std=[0, 0, 0],
         scale=False,
         letterbox=False,
         auto_pad_color=(0, 0, 0),
         preserve_aspect_ratio=False,
-        color_order="RGB",                      
-        input_str=None 
+        color_order="RGB",
+        input_str=None,
     )
-    runtime = DummyRuntime()
+    runtime = _make_runtime()
 
     with pytest.raises(ValueError):
         build_preprocessor(cfg, runtime)

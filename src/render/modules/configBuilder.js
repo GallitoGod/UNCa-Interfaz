@@ -1,10 +1,13 @@
-const fs = require('fs');
-const path = require('path');
+// configBuilder.js — wizard de 4 pasos que arma el JSON de config de un modelo.
+//
+// Post-hardening: el renderer no escribe archivos. El guardado delega en
+// window.uncaAPI.writeConfig (IPC al main process), que valida el nombre y
+// escribe configs/<modelo>.json. Donde queda el archivo lo decide el main,
+// por eso este modulo ya no conoce rutas.
 
 // ── Estado del builder ──────────────────────────────────────────────────────
 let _state = null;
 let _builderEl = null;
-let _cfgsDir = null;
 let _onSave = null;
 
 // ── Defaults por tipo ───────────────────────────────────────────────────────
@@ -91,9 +94,8 @@ const RUNTIME_DEFAULTS = {
 
 // ── API publica ─────────────────────────────────────────────────────────────
 
-export function openBuilder(builderEl, modelFile, cfgsDir, existing, onSave) {
+export function openBuilder(builderEl, modelFile, existing, onSave) {
   _builderEl = builderEl;
-  _cfgsDir = cfgsDir;
   _onSave = onSave;
 
   const type = existing?.model_type || 'detection';
@@ -693,10 +695,9 @@ function nextStep() {
 
 // ── Guardar ──────────────────────────────────────────────────────────────────
 
-function save() {
+async function save() {
   const { config, modelFile } = _state;
   const baseName = modelFile.replace(/\.[^.]+$/, '');
-  const cfgPath = path.join(_cfgsDir, baseName + '.json');
   const final = clone(config);
 
   // out_coords_space vive en runtime.runtimeShapes en el schema
@@ -719,12 +720,14 @@ function save() {
     final.output.anchor_config = null;
   }
 
-  try {
-    fs.writeFileSync(cfgPath, JSON.stringify(final, null, 2), 'utf-8');
+  // La escritura real la hace el main process (valida baseName y serializa);
+  // aca solo se espera el resultado y se informa al usuario.
+  const res = await window.uncaAPI.writeConfig(baseName, final);
+  if (res.ok) {
     showMsg('Config guardada correctamente', 'save-ok');
     if (_onSave) _onSave();
-  } catch (err) {
-    showMsg(`Error al guardar: ${err.message}`, 'save-error');
+  } else {
+    showMsg(`Error al guardar: ${res.error}`, 'save-error');
   }
 }
 

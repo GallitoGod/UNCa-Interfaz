@@ -5,9 +5,9 @@
 | Campo | Valor |
 |---|---|
 | Proyecto | UNCaLens (UNCa-Interfaz) |
-| Versión del documento | 1.0 |
+| Versión del documento | 1.1 |
 | Fecha | 2026-06-12 |
-| Estado del sistema descrito | Estado actual del repositorio (rama `main`, post-ronda de bugs 2026-06-11) |
+| Estado del sistema descrito | Estado actual del repositorio (rama `main`, post-reformas 6 y 8 del 2026-06-12) |
 | Estándar de referencia | IEEE 830-1998 (adaptado) |
 
 ---
@@ -88,7 +88,10 @@ Sistema de dos procesos que corren en la misma máquina:
   binarios y responde **JSON con detecciones**; nunca devuelve imágenes renderizadas.
 - **Frontend**: Electron 32 (`src/render/`, proceso principal en `src/main.js`).
   Captura webcam/archivo, envía frames por WS, y **dibuja localmente** el frame más
-  las cajas en un canvas (`overlay.js`).
+  las cajas en un canvas (`overlay.js`). El renderer corre **aislado**
+  (`contextIsolation` + `sandbox`, sin Node): el acceso a disco vive en el proceso
+  principal detrás de IPC (`src/preload.js` expone `window.uncaAPI`;
+  `src/ipc-handlers.js` valida y ejecuta).
 - Los procesos se arrancan por separado (uvicorn + `npm start`); no hay spawn
   automático del backend desde Electron (mejora pendiente).
 
@@ -121,8 +124,8 @@ Sistema de dos procesos que corren en la misma máquina:
 |---|---|
 | RG-1 | El backend requiere **Python 3.8.10** (entorno congelado; las dependencias no están pineadas — ver §6). |
 | RG-2 | Backend y frontend corren en `localhost`; el puerto **8000** está hardcodeado en `src/render/modules/constants.js`. |
-| RG-3 | El renderer de Electron usa `nodeIntegration: true` sin `contextIsolation` ni preload (configuración insegura conocida, reforma pendiente). El acceso a disco (escaneo de `models/`, escritura de configs) se hace con `fs` directamente desde el renderer. |
-| RG-4 | El diseño de inferencia es **single-stream**: un solo cliente de video a la vez (estado mutable compartido en `runtimeShapes`, serializado con `RLock`). |
+| RG-3 | El renderer de Electron corre con la configuración segura recomendada (`contextIsolation: true`, `sandbox`, sin `nodeIntegration`): solo puede tocar el disco a través de los 4 canales IPC validados del proceso principal (listar/importar modelos, leer/escribir configs). |
+| RG-4 | El servicio atiende **un stream de video a la vez**: el estado mutable compartido por frame fue eliminado (el metadata viaja con cada frame), pero el `RLock` del controller todavía serializa las inferencias completas (reforma 8b pendiente para concurrencia real). |
 | RG-5 | Solo se soporta `model_type: "detection"`; clasificación y segmentación se rechazan con 501. |
 | RG-6 | GPU opcional: `onnxruntime-gpu` fijado a 1.17.1 (CUDA 11.8). |
 
@@ -145,8 +148,8 @@ Sistema de dos procesos que corren en la misma máquina:
 - **Vista principal**: video de entrada (cámara o archivo) + canvas de salida con
   detecciones superpuestas; selector de modelo, selector de cámara, slider de
   confianza, control de grabación.
-- **Vista "Modelos"**: lista de pesos en `models/` (escaneo con `fs`), dropzone para
-  importar archivos, acceso al wizard de configuración.
+- **Vista "Modelos"**: lista de pesos en `models/` (escaneo vía IPC al proceso
+  principal), dropzone para importar archivos, acceso al wizard de configuración.
 - **Wizard de configuración** (4 pasos): tipo de modelo y backend → entrada
   (dimensiones, normalización, letterbox, layout/dtype) → salida (`pack_format`,
   estructura del tensor, NMS, anchors si corresponde) → escritura de
@@ -226,14 +229,19 @@ Contrato central por frame:
 
 ```
 JPEG ─WS→ mainAPI → ModelController.inference(img_rgb)
-  1. preprocess_fn      letterbox/resize + normalización fusionada
+  1. preprocess_fn → (tensor, meta)   letterbox/resize + normalización fusionada;
+                                      meta = dict POR FRAME (orig_w/h, scale/pads del letterbox)
   2. input_adapter      color_order + layout + dtype
   3. predict_fn         inferencia del backend (devuelve numpy, nunca listas)
   4. unpack_fn          tensor crudo → matriz (N,6) float32
   5. output_adapter     reordena a [x1,y1,x2,y2,conf,cls] (solo formatos que lo requieren)
-  6. postprocess_fn     filtro de confianza → top-k → NMS → deshace letterbox → ordena por score
+  6. postprocess_fn(arr, meta)  filtro de confianza → top-k → NMS → deshace letterbox → ordena por score
 ←WS─ JSON {detections, error}
 ```
+
+El `meta` viaja junto al frame (no hay estado mutable compartido entre frames):
+`runtime.runtimeShapes` contiene solo constantes de carga (`input_width/height`,
+`out_coords_space`, tabla de anchors) escritas una única vez en `load_model`.
 
 ---
 
@@ -310,9 +318,11 @@ JPEG ─WS→ mainAPI → ModelController.inference(img_rgb)
 ### 4.5 Creación de configuraciones
 
 - **RF-19** — El wizard del frontend debe generar `configs/<modelo>.json` en 4 pasos,
-  cubriendo entrada, salida (incl. `anchor_config` cuando aplique) y runtime.
-  *Limitación actual*: escribe con `fs` **sin validar contra el backend**; los
-  defaults están duplicados respecto a `config_schema.py` (reforma pendiente #9).
+  cubriendo entrada, salida (incl. `anchor_config` cuando aplique) y runtime. La
+  escritura pasa por IPC al proceso principal, que valida el nombre del archivo
+  (anti path-traversal). *Limitación actual*: el contenido **no se valida contra el
+  esquema del backend** al guardar; los defaults están duplicados respecto a
+  `config_schema.py` (reforma pendiente #9).
 - **RF-20** — El backend debe validar todo JSON de configuración contra el esquema
   estricto al cargar: campo desconocido = error 422 visible.
 
@@ -360,7 +370,7 @@ JPEG ─WS→ mainAPI → ModelController.inference(img_rgb)
 - **RNF-08** — Agregar un unpacker nuevo requiere tocar 3 lugares (registro en
   `unpackers/registry.py`, `Literal` del esquema, `<select>` del wizard) y decidir si
   entra en `_NEEDS_ADAPTER`.
-- **RNF-09** — Suite de tests: **34 tests, todos verdes** (pytest con
+- **RNF-09** — Suite de tests: **36 tests, todos verdes** (pytest con
   `pythonpath = src`), incluyendo un end-to-end con `models/yolov7-tiny.onnx`;
   `npx prettier --check "src/render/**/*.js"` para formato JS. No hay CI configurada
   (mejora pendiente #16).
@@ -368,10 +378,11 @@ JPEG ─WS→ mainAPI → ModelController.inference(img_rgb)
 ### 5.4 Seguridad
 
 - **RNF-10** — El backend escucha solo en `127.0.0.1` (no expuesto a la red).
-- **RNF-11** — *Deuda conocida*: el renderer de Electron corre con
-  `nodeIntegration: true` y sin `contextIsolation`/preload, con acceso directo a
-  `fs`. La reforma planificada (#6) es `preload.js` + `contextBridge` + mover el
-  acceso a disco a IPC en el proceso principal.
+- **RNF-11** — El renderer de Electron corre aislado: `contextIsolation: true`,
+  `sandbox: true`, sin `nodeIntegration`. El único puente con el sistema es
+  `window.uncaAPI` (4 operaciones expuestas por `preload.js` vía `contextBridge`);
+  los handlers IPC del proceso principal validan los nombres de archivo
+  (anti path-traversal) y revalidan las extensiones de modelos importados.
 
 ### 5.5 Portabilidad
 
@@ -394,13 +405,19 @@ listadas como modelos, EfficientDet con cajas basura, etc.).
 | A-1 | `top_k: int = False` en `config_schema.py` usa bool como default de int (los JSON ya usan `0`). |
 | A-2 | `DetectionOutput` no tiene `label_map`: las etiquetas dibujadas muestran el id numérico de clase. |
 
+### Reformas aplicadas el 2026-06-12
+
+| # | Reforma |
+|---|---|
+| 6 | Hardening de Electron: `contextIsolation` + `sandbox` + `preload.js`/`contextBridge`; todo el `fs` del frontend movido a handlers IPC validados en el proceso principal. De paso se corrigió el dropzone (`File.path` no existe en Electron 32 → `webUtils.getPathForFile`). |
+| 8 | Estado mutable por frame eliminado: `preprocess → (tensor, meta)` y `postprocess(arr, meta)`; `RuntimeShapes` quedó solo con constantes de carga. |
+
 ### Reformas pendientes (prioridad alta → baja)
 
 | # | Reforma |
 |---|---|
-| 6 | Hardening de Electron (preload + contextBridge + IPC para `fs`). |
 | 7 | Controller como administrador de pipelines multi-tipo (detección/clasificación/segmentación); unificar la normalización de shapes en una sola capa. |
-| 8 | Eliminar estado mutable compartido en `runtimeShapes` (`preprocess → (tensor, meta)`); habilita streams concurrentes. |
+| 8b | Achicar el `RLock` del controller (hoy serializa inferencias completas) para streams concurrentes reales, ahora que el estado compartido no existe. |
 | 9 | Un solo origen de defaults para configs (endpoint de plantilla generado por Pydantic + validación server-side antes de escribir). |
 | 11 | Pinear dependencias (`requirements.txt` sin versiones sobre Python 3.8 congelado). |
 | 13 | Limpieza del repo (`.docx`, imágenes de prueba, binarios grandes de `models/` → git-lfs/.gitignore). |
@@ -426,7 +443,7 @@ uvicorn api.mainAPI:app --host 127.0.0.1 --port 8000 --app-dir src
 npm start
 
 # Tests
-pytest                                                          # 34 tests (incluye e2e)
+pytest                                                          # 36 tests (incluye e2e)
 pytest --ignore=src/api/func/tests/test_end_to_end_yolov7.py    # solo unitarios
 npx prettier --check "src/render/**/*.js"
 ```

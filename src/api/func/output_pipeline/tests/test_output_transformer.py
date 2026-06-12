@@ -5,6 +5,10 @@ Tests del TRANSFORMADOR (postprocesador).
 - Top-K opcional.
 - NMS (agnostico vs por clase).
 - Undo del preprocesado (letterbox o resize directo).
+
+Contrato post-reforma: el postprocesador recibe (arr, meta) donde meta es el dict
+por-frame del preprocesador (orig_width/height + scale/pads/letterbox_used).
+El runtime solo aporta constantes de carga (input_width/height, out_coords_space).
 """
 
 import numpy as np
@@ -39,29 +43,30 @@ class _DummyOutputConfig:
         self.pack_format = pack_format
 
 class _DummyRuntimeShapes:
-    def __init__(
-        self,
-        *,
-        input_width=320, input_height=320,
-        orig_width=320, orig_height=320,
-        letterbox_used=False, scale=1.0, pad_left=0.0, pad_top=0.0,
-        out_coords_space="tensor_pixels",
-    ):
+    # Solo constantes de carga: lo per-frame (orig, letterbox) va en el meta.
+    def __init__(self, *, input_width=320, input_height=320,
+                 out_coords_space="tensor_pixels"):
         self.input_width = input_width
         self.input_height = input_height
-        self.orig_width = orig_width
-        self.orig_height = orig_height
         self.out_coords_space = out_coords_space
-        self.metadata_letter = {
-            "scale": scale,
-            "pad_left": pad_left,
-            "pad_top": pad_top,
-            "letterbox_used": letterbox_used,
-        }
 
 class _DummyRuntime:
     def __init__(self, **kwargs):
         self.runtimeShapes = _DummyRuntimeShapes(**kwargs)
+
+
+def _meta(*, orig_width=320, orig_height=320,
+          letterbox_used=False, scale=1.0, pad_left=0.0, pad_top=0.0):
+    """Helper: arma el dict meta tal como lo produce el preprocesador."""
+    return {
+        "orig_width": orig_width,
+        "orig_height": orig_height,
+        "scale": scale,
+        "pad_left": pad_left,
+        "pad_top": pad_top,
+        "letterbox_used": letterbox_used,
+    }
+
 
 def test_confidence_threshold_en_vivo():
     cfg = _DummyOutputConfig("yolo_flat", confidence_threshold=0.75,
@@ -75,11 +80,12 @@ def test_confidence_threshold_en_vivo():
         [50, 50, 60, 60, 0.90, 2.0],
     ]
     arr = np.array(rows, dtype=np.float32)
-    out1 = post(arr)
+    out1 = post(arr, _meta())
     assert len(out1) == 1 and np.isclose(out1[0][4], 0.90)
 
+    # El umbral se lee EN CADA llamada: cambiarlo afecta la siguiente inferencia
     cfg.confidence_threshold = 0.5
-    out2 = post(arr)
+    out2 = post(arr, _meta())
     assert len(out2) == 2
     assert np.allclose([r[4] for r in out2], [0.90, 0.70], atol=1e-6)
 
@@ -102,8 +108,8 @@ def test_nms_agnostico_vs_por_clase():
     post_a = buildPostprocessor(cfg_a, rt)
     post_c = buildPostprocessor(cfg_c, rt)
 
-    out_a = post_a(arr)
-    out_c = post_c(arr)
+    out_a = post_a(arr, _meta())
+    out_c = post_c(arr, _meta())
 
     assert len(out_a) == 1   # agnostico elimina una
     assert len(out_c) == 2   # por clase conserva ambas
@@ -121,39 +127,60 @@ def test_topk_prev_nms():
         [6, 6, 16, 16, 0.7, 0.0],
     ]
     arr = np.array(rows, dtype=np.float32)
-    out = post(arr)
+    out = post(arr, _meta())
     assert len(out) == 2
     assert np.allclose([o[4] for o in out], [0.9, 0.8], atol=1e-6)
 
 def test_undo_letterbox():
     cfg = _DummyOutputConfig("yolo_flat", apply_confidence_filter=False, apply_nms=False)
-    rt = _DummyRuntime(
-        input_width=320, input_height=320,
-        orig_width=640, orig_height=360,
-        letterbox_used=True, scale=0.5, pad_left=0.0, pad_top=70.0
-    )
+    rt = _DummyRuntime(input_width=320, input_height=320)
     post = buildPostprocessor(cfg, rt)
+
+    # El letterbox del frame viene en el meta (antes: estado compartido en runtime)
+    meta = _meta(orig_width=640, orig_height=360,
+                 letterbox_used=True, scale=0.5, pad_left=0.0, pad_top=70.0)
 
     rows = [[50, 95, 60, 105, 0.9, 1.0]]  # (x,y) tensor -> (100,50) original
     arr = np.array(rows, dtype=np.float32)
-    out = post(arr)
+    out = post(arr, meta)
     x1, y1, x2, y2 = out[0][:4]
     assert np.isclose([x1, y1, x2, y2], [100, 50, 120, 70], atol=1e-6).all()
 
 def test_undo_resize_directo():
     cfg = _DummyOutputConfig("yolo_flat", apply_confidence_filter=False, apply_nms=False)
-    rt = _DummyRuntime(
-        input_width=320, input_height=320,
-        orig_width=640, orig_height=360,  # sx=2.0, sy=1.125
-        letterbox_used=False
-    )
+    rt = _DummyRuntime(input_width=320, input_height=320)
     post = buildPostprocessor(cfg, rt)
+
+    # Sin letterbox: el undo re-escala por (orig/input) -> sx=2.0, sy=1.125
+    meta = _meta(orig_width=640, orig_height=360, letterbox_used=False)
 
     rows = [[160, 80, 200, 120, 0.8, 0.0]]
     arr = np.array(rows, dtype=np.float32)
-    out = post(arr)
+    out = post(arr, meta)
     x1, y1, x2, y2 = out[0][:4]
     assert np.isclose([x1, y1, x2, y2], [320, 90, 400, 135], atol=1e-6).all()
+
+def test_metas_distintos_no_se_pisan():
+    # Razon de ser de la reforma: el MISMO postprocesador puede atender frames
+    # con resoluciones distintas en cualquier orden, porque cada llamada lleva
+    # su meta. Antes el segundo frame pisaba el estado del primero.
+    cfg = _DummyOutputConfig("yolo_flat", apply_confidence_filter=False, apply_nms=False)
+    rt = _DummyRuntime(input_width=320, input_height=320)
+    post = buildPostprocessor(cfg, rt)
+
+    arr = np.array([[160, 160, 320, 320, 0.9, 0.0]], dtype=np.float32)
+
+    meta_chico = _meta(orig_width=320, orig_height=320, letterbox_used=False)   # 1:1
+    meta_grande = _meta(orig_width=640, orig_height=640, letterbox_used=False)  # 2:1
+
+    out_chico = post(arr.copy(), meta_chico)
+    out_grande = post(arr.copy(), meta_grande)
+    out_chico2 = post(arr.copy(), meta_chico)  # repetir el chico DESPUES del grande
+
+    assert np.allclose(out_chico[0][:4], [160, 160, 320, 320], atol=1e-6)
+    assert np.allclose(out_grande[0][:4], [320, 320, 640, 640], atol=1e-6)
+    # Si hubiera estado compartido, esta llamada saldria escalada x2
+    assert np.allclose(out_chico2[0][:4], out_chico[0][:4], atol=1e-6)
 
 def test_tflite_detpost_por_defecto_no_refiltra_ni_nms():
     cfg = _DummyOutputConfig(
@@ -171,5 +198,5 @@ def test_tflite_detpost_por_defecto_no_refiltra_ni_nms():
         [30, 30, 40, 40, 0.6, 1.0],
     ]
     arr = np.array(rows, dtype=np.float32)
-    out = post(arr)
+    out = post(arr, _meta())
     assert len(out) == 2  # se respetan tal cual

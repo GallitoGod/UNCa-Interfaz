@@ -120,6 +120,7 @@ def make_dummy_input(preprocess_fn, input_adapter, input_cfg):
     h0, w0 = input_cfg.height, input_cfg.width
     img = np.zeros((h0, w0, 3), dtype=np.uint8)
 
-    img_prep = preprocess_fn(img)
+    # preprocess_fn devuelve (tensor, meta); para el warmup solo importa el tensor
+    img_prep, _meta = preprocess_fn(img)
     x = input_adapter(img_prep)
     return x

@@ -1,9 +1,13 @@
+// modelsManager.js — vista "Modelos": tarjetas de pesos, dropzone e ingreso al builder.
+//
+// Post-hardening: este modulo NO toca el disco. Todo pasa por window.uncaAPI
+// (expuesta por el preload via contextBridge), que delega en el main process.
+// Por eso el escaneo y la lectura de configs son async (IPC invoke).
+
 import { openBuilder } from './configBuilder.js';
 
-const fs = require('fs');
-const path = require('path');
-
-// Mismo set que MODEL_EXTENSIONS en mainAPI.py — mantener sincronizados
+// Extensiones aceptadas por el dropzone. Es solo filtro de UX: la validacion
+// real (la que importa) la repite el main process en models:import.
 const SUPPORTED_EXTENSIONS = new Set([
   '.onnx',
   '.tflite',
@@ -12,8 +16,13 @@ const SUPPORTED_EXTENSIONS = new Set([
   '.pt',
   '.pth',
 ]);
-const MODELS_DIR = path.join(process.cwd(), 'models');
-const CONFIGS_DIR = path.join(process.cwd(), 'configs');
+
+// Helper local: extension en minusculas con punto ('.onnx'), '' si no tiene.
+// (El modulo 'path' de Node ya no esta disponible en el renderer.)
+function extOf(fileName) {
+  const i = fileName.lastIndexOf('.');
+  return i === -1 ? '' : fileName.slice(i).toLowerCase();
+}
 
 export function initModelsManager() {
   const cardsEl = document.getElementById('model-cards-grid');
@@ -26,32 +35,24 @@ export function initModelsManager() {
   refreshBtn.addEventListener('click', () => scanAndRender(cardsEl, builderEl));
 }
 
-function scanAndRender(cardsEl, builderEl) {
+async function scanAndRender(cardsEl, builderEl) {
   cardsEl.innerHTML = '';
 
-  let files;
-  try {
-    files = fs
-      .readdirSync(MODELS_DIR)
-      .filter((f) => SUPPORTED_EXTENSIONS.has(path.extname(f).toLowerCase()));
-  } catch {
+  // El main process escanea models/ y reporta cada peso con su estado de config
+  const res = await window.uncaAPI.listModels();
+  if (!res.ok) {
     cardsEl.innerHTML =
       '<p class="no-models-msg">No se pudo leer la carpeta models/</p>';
     return;
   }
 
-  if (files.length === 0) {
+  if (res.models.length === 0) {
     cardsEl.innerHTML =
       '<p class="no-models-msg">No hay modelos. Arrastrá uno a la derecha.</p>';
     return;
   }
 
-  files.forEach((file) => {
-    const ext = path.extname(file).toLowerCase().slice(1);
-    const baseName = path.basename(file, path.extname(file));
-    const cfgPath = path.join(CONFIGS_DIR, baseName + '.json');
-    const hasCfg = fs.existsSync(cfgPath);
-
+  res.models.forEach(({ file, ext, baseName, hasConfig }) => {
     const card = document.createElement('div');
     card.className = 'model-card';
     card.dataset.file = file;
@@ -59,26 +60,27 @@ function scanAndRender(cardsEl, builderEl) {
       <div class="model-card-badge model-badge-${ext}">${ext.toUpperCase()}</div>
       <div class="model-card-name" title="${file}">${baseName}</div>
       <div class="model-card-meta">.${ext}</div>
-      <div class="model-card-status ${hasCfg ? 'status-ok' : 'status-missing'}">
+      <div class="model-card-status ${hasConfig ? 'status-ok' : 'status-missing'}">
         ${
-          hasCfg
+          hasConfig
             ? '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Config'
             : '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Sin config'
         }
       </div>
     `;
 
-    card.addEventListener('click', () => {
+    card.addEventListener('click', async () => {
       document
         .querySelectorAll('.model-card')
         .forEach((c) => c.classList.remove('selected'));
       card.classList.add('selected');
 
-      const existing = hasCfg
-        ? JSON.parse(fs.readFileSync(cfgPath, 'utf-8'))
-        : null;
+      // Pedir la config existente al main (null si el modelo aun no tiene);
+      // si la lectura falla (JSON corrupto), se abre el builder con defaults.
+      const cfgRes = await window.uncaAPI.readConfig(baseName);
+      const existing = cfgRes.ok ? cfgRes.config : null;
 
-      openBuilder(builderEl, file, CONFIGS_DIR, existing, () => {
+      openBuilder(builderEl, file, existing, () => {
         scanAndRender(cardsEl, builderEl);
       });
     });
@@ -99,13 +101,13 @@ function initDropzone(dropzoneEl, cardsEl, builderEl) {
     }
   });
 
-  dropzoneEl.addEventListener('drop', (e) => {
+  dropzoneEl.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropzoneEl.classList.remove('drag-over');
 
     const files = Array.from(e.dataTransfer.files);
     const modelFiles = files.filter((f) =>
-      SUPPORTED_EXTENSIONS.has(path.extname(f.name).toLowerCase())
+      SUPPORTED_EXTENSIONS.has(extOf(f.name))
     );
     const rejected = files.length - modelFiles.length;
 
@@ -118,24 +120,23 @@ function initDropzone(dropzoneEl, cardsEl, builderEl) {
       return;
     }
 
-    let copied = 0;
-    modelFiles.forEach((f) => {
-      try {
-        fs.copyFileSync(f.path, path.join(MODELS_DIR, f.name));
-        copied++;
-      } catch (err) {
-        console.error(`Error al copiar ${f.name}:`, err);
-      }
-    });
+    // File.path no existe mas en Electron >= 32: el path real se resuelve en
+    // el preload con webUtils.getPathForFile y la copia la hace el main.
+    const paths = modelFiles.map((f) => window.uncaAPI.getPathForFile(f));
+    const res = await window.uncaAPI.importModels(paths);
+
+    res.errors.forEach(({ file, error }) =>
+      console.error(`Error al copiar ${file}:`, error)
+    );
 
     const label =
-      copied === 1
+      res.copied === 1
         ? `"${modelFiles[0].name}" agregado`
-        : `${copied} modelos agregados`;
+        : `${res.copied} modelos agregados`;
     showFeedback(
       dropzoneEl,
       label + (rejected ? ` (${rejected} ignorado/s)` : ''),
-      'success'
+      res.copied > 0 ? 'success' : 'error'
     );
     scanAndRender(cardsEl, builderEl);
   });

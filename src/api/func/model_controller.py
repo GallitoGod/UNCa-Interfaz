@@ -162,7 +162,11 @@ class ModelController:
             t0 = time.perf_counter()
 
             t_pre0 = time.perf_counter()
-            pre = self.preprocess_fn(img)
+            # El preprocesador devuelve (tensor, meta): el meta lleva el tamano
+            # original del frame y los parametros del letterbox. Viaja junto al
+            # frame hasta el postprocesador en vez de vivir en estado compartido,
+            # asi cada inferencia es autocontenida.
+            pre, frame_meta = self.preprocess_fn(img)
             adapted_input = self.input_adapter(pre)
             t_pre1 = time.perf_counter()
 
@@ -208,12 +212,18 @@ class ModelController:
 
             log_this_frame = (self._frame_idx % self._log_every == 0)
             if log_this_frame:
+                # input_width/height son constantes de carga (runtimeShapes);
+                # el tamano original y el letterbox son del frame actual (meta).
                 rs = self.config.runtime.runtimeShapes
                 self.logger.debug("[DBG] input/orig: input=%dx%d orig=%dx%d letter=%s",
                                   rs.input_width, rs.input_height,
-                                  rs.orig_width, rs.orig_height, rs.metadata_letter or {})
+                                  frame_meta.get("orig_width", 0),
+                                  frame_meta.get("orig_height", 0),
+                                  frame_meta)
 
-            result = self.postprocess_fn(adapted_output)
+            # El postprocesador necesita el meta para devolver las cajas al
+            # espacio de la imagen original (undo letterbox / re-escala).
+            result = self.postprocess_fn(adapted_output, frame_meta)
             if log_this_frame:
                 self.logger.debug("Inferencia ejecutada: %d detecciones. Primeras: %s",
                                   len(result), result[:3])

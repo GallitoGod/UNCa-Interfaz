@@ -21,19 +21,13 @@ def fake_config():
     cfg.output.tensor_structure.class_index = 5
     cfg.output.confidence_threshold = 0.5
 
+    # runtimeShapes solo guarda constantes de carga; el estado por-frame
+    # (orig_width/height, letterbox) ahora viaja en el meta del preprocesador.
     cfg.runtime = MagicMock()
     cfg.runtime.runtimeShapes = MagicMock()
     cfg.runtime.runtimeShapes.input_width = 320
     cfg.runtime.runtimeShapes.input_height = 320
-    cfg.runtime.runtimeShapes.orig_width = 320
-    cfg.runtime.runtimeShapes.orig_height = 320
     cfg.runtime.runtimeShapes.out_coords_space = "tensor_pixels"
-    cfg.runtime.runtimeShapes.metadata_letter = {
-        "scale": 1.0,
-        "pad_left": 0.0,
-        "pad_top": 0.0,
-        "letterbox_used": False,
-    }
 
     cfg.runtime.warmup = MagicMock()
     cfg.runtime.warmup.enabled = False
@@ -44,7 +38,14 @@ def fake_config():
 
 def test_load_and_inference_integration_strict_runtime(fake_config):
     fake_logger = MagicMock()
-    fake_pre = MagicMock(side_effect=lambda x: f"pre:{x}")
+    # Contrato nuevo del preprocesador: devuelve (tensor, meta). El meta es el
+    # dict por-frame que el controller debe pasar tal cual al postprocesador.
+    FAKE_META = {
+        "orig_width": 320, "orig_height": 320,
+        "scale": 1.0, "pad_left": 0.0, "pad_top": 0.0,
+        "letterbox_used": False,
+    }
+    fake_pre = MagicMock(side_effect=lambda x: (f"pre:{x}", FAKE_META))
     fake_input_adapter = MagicMock(side_effect=lambda x: f"adapt_in:{x}")
     fake_predict = MagicMock(side_effect=lambda x: f"raw:{x}")
 
@@ -54,7 +55,8 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
     fake_unpack = MagicMock(side_effect=_fake_unpack)
 
     fake_output_adapter = MagicMock(side_effect=lambda row: row)
-    fake_post = MagicMock(side_effect=lambda rows: rows)
+    # El postprocesador ahora recibe (rows, meta)
+    fake_post = MagicMock(side_effect=lambda rows, meta: rows)
 
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
          patch("api.func.model_controller.Model_loader.load", return_value=fake_predict), \
@@ -88,7 +90,9 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
             fake_output_adapter.call_args[0][0],
             [10.0, 10.0, 20.0, 20.0, 0.9, 0.0]
         )
+        # El controller debe pasar al post el MISMO meta que devolvio el pre
         assert fake_post.call_count == 1
+        assert fake_post.call_args[0][1] is FAKE_META
 
         np.testing.assert_array_almost_equal(result, [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]])
 
@@ -98,11 +102,11 @@ def test_update_confidence_strict_runtime(fake_config):
 
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
          patch("api.func.model_controller.Model_loader.load", return_value=lambda x: x), \
-         patch("api.func.model_controller.build_preprocessor", return_value=lambda x: x), \
+         patch("api.func.model_controller.build_preprocessor", return_value=lambda x: (x, {})), \
          patch("api.func.model_controller.generate_input_adapter", return_value=lambda x: x), \
          patch("api.func.model_controller.unpack_out", return_value=lambda raw, runtime=None: [[0, 0, 1, 1, 0.5, 0.0]]), \
          patch("api.func.model_controller.generate_output_adapter", return_value=lambda row: row), \
-         patch("api.func.model_controller.buildPostprocessor", return_value=lambda rows: rows), \
+         patch("api.func.model_controller.buildPostprocessor", return_value=lambda rows, meta: rows), \
          patch("api.func.model_controller.setup_model_logger", return_value=fake_logger):
 
         mc = ModelController()
