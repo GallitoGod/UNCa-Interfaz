@@ -5,11 +5,23 @@
     "height": 640,
     "channels": 3,
     "normalize": true,
-    "mean": [0.0, 0.0, 0.0],
-    "std": [1.0, 1.0, 1.0],
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "std": [
+      1.0,
+      1.0,
+      1.0
+    ],
     "scale": true,
     "letterbox": true,
-    "auto_pad_color": [114, 114, 114],
+    "auto_pad_color": [
+      114,
+      114,
+      114
+    ],
     "preserve_aspect_ratio": true,
     "color_order": "RGB",
     "input_str": {
@@ -22,7 +34,7 @@
     "apply_conf_filter": true,
     "confidence_threshold": 0.25,
     "apply_nms": false,
-    "top_k": false,
+    "top_k": 0,
     "nms_per_class": false,
     "nms_threshold": 0.45,
     "tensor_structure": {
@@ -62,7 +74,10 @@
       "num_threads": null
     },
     "onnx": {
-      "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"],
+      "providers": [
+        "CUDAExecutionProvider",
+        "CPUExecutionProvider"
+      ],
       "provider_options": {}
     },
     "tflite": null,

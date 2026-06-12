@@ -6,20 +6,17 @@ from .utils import to_2d, decode_anchor_deltas_to_yxyx, stack_as_float32_matrix,
 
 
 '''
-    IMPORTANTE:
-        anchor_deltas todavia no funciona. Tengo que encontrar la forma de 
-    mantener un sistema liviano tipo runtime_states para no agregar todo a runtimeConfig.
-        Por ahora solo quiero ver que tan bien anda la API. En otro momento voy a arreglar este desempaquetador.
-'''
-
-
-'''
     Nota 1 — to_2d en anchor_deltas: cuidado con batch
     Si llega (1,N,4), to_2d lo convierte a (N,4) perfecto. Bien.
-    
+
     Nota 2 — politica de escalado
-    Puse en docstring que anchor_deltas devuelve “PIXELES DEL TENSOR”.
-    Eso esta perfecto, pero mas adelante voy a pasar a lazy scaling, este unpacker va a ser el primero en cambiar a normalized.
+    anchor_deltas devuelve PIXELES DEL TENSOR: el JSON debe declarar
+    runtimeShapes.out_coords_space = "tensor_pixels".
+
+    Nota 3 — anchors
+    La tabla de anchors NO viaja en el JSON: el controller la genera al cargar
+    (anchor_gen.generate_efficientdet_anchors) a partir de output.anchor_config
+    y la deja en runtime.runtimeShapes.anchors junto con box_variance.
 '''
 
 
@@ -33,8 +30,12 @@ def build_anchor_deltas(output_cfg: AnyOutputConfig):
       - anchors (N,4) normalizados [ay, ax, ah, aw]
       - box_variance (4,) tipicamente [0.1, 0.1, 0.2, 0.2]
       - input_width/height
-    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PIXELES DEL TENSOR. <-- Hasta ahora
+    Salida (sin filtrar): [ymin, xmin, ymax, xmax, best_prob, class_id] en PIXELES DEL TENSOR.
     """
+    anchor_cfg = getattr(output_cfg, "anchor_config", None)
+    # "softmax" mantiene el comportamiento previo cuando no hay anchor_config declarado
+    activation = getattr(anchor_cfg, "scores_activation", "softmax") if anchor_cfg else "softmax"
+
     def _fn(raw_output: Any, sh=None) -> np.ndarray:
         runtime = rt_shapes(sh)
         if runtime is None or getattr(runtime, "anchors", None) is None:
@@ -62,11 +63,15 @@ def build_anchor_deltas(output_cfg: AnyOutputConfig):
         if anchors.shape[0] != deltas_2d.shape[0]:
             raise ValueError(f"anchor_deltas: N anchors={anchors.shape[0]} != N deltas={deltas_2d.shape[0]}")
 
-        # 1) activar clases (softmax) y tomar best
-        #    (SSD/EfficientDet suele usar softmax multi-clase)
-        m = cls_2d - cls_2d.max(axis=1, keepdims=True)
-        np.exp(m, out=m)
-        cls_prob = m / (m.sum(axis=1, keepdims=True) + 1e-12)
+        # 1) activar clases segun lo que el modelo emite y tomar best
+        if activation == "softmax":
+            m = (cls_2d - cls_2d.max(axis=1, keepdims=True)).astype(np.float32, copy=True)
+            np.exp(m, out=m)
+            cls_prob = m / (m.sum(axis=1, keepdims=True) + 1e-12)
+        elif activation == "sigmoid":
+            cls_prob = 1.0 / (1.0 + np.exp(-cls_2d.astype(np.float32, copy=False)))
+        else:  # "none": el tensor ya trae probabilidades
+            cls_prob = cls_2d
 
         best_cls = np.argmax(cls_prob, axis=1)
         best_p   = cls_prob[np.arange(cls_prob.shape[0]), best_cls]

@@ -5,11 +5,23 @@
     "height": 448,
     "channels": 3,
     "normalize": true,
-    "mean": [0.0, 0.0, 0.0],
-    "std": [1.0, 1.0, 1.0],
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "std": [
+      1.0,
+      1.0,
+      1.0
+    ],
     "scale": true,
     "letterbox": true,
-    "auto_pad_color": [114, 114, 114],
+    "auto_pad_color": [
+      114,
+      114,
+      114
+    ],
     "preserve_aspect_ratio": true,
     "color_order": "RGB",
     "input_str": {
@@ -21,8 +33,8 @@
   "output": {
     "apply_conf_filter": true,
     "confidence_threshold": 0.5,
-    "apply_nms": false,
-    "top_k": false,
+    "apply_nms": true,
+    "top_k": 300,
     "nms_per_class": false,
     "nms_threshold": 0.45,
     "tensor_structure": {
@@ -37,7 +49,25 @@
       "class_index": 5,
       "num_classes": 90
     },
-    "pack_format": "boxes_scores"
+    "pack_format": "anchor_deltas",
+    "anchor_config": {
+      "min_level": 3,
+      "max_level": 7,
+      "num_scales": 3,
+      "aspect_ratios": [
+        1.0,
+        2.0,
+        0.5
+      ],
+      "anchor_scale": 4.0,
+      "box_variance": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "scores_activation": "none"
+    }
   },
   "runtime": {
     "runtimeShapes": {
@@ -52,7 +82,7 @@
         "letterbox_used": false
       },
       "channels": 3,
-      "out_coords_space": "normalized_0_1"
+      "out_coords_space": "tensor_pixels"
     },
     "backend": "tflite",
     "device": "cpu",
@@ -63,8 +93,8 @@
     },
     "onnx": null,
     "tflite": {
-      "use_xnnpack": true,
-      "num_threads": null
+      "delegates": [],
+      "delegate_options": {}
     },
     "warmup": {
       "runs": 0,

@@ -1,16 +1,24 @@
 import { openBuilder } from './configBuilder.js';
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 
-const SUPPORTED_EXTENSIONS = new Set(['.onnx', '.tflite', '.h5', '.keras']);
-const MODELS_DIR  = path.join(process.cwd(), 'models');
+// Mismo set que MODEL_EXTENSIONS en mainAPI.py — mantener sincronizados
+const SUPPORTED_EXTENSIONS = new Set([
+  '.onnx',
+  '.tflite',
+  '.h5',
+  '.keras',
+  '.pt',
+  '.pth',
+]);
+const MODELS_DIR = path.join(process.cwd(), 'models');
 const CONFIGS_DIR = path.join(process.cwd(), 'configs');
 
 export function initModelsManager() {
-  const cardsEl    = document.getElementById('model-cards-grid');
+  const cardsEl = document.getElementById('model-cards-grid');
   const dropzoneEl = document.getElementById('model-dropzone');
-  const builderEl  = document.getElementById('config-builder');
+  const builderEl = document.getElementById('config-builder');
   const refreshBtn = document.getElementById('refresh-models-btn');
 
   scanAndRender(cardsEl, builderEl);
@@ -23,42 +31,47 @@ function scanAndRender(cardsEl, builderEl) {
 
   let files;
   try {
-    files = fs.readdirSync(MODELS_DIR).filter(f =>
-      SUPPORTED_EXTENSIONS.has(path.extname(f).toLowerCase())
-    );
+    files = fs
+      .readdirSync(MODELS_DIR)
+      .filter((f) => SUPPORTED_EXTENSIONS.has(path.extname(f).toLowerCase()));
   } catch {
-    cardsEl.innerHTML = '<p class="no-models-msg">No se pudo leer la carpeta models/</p>';
+    cardsEl.innerHTML =
+      '<p class="no-models-msg">No se pudo leer la carpeta models/</p>';
     return;
   }
 
   if (files.length === 0) {
-    cardsEl.innerHTML = '<p class="no-models-msg">No hay modelos. Arrastrá uno a la derecha.</p>';
+    cardsEl.innerHTML =
+      '<p class="no-models-msg">No hay modelos. Arrastrá uno a la derecha.</p>';
     return;
   }
 
-  files.forEach(file => {
-    const ext      = path.extname(file).toLowerCase().slice(1);
+  files.forEach((file) => {
+    const ext = path.extname(file).toLowerCase().slice(1);
     const baseName = path.basename(file, path.extname(file));
-    const cfgPath  = path.join(CONFIGS_DIR, baseName + '.json');
-    const hasCfg   = fs.existsSync(cfgPath);
+    const cfgPath = path.join(CONFIGS_DIR, baseName + '.json');
+    const hasCfg = fs.existsSync(cfgPath);
 
     const card = document.createElement('div');
-    card.className    = 'model-card';
+    card.className = 'model-card';
     card.dataset.file = file;
     card.innerHTML = `
       <div class="model-card-badge model-badge-${ext}">${ext.toUpperCase()}</div>
       <div class="model-card-name" title="${file}">${baseName}</div>
       <div class="model-card-meta">.${ext}</div>
       <div class="model-card-status ${hasCfg ? 'status-ok' : 'status-missing'}">
-        ${hasCfg
-          ? '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Config'
-          : '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Sin config'
+        ${
+          hasCfg
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Config'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Sin config'
         }
       </div>
     `;
 
     card.addEventListener('click', () => {
-      document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+      document
+        .querySelectorAll('.model-card')
+        .forEach((c) => c.classList.remove('selected'));
       card.classList.add('selected');
 
       const existing = hasCfg
@@ -75,34 +88,38 @@ function scanAndRender(cardsEl, builderEl) {
 }
 
 function initDropzone(dropzoneEl, cardsEl, builderEl) {
-  dropzoneEl.addEventListener('dragover', e => {
+  dropzoneEl.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropzoneEl.classList.add('drag-over');
   });
 
-  dropzoneEl.addEventListener('dragleave', e => {
+  dropzoneEl.addEventListener('dragleave', (e) => {
     if (!dropzoneEl.contains(e.relatedTarget)) {
       dropzoneEl.classList.remove('drag-over');
     }
   });
 
-  dropzoneEl.addEventListener('drop', e => {
+  dropzoneEl.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzoneEl.classList.remove('drag-over');
 
-    const files      = Array.from(e.dataTransfer.files);
-    const modelFiles = files.filter(f =>
+    const files = Array.from(e.dataTransfer.files);
+    const modelFiles = files.filter((f) =>
       SUPPORTED_EXTENSIONS.has(path.extname(f.name).toLowerCase())
     );
-    const rejected   = files.length - modelFiles.length;
+    const rejected = files.length - modelFiles.length;
 
     if (modelFiles.length === 0) {
-      showFeedback(dropzoneEl, 'Formato no soportado. Usá .onnx, .tflite o .keras', 'error');
+      showFeedback(
+        dropzoneEl,
+        'Formato no soportado. Usá .onnx, .tflite, .h5, .keras, .pt o .pth',
+        'error'
+      );
       return;
     }
 
     let copied = 0;
-    modelFiles.forEach(f => {
+    modelFiles.forEach((f) => {
       try {
         fs.copyFileSync(f.path, path.join(MODELS_DIR, f.name));
         copied++;
@@ -111,8 +128,15 @@ function initDropzone(dropzoneEl, cardsEl, builderEl) {
       }
     });
 
-    const label = copied === 1 ? `"${modelFiles[0].name}" agregado` : `${copied} modelos agregados`;
-    showFeedback(dropzoneEl, label + (rejected ? ` (${rejected} ignorado/s)` : ''), 'success');
+    const label =
+      copied === 1
+        ? `"${modelFiles[0].name}" agregado`
+        : `${copied} modelos agregados`;
+    showFeedback(
+      dropzoneEl,
+      label + (rejected ? ` (${rejected} ignorado/s)` : ''),
+      'success'
+    );
     scanAndRender(cardsEl, builderEl);
   });
 }
@@ -120,10 +144,10 @@ function initDropzone(dropzoneEl, cardsEl, builderEl) {
 function showFeedback(dropzoneEl, msg, type) {
   const el = dropzoneEl.querySelector('.dropzone-feedback');
   if (!el) return;
-  el.textContent  = msg;
-  el.className    = `dropzone-feedback feedback-${type}`;
+  el.textContent = msg;
+  el.className = `dropzone-feedback feedback-${type}`;
   setTimeout(() => {
     el.textContent = '';
-    el.className   = 'dropzone-feedback';
+    el.className = 'dropzone-feedback';
   }, 3500);
 }

@@ -1,6 +1,7 @@
 import { initVideoStream } from './streamHandler.js';
 import { stopCurrentStream } from './cameraSwitcher.js';
 import { streamUrl } from './constants.js';
+import { drawDetections } from './overlay.js';
 
 let activeFileWs = null;
 
@@ -16,7 +17,10 @@ export function handleFileUpload(file) {
 
 function _handleVideo(file) {
   stopCurrentStream();
-  if (activeFileWs) { activeFileWs.close(); activeFileWs = null; }
+  if (activeFileWs) {
+    activeFileWs.close();
+    activeFileWs = null;
+  }
 
   const video = document.getElementById('video');
   const noVideoMsg = document.querySelector('.no-video-message');
@@ -27,40 +31,60 @@ function _handleVideo(file) {
   video.loop = true;
   video.play();
 
-  activeFileWs = initVideoStream(video);
+  // sin mirror: los archivos se procesan tal cual (el espejo es solo de camara)
+  activeFileWs = initVideoStream(video, { mirror: false });
 }
 
 function _handleImage(file) {
   stopCurrentStream();
-  if (activeFileWs) { activeFileWs.close(); activeFileWs = null; }
+  if (activeFileWs) {
+    activeFileWs.close();
+    activeFileWs = null;
+  }
 
   const noVideoMsg = document.querySelector('.no-video-message');
   if (noVideoMsg) noVideoMsg.style.display = 'none';
 
   const outputCanvas = document.getElementById('outputCanvas');
-  const outputCtx    = outputCanvas.getContext('2d');
+  const outputCtx = outputCanvas.getContext('2d');
 
   const img = new Image();
   img.onload = () => {
     const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width  = img.width;
+    tmpCanvas.width = img.width;
     tmpCanvas.height = img.height;
     tmpCanvas.getContext('2d').drawImage(img, 0, 0);
 
     const ws = new WebSocket(streamUrl);
 
     ws.onopen = () => {
-      ws.send(tmpCanvas.toDataURL('image/jpeg', 0.8));
+      tmpCanvas.toBlob(
+        (blob) => {
+          if (blob) ws.send(blob);
+          else ws.close();
+        },
+        'image/jpeg',
+        0.9
+      );
     };
 
     ws.onmessage = (event) => {
-      const annotated = new Image();
-      annotated.onload = () => {
-        outputCanvas.width  = annotated.width;
-        outputCanvas.height = annotated.height;
-        outputCtx.drawImage(annotated, 0, 0);
-      };
-      annotated.src = 'data:image/jpeg;base64,' + event.data;
+      let payload;
+      try {
+        payload = JSON.parse(event.data);
+      } catch {
+        ws.close();
+        return;
+      }
+      outputCanvas.width = img.width;
+      outputCanvas.height = img.height;
+      outputCtx.drawImage(img, 0, 0);
+      if (payload.detections && payload.detections.length > 0) {
+        drawDetections(outputCtx, payload.detections);
+      }
+      if (payload.error) {
+        console.warn('Error al procesar imagen:', payload.error);
+      }
       ws.close();
     };
 

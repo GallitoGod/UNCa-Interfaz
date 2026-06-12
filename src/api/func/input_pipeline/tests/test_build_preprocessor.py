@@ -27,7 +27,7 @@ def test_preprocessor_with_letterbox_and_scaling_and_normalization():
         auto_pad_color=(0, 0, 0),               #auto_pad_color: Optional[List[int]] = [114, 114, 114]
         preserve_aspect_ratio=True,             #preserve_aspect_ratio: Optional[bool] = True               
         color_order="RGB",                      #color_order: Optional[Literal["RGB", "BGR", "GRAY"]] = "RGB"
-        input_tensor= None                      #input_tensor: Optional[InputTensorConfig] = None                       
+        input_str= None                         #input_str: Optional[InputTensor] = None                       
     )                        
     rmSh = RuntimeShapes(
         input_width = 0,
@@ -72,7 +72,7 @@ def test_preprocessor_without_letterbox():
         auto_pad_color=(0, 0, 0),
         preserve_aspect_ratio=False,
         color_order="RGB",
-        input_tensor=None
+        input_str=None
     )
     rmSh = RuntimeShapes(
         input_width = 0,
@@ -112,7 +112,7 @@ def test_preprocessor_invalid_config():
         auto_pad_color=(0, 0, 0),
         preserve_aspect_ratio=False,
         color_order="RGB",                      
-        input_tensor= None 
+        input_str=None 
     )
     runtime = DummyRuntime()
 

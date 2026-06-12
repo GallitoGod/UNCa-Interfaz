@@ -7,13 +7,18 @@ from api.func.reader_pipeline.config_schema import RuntimeConfig, RuntimeShapes
 def fake_config():
     cfg = MagicMock()
     cfg.model_path = "fake_model.onnx"
+    cfg.model_type = "detection"
 
     cfg.input = MagicMock()
 
     cfg.output = MagicMock()
-    cfg.output.model_dump.return_value = {"dummy": "data"}
     cfg.output.pack_format = "raw"
-    cfg.output.tensor_structure = "fake_structure"
+    # tensor_structure con indices reales: inference() valida que los indices
+    # declarados caben en el ancho del tensor desempaquetado.
+    cfg.output.tensor_structure = MagicMock()
+    cfg.output.tensor_structure.coordinates = {"x1": 0, "y1": 1, "x2": 2, "y2": 3}
+    cfg.output.tensor_structure.confidence_index = 4
+    cfg.output.tensor_structure.class_index = 5
     cfg.output.confidence_threshold = 0.5
 
     cfg.runtime = MagicMock()
@@ -52,7 +57,6 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
     fake_post = MagicMock(side_effect=lambda rows: rows)
 
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
-         patch("api.func.model_controller.Reactive_output_config", side_effect=lambda **kw: fake_config.output), \
          patch("api.func.model_controller.Model_loader.load", return_value=fake_predict), \
          patch("api.func.model_controller.build_preprocessor", return_value=fake_pre), \
          patch("api.func.model_controller.generate_input_adapter", return_value=fake_input_adapter), \
@@ -93,7 +97,6 @@ def test_update_confidence_strict_runtime(fake_config):
     fake_logger = MagicMock()
 
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
-         patch("api.func.model_controller.Reactive_output_config", side_effect=lambda **kw: fake_config.output), \
          patch("api.func.model_controller.Model_loader.load", return_value=lambda x: x), \
          patch("api.func.model_controller.build_preprocessor", return_value=lambda x: x), \
          patch("api.func.model_controller.generate_input_adapter", return_value=lambda x: x), \

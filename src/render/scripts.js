@@ -1,62 +1,75 @@
 import { initCameras, refreshCameras } from './modules/cameraSwitcher.js';
-import { startRecording, stopRecording, isRecording } from './modules/record.js';
+import {
+  startRecording,
+  stopRecording,
+  isRecording,
+} from './modules/record.js';
 import { getModels } from './modules/modelLoader.js';
 import { selectModel } from './modules/selectModel.js';
 import { handleFileUpload } from './modules/fileHandler.js';
-import { confidenceUrl, colorsUrl, inferenceLogsUrl, metricsUrl } from './modules/constants.js';
+import {
+  confidenceUrl,
+  inferenceLogsUrl,
+  metricsUrl,
+} from './modules/constants.js';
 import { initModelsManager } from './modules/modelsManager.js';
+import { drawSettings } from './modules/overlay.js';
 const d = document;
 
 d.addEventListener('DOMContentLoaded', () => {
-  const darkModeToggle    = d.getElementById('dark-mode-toggle');
-  const tabButtons        = d.querySelectorAll(".tab-button");
-  const tabContents       = d.querySelectorAll(".tab-content");
-  const confidenceSlider  = d.getElementById("confidence-slider");
-  const confidenceValue   = d.getElementById("confidence-value");
-  const advancedSettingsBtn = d.getElementById("advanced-settings-btn");
-  const settingsModal     = d.getElementById("settings-modal");
-  const closeModalBtn     = d.getElementById("close-modal");
-  const saveSettingsBtn   = d.getElementById("save-settings");
-  const bboxColorInput    = d.getElementById("bbox-color");
-  const labelColorInput   = d.getElementById("label-color");
-  const bboxColorPreview  = d.getElementById("bbox-color-preview");
-  const labelColorPreview = d.getElementById("label-color-preview");
-  const cameraSelect          = d.getElementById('camera-select');
-  const refreshCamerasBtn     = d.getElementById('refresh-cameras-btn');
-  const recordButton      = d.getElementById('record-btn');
-  const video             = d.getElementById('video');
-  const outputCanvas      = d.getElementById('outputCanvas');
-  const fileButton        = d.getElementById('personalized-upload');
-  const inputFile         = d.getElementById('file-upload');
-  const modelSelect       = d.getElementById('ia-model');
-  const videoContainer    = d.querySelector('.video-container');
-  const logToggleBtn      = d.getElementById('log-toggle-btn');
-  const logPanel          = d.getElementById('log-panel');
-  const logList           = d.getElementById('log-list');
-  const metricsToggleBtn  = d.getElementById('metrics-toggle-btn');
-  const metricsHud        = d.getElementById('metrics-hud');
-  const metricFps         = d.getElementById('metric-fps');
-  const metricInf         = d.getElementById('metric-inf');
-  const metricTotal       = d.getElementById('metric-total');
-  const metricP95         = d.getElementById('metric-p95');
+  const darkModeToggle = d.getElementById('dark-mode-toggle');
+  const tabButtons = d.querySelectorAll('.tab-button');
+  const tabContents = d.querySelectorAll('.tab-content');
+  const confidenceSlider = d.getElementById('confidence-slider');
+  const confidenceValue = d.getElementById('confidence-value');
+  const advancedSettingsBtn = d.getElementById('advanced-settings-btn');
+  const settingsModal = d.getElementById('settings-modal');
+  const closeModalBtn = d.getElementById('close-modal');
+  const saveSettingsBtn = d.getElementById('save-settings');
+  const bboxColorInput = d.getElementById('bbox-color');
+  const labelColorInput = d.getElementById('label-color');
+  const bboxColorPreview = d.getElementById('bbox-color-preview');
+  const labelColorPreview = d.getElementById('label-color-preview');
+  const cameraSelect = d.getElementById('camera-select');
+  const refreshCamerasBtn = d.getElementById('refresh-cameras-btn');
+  const recordButton = d.getElementById('record-btn');
+  const video = d.getElementById('video');
+  const outputCanvas = d.getElementById('outputCanvas');
+  const fileButton = d.getElementById('personalized-upload');
+  const inputFile = d.getElementById('file-upload');
+  const modelSelect = d.getElementById('ia-model');
+  const videoContainer = d.querySelector('.video-container');
+  const logToggleBtn = d.getElementById('log-toggle-btn');
+  const logPanel = d.getElementById('log-panel');
+  const logList = d.getElementById('log-list');
+  const metricsToggleBtn = d.getElementById('metrics-toggle-btn');
+  const metricsHud = d.getElementById('metrics-hud');
+  const metricFps = d.getElementById('metric-fps');
+  const metricInf = d.getElementById('metric-inf');
+  const metricTotal = d.getElementById('metric-total');
+  const metricP95 = d.getElementById('metric-p95');
 
-  let logPollingInterval     = null;
-  let metricsInterval        = null;
+  let logPollingInterval = null;
+  let metricsInterval = null;
 
   bboxColorPreview.style.backgroundColor = bboxColorInput.value;
   labelColorPreview.style.backgroundColor = labelColorInput.value;
+  drawSettings.bboxColor = bboxColorInput.value;
+  drawSettings.labelColor = labelColorInput.value;
   getModels();
 
   // ── Navegacion de vistas ──────────────────────────────────────────────────
-  const navBtns   = d.querySelectorAll('.nav-btn');
-  const views     = d.querySelectorAll('.view');
+  const navBtns = d.querySelectorAll('.nav-btn');
+  const views = d.querySelectorAll('.view');
   let modelsReady = false;
 
-  navBtns.forEach(btn => {
+  navBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.view;
-      navBtns.forEach(b => b.classList.toggle('active', b === btn));
-      views.forEach(v => v.classList.toggle('active', v.id === `${target}-view`));
+      navBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      views.forEach((v) =>
+        v.classList.toggle('active', v.id === `${target}-view`)
+      );
 
       if (target === 'models' && !modelsReady) {
         initModelsManager();
@@ -66,45 +79,45 @@ d.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Tema oscuro ──────────────────────────────────────────────────────────
-  darkModeToggle.addEventListener("change", function () {
-    document.documentElement.classList.toggle("dark", this.checked);
+  darkModeToggle.addEventListener('change', function () {
+    document.documentElement.classList.toggle('dark', this.checked);
   });
 
   // ── Tabs ─────────────────────────────────────────────────────────────────
   tabButtons.forEach((button) => {
-    button.addEventListener("click", function () {
-      const tabName = this.getAttribute("data-tab");
-      tabButtons.forEach((btn) => btn.classList.remove("active"));
-      this.classList.add("active");
+    button.addEventListener('click', function () {
+      const tabName = this.getAttribute('data-tab');
+      tabButtons.forEach((btn) => btn.classList.remove('active'));
+      this.classList.add('active');
       tabContents.forEach((content) => {
-        content.classList.remove("active");
-        if (content.id === `${tabName}-tab`) content.classList.add("active");
+        content.classList.remove('active');
+        if (content.id === `${tabName}-tab`) content.classList.add('active');
       });
     });
   });
 
   // ── Confianza ─────────────────────────────────────────────────────────────
-  confidenceSlider.addEventListener("input", function () {
+  confidenceSlider.addEventListener('input', function () {
     confidenceValue.textContent = `${this.value}%`;
   });
 
-  confidenceSlider.addEventListener("change", async function () {
+  confidenceSlider.addEventListener('change', async function () {
     const value = parseFloat(this.value) / 100;
     try {
       await fetch(confidenceUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value }),
       });
     } catch (err) {
-      console.error("Error al actualizar confianza:", err);
+      console.error('Error al actualizar confianza:', err);
     }
   });
 
   // ── Pantalla completa (doble clic en el area de video) ───────────────────
   videoContainer.addEventListener('dblclick', () => {
     if (!document.fullscreenElement) {
-      videoContainer.requestFullscreen().catch(err => {
+      videoContainer.requestFullscreen().catch((err) => {
         console.error('Error al entrar en pantalla completa:', err);
       });
     } else {
@@ -113,41 +126,31 @@ d.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Modal de configuracion avanzada ──────────────────────────────────────
-  advancedSettingsBtn.addEventListener("click", () => {
-    settingsModal.classList.add("active");
+  advancedSettingsBtn.addEventListener('click', () => {
+    settingsModal.classList.add('active');
   });
 
-  closeModalBtn.addEventListener("click", () => {
-    settingsModal.classList.remove("active");
+  closeModalBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('active');
   });
 
-  settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.classList.remove("active");
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('active');
   });
 
-  bboxColorInput.addEventListener("input", function () {
+  bboxColorInput.addEventListener('input', function () {
     bboxColorPreview.style.backgroundColor = this.value;
   });
 
-  labelColorInput.addEventListener("input", function () {
+  labelColorInput.addEventListener('input', function () {
     labelColorPreview.style.backgroundColor = this.value;
   });
 
-  // Guardar colores → envia al backend para que los use en _draw_detections
-  saveSettingsBtn.addEventListener("click", async () => {
-    try {
-      await fetch(colorsUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bbox_color:  bboxColorInput.value,
-          label_color: labelColorInput.value,
-        }),
-      });
-    } catch (err) {
-      console.error("Error al guardar configuracion de colores:", err);
-    }
-    settingsModal.classList.remove("active");
+  // Guardar colores → el dibujo ahora es client-side (overlay.js), sin backend
+  saveSettingsBtn.addEventListener('click', () => {
+    drawSettings.bboxColor = bboxColorInput.value;
+    drawSettings.labelColor = labelColorInput.value;
+    settingsModal.classList.remove('active');
   });
 
   // ── Selector de modelo ────────────────────────────────────────────────────
@@ -169,7 +172,9 @@ d.addEventListener('DOMContentLoaded', () => {
   // ── Camara ────────────────────────────────────────────────────────────────
   initCameras(cameraSelect);
 
-  refreshCamerasBtn.addEventListener('click', () => refreshCameras(cameraSelect));
+  refreshCamerasBtn.addEventListener('click', () =>
+    refreshCameras(cameraSelect)
+  );
 
   // ── Grabacion (usa la flag exportada para evitar la comparacion por texto) ─
   recordButton.addEventListener('click', () => {
@@ -198,18 +203,18 @@ d.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data.status === 'ok' && data.metrics) {
         const m = data.metrics;
-        metricFps.textContent   = `FPS:   ${m.fps_avg.toFixed(1)}`;
-        metricInf.textContent   = `Inf:   ${m.inf_avg_ms.toFixed(1)} ms`;
+        metricFps.textContent = `FPS:   ${m.fps_avg.toFixed(1)}`;
+        metricInf.textContent = `Inf:   ${m.inf_avg_ms.toFixed(1)} ms`;
         metricTotal.textContent = `Total: ${m.avg_ms.toFixed(1)} ms`;
-        metricP95.textContent   = `P95:   ${m.p95_ms.toFixed(1)} ms`;
+        metricP95.textContent = `P95:   ${m.p95_ms.toFixed(1)} ms`;
       } else {
-        metricFps.textContent   = 'FPS:   --';
-        metricInf.textContent   = 'Inf:   -- ms';
+        metricFps.textContent = 'FPS:   --';
+        metricInf.textContent = 'Inf:   -- ms';
         metricTotal.textContent = 'Total: -- ms';
-        metricP95.textContent   = 'P95:   -- ms';
+        metricP95.textContent = 'P95:   -- ms';
       }
     } catch (err) {
-      console.error("Error al obtener metricas:", err);
+      console.error('Error al obtener metricas:', err);
     }
   }
 
@@ -230,17 +235,24 @@ d.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(inferenceLogsUrl);
       const { logs } = await res.json();
       if (!logs || logs.length === 0) {
-        logList.innerHTML = '<li class="log-empty">Sin errores registrados.</li>';
+        logList.innerHTML =
+          '<li class="log-empty">Sin errores registrados.</li>';
       } else {
-        logList.innerHTML = logs.slice().reverse().map(entry => `
+        logList.innerHTML = logs
+          .slice()
+          .reverse()
+          .map(
+            (entry) => `
           <li class="log-item">
             <span class="log-timestamp">${entry.timestamp}</span>
             ${entry.error}
           </li>
-        `).join('');
+        `
+          )
+          .join('');
       }
     } catch (err) {
-      console.error("Error al obtener logs:", err);
+      console.error('Error al obtener logs:', err);
     }
   }
 });

@@ -1,30 +1,12 @@
-# ⚠️ preocupaciones
-
-'''
-1. Falta de validacion fuerte y feedback estructurado
-Todo depende de que el JSON este bien hecho, de que el modelo tenga la salida esperada, 
-de que el adaptador coincida. Pero no hay una capa de validacion fuerte que diga “el modelo no devuelve 
-lo que el unpacker espera” o “el JSON esta mal formado”.
-    Solucion: Añadir validacion con pydantic mas profunda para los outputs y una validacion 
-cruzada entre JSON ↔ codigo al cargar un modelo.
-'''
-
-'''
-2. Documentacion y descubribilidad
-Nadie puede entender el programa sin abrir el codigo. No hay descripciones ni ejemplo de payloads en los endpoints.
-    Solucion : Utilizar FastAPI Docs (http://localhost:8000/docs) usando Body(...), Form(...) y UploadFile(...)
-bien anotados con descripciones.
-'''
-
 from collections import deque
+import asyncio
+import base64
 import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError
 import numpy as np
 import cv2
-import base64
 from pathlib import Path
 from api.func.model_controller import ModelController
 
@@ -34,11 +16,19 @@ MODELS_DIR = _ROOT / "models"
 CONFIGS_DIR = _ROOT / "configs"
 
 MODEL_EXTENSIONS = {".onnx", ".tflite", ".h5", ".keras", ".pt", ".pth"}
+# Orden de preferencia cuando un basename tiene varios archivos (ej: yolo.onnx + yolo.tflite)
+_EXTENSION_PREFERENCE = [".onnx", ".tflite", ".h5", ".keras", ".pt", ".pth"]
 
 app = FastAPI(
-    title="Sistema de Vision por Computadora",
-    description="API para carga de modelos y ejecucion de inferencias sobre imagenes.",
-    version="1.0.0"
+    title="UNCaLens — Sistema de Vision por Computadora",
+    description=(
+        "API para carga de modelos de deteccion y ejecucion de inferencias sobre "
+        "imagenes y video. El streaming va por WebSocket `/video_stream`: el cliente "
+        "envia frames JPEG binarios y recibe JSON con las detecciones "
+        "`[x1, y1, x2, y2, conf, cls]` en pixeles de la imagen original. "
+        "El dibujo de cajas es responsabilidad del cliente."
+    ),
+    version="2",
 )
 
 # Electron carga desde file:// — sin esto todos los fetch() y WS fallan por CORS
@@ -51,132 +41,128 @@ app.add_middleware(
 
 controller = ModelController()
 
-# Config mutable de dibujo; se actualiza via POST /config/colors
-_draw_config: dict = {
-    "bbox_color":  (0, 191, 255),  # BGR equivalente de #00BFFF
-    "label_color": (0,   0,   0),  # negro para texto sobre bbox
-}
-
 # Ultimos 50 errores de inferencia (in-memory)
 _inference_errors: deque = deque(maxlen=50)
 
 
 class ModelPathRequest(BaseModel):
-    model_path: str
+    model_path: str = Field(description="Ruta absoluta o relativa al archivo del modelo (.onnx, .tflite, .h5, .keras, .pt, .pth)")
+
 
 class SelectModelRequest(BaseModel):
-    model_name: str
+    model_name: str = Field(description="Nombre base del modelo, sin extension. Debe existir models/<nombre>.* y configs/<nombre>.json")
+
 
 class ConfidenceUpdateRequest(BaseModel):
-    value: float
-
-class DrawConfigRequest(BaseModel):
-    bbox_color:  str   # hex, ej: "#00BFFF"
-    label_color: str   # hex, ej: "#FFFFFF"
-
-
-def _hex_to_bgr(hex_color: str) -> tuple:
-    """Convierte color hex (#RRGGBB) a tupla BGR para OpenCV."""
-    h = hex_color.lstrip("#")
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return (b, g, r)
+    value: float = Field(ge=0.0, le=1.0, description="Umbral de confianza en [0, 1]. Se aplica en vivo al stream.")
 
 
 def _find_model_file(model_name: str) -> str:
-    """Busca en models/ el archivo con el basename indicado."""
+    """Busca en models/ el archivo con el basename indicado (orden de preferencia fijo)."""
     matches = [p for p in MODELS_DIR.glob(f"{model_name}.*")
                if p.suffix.lower() in MODEL_EXTENSIONS]
     if not matches:
         raise FileNotFoundError(
             f"No se encontro archivo de modelo para '{model_name}' en {MODELS_DIR}/")
+    matches.sort(key=lambda p: _EXTENSION_PREFERENCE.index(p.suffix.lower()))
     return str(matches[0])
 
 
-def _draw_detections(img_bgr: np.ndarray, detections) -> None:
-    """Dibuja bounding boxes [x1,y1,x2,y2,conf,cls] sobre imagen BGR (in-place)."""
-    bbox_color  = _draw_config["bbox_color"]
-    label_color = _draw_config["label_color"]
-    for det in detections:
-        x1, y1, x2, y2, conf, cls = det
-        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-        cv2.rectangle(img_bgr, (x1, y1), (x2, y2), bbox_color, 2)
-        label = f"{int(cls)} {conf:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(img_bgr, (x1, y1 - th - 6), (x1 + tw + 2, y1), bbox_color, -1)
-        cv2.putText(img_bgr, label, (x1 + 1, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, label_color, 1, cv2.LINE_AA)
+def _load_and_validate(model_path: str) -> dict:
+    """Carga + validacion cruzada JSON↔modelo. Mapea fallos a errores HTTP honestos."""
+    try:
+        controller.load_model(model_path)
+        validation = controller.validate_pipeline()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except (ValidationError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fallo inesperado al cargar el modelo: {e}")
+    return validation
+
 
 # ════════════════════════════════════════
 # 1a Listar modelos disponibles
 # ════════════════════════════════════════
 
-@app.get("/get_models")
+@app.get("/get_models", summary="Listar modelos disponibles")
 def get_models():
+    """Modelos con config JSON valido Y archivo de pesos presente en models/.
+
+    Los JSON de configs/ sin archivo de modelo (ej: plantillas) no se listan.
+    """
     try:
-        models = sorted(p.stem for p in CONFIGS_DIR.glob("*.json"))
+        models = []
+        for cfg in sorted(CONFIGS_DIR.glob("*.json")):
+            has_weights = any(p.suffix.lower() in MODEL_EXTENSIONS
+                              for p in MODELS_DIR.glob(f"{cfg.stem}.*"))
+            if has_weights:
+                models.append(cfg.stem)
         return {"models": models}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ════════════════════════════════════════
 # 1b Seleccionar modelo por nombre
 # ════════════════════════════════════════
 
-@app.post("/select_model")
+@app.post("/select_model", summary="Cargar un modelo por nombre")
 def select_model(data: SelectModelRequest):
+    """Busca el archivo en models/, arma el pipeline y corre una validacion post-carga.
+
+    Si el JSON no coincide con lo que el modelo realmente devuelve, responde 422
+    con el detalle (antes respondia "ok" y el error aparecia recien en el stream).
+    """
     try:
         model_path = _find_model_file(data.model_name)
-        controller.load_model(model_path)
-        return {"status": "ok", "message": f"Modelo cargado: {data.model_name}"}
     except FileNotFoundError as e:
-        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+        raise HTTPException(status_code=404, detail=str(e))
+    validation = _load_and_validate(model_path)
+    return {
+        "status": "ok",
+        "message": f"Modelo cargado y validado: {data.model_name}",
+        "validation": validation,
+    }
 
 
 # ════════════════════════════════════════
 # 1c Cargar modelo por path directo
 # ════════════════════════════════════════
 
-@app.post("/model/load")
+@app.post("/model/load", summary="Cargar un modelo por ruta directa")
 def load_model(data: ModelPathRequest):
-    try:
-        controller.load_model(data.model_path)
-        return {"status": "ok", "message": f"Modelo cargado: {data.model_path}"}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+    validation = _load_and_validate(data.model_path)
+    return {
+        "status": "ok",
+        "message": f"Modelo cargado y validado: {data.model_path}",
+        "validation": validation,
+    }
 
 
 # ════════════════════════════════════════
 # 2 Actualizar umbral de confianza
 # ════════════════════════════════════════
 
-@app.post("/config/confidence")
+@app.post("/config/confidence", summary="Actualizar umbral de confianza en vivo")
 def update_confidence(data: ConfidenceUpdateRequest):
-    controller.update_confidence(data.value)
-    return {"status": "ok", "new_confidence": data.value}
-
-
-# ════════════════════════════════════════
-# 2b Actualizar colores de deteccion
-# ════════════════════════════════════════
-
-@app.post("/config/colors")
-def update_colors(data: DrawConfigRequest):
     try:
-        _draw_config["bbox_color"]  = _hex_to_bgr(data.bbox_color)
-        _draw_config["label_color"] = _hex_to_bgr(data.label_color)
-        return {"status": "ok"}
-    except Exception as e:
-        return JSONResponse(status_code=400, content={"status": "error", "detail": str(e)})
+        controller.update_confidence(data.value)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"status": "ok", "new_confidence": data.value}
 
 
 # ════════════════════════════════════════
 # 3 Descargar modelo
 # ════════════════════════════════════════
 
-@app.post("/model/unload")
+@app.post("/model/unload", summary="Liberar el modelo cargado")
 def unload_model():
     controller.unload_model()
     return {"status": "ok", "message": "Modelo descargado."}
@@ -186,47 +172,64 @@ def unload_model():
 # 4 WebSocket streaming con inferencia
 # ════════════════════════════════════════
 
+def _decode_frame(message: dict):
+    """Acepta frames JPEG binarios (protocolo actual) o base64 (compatibilidad)."""
+    data = message.get("bytes")
+    if data is None:
+        text = message.get("text") or ""
+        if "," in text:  # data URL: "data:image/jpeg;base64,...."
+            text = text.split(",", 1)[1]
+        try:
+            data = base64.b64decode(text)
+        except Exception:
+            return None
+    img_np = np.frombuffer(data, dtype=np.uint8)
+    return cv2.imdecode(img_np, cv2.IMREAD_COLOR)
+
+
 @app.websocket("/video_stream")
 async def video_stream(websocket: WebSocket):
+    """Protocolo: el cliente envia un frame JPEG (binario) y espera UN mensaje JSON:
+
+        {"detections": [[x1, y1, x2, y2, conf, cls], ...], "error": null}
+
+    Las coordenadas vienen en pixeles de la imagen original; el cliente dibuja.
+    SIEMPRE se responde (aunque el frame sea invalido o falle la inferencia) para
+    que el cliente nunca quede esperando un frame que no va a llegar.
+    """
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_text()
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
 
-            if "," in data:
-                data = data.split(",", 1)[1]
-
-            img_bytes = base64.b64decode(data)
-            img_np = np.frombuffer(img_bytes, dtype=np.uint8)
-            img_bgr = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
+            response = {"detections": [], "error": None}
+            img_bgr = _decode_frame(message)
 
             if img_bgr is None:
-                continue
-
-            # Flipear antes de inferir y dibujar para que los labels queden legibles
-            # Los labels muestran la clase en numeros, el sistema no sabe que son cada numero.
-            # No se como solucionar eso.
-            img_bgr = cv2.flip(img_bgr, 1)
-
-            if controller.predict_fn is not None:
+                response["error"] = "frame_invalido"
+            elif controller.predict_fn is None:
+                response["error"] = "no_model"
+            else:
                 try:
                     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                    detections = controller.inference(img_rgb)
-                    if detections:
-                        _draw_detections(img_bgr, detections)
+                    # En threadpool: la inferencia es bloqueante y no debe congelar
+                    # el event loop (los endpoints REST siguen respondiendo).
+                    loop = asyncio.get_event_loop()
+                    detections = await loop.run_in_executor(
+                        None, controller.inference, img_rgb)
+                    response["detections"] = [
+                        [round(float(v), 2) for v in det] for det in detections
+                    ]
                 except Exception as e:
                     _inference_errors.append({
                         "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
                         "error": str(e),
                     })
-                    h, w = img_bgr.shape[:2]
-                    cv2.rectangle(img_bgr, (0, 0), (w, 44), (0, 0, 180), -1)
-                    cv2.putText(img_bgr, "ERROR DE INFERENCIA — consultar /logs/inference",
-                                (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+                    response["error"] = "inference_error"
 
-            _, buf = cv2.imencode(".jpg", img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            b64_frame = base64.b64encode(buf.tobytes()).decode("utf-8")
-            await websocket.send_text(b64_frame)
+            await websocket.send_json(response)
 
     except WebSocketDisconnect:
         pass
@@ -236,7 +239,7 @@ async def video_stream(websocket: WebSocket):
 # 5 Obtener logs de inferencia
 # ════════════════════════════════════════
 
-@app.get("/logs/inference")
+@app.get("/logs/inference", summary="Ultimos errores de inferencia")
 def get_inference_logs():
     return {"logs": list(_inference_errors)}
 
@@ -245,7 +248,7 @@ def get_inference_logs():
 # 6 Metricas de rendimiento
 # ════════════════════════════════════════
 
-@app.get("/metrics")
+@app.get("/metrics", summary="Metricas de rendimiento del pipeline")
 def get_metrics():
     stats = controller.perf.stats()
     if stats is None:

@@ -1,19 +1,24 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Literal, Dict, Union, Any
 
 TYPE = Literal["detection", "classification", "segmentation"]
 BACKEND = Literal["onnxruntime", "tflite", "tensorflow", "pytorch"]
 
+class StrictModel(BaseModel):
+    # extra="forbid": un campo desconocido en el JSON es un error visible, no un silencio.
+    # protected_namespaces=(): permite el campo model_type sin warning de pydantic v2.
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
+
 # ---------------------------------------------------------------------------
 # Input
 # ---------------------------------------------------------------------------
 
-class InputTensor(BaseModel):
+class InputTensor(StrictModel):
     layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
     dtype: Literal["float32", "uint8", "int8"] = "float32"
     quantized: bool = False
 
-class InputConfig(BaseModel):
+class InputConfig(StrictModel):
     width: int
     height: int
     channels: int
@@ -25,25 +30,25 @@ class InputConfig(BaseModel):
     auto_pad_color: Optional[List[int]] = [114, 114, 114]
     preserve_aspect_ratio: Optional[bool] = True
     color_order: Literal["RGB", "BGR", "GRAY"] = "RGB"
-    input_str: InputTensor = None
+    input_str: Optional[InputTensor] = None
 
 # ---------------------------------------------------------------------------
 # Tensor structures (una por tipo de modelo)
 # ---------------------------------------------------------------------------
 
-class TensorDetection(BaseModel):
+class TensorDetection(StrictModel):
     box_format: Literal["xyxy", "cxcywh", "yxyx"] = "xyxy"
     coordinates: Dict[str, int] = {"x1": 1, "y1": 2, "x2": 3, "y2": 4}
     confidence_index: int = 6
     class_index: int = 5
     num_classes: Optional[int] = None
 
-class TensorClassification(BaseModel):
+class TensorClassification(StrictModel):
     num_classes: int
     output_format: Literal["logits", "probabilities"] = "logits"
     multi_label: bool = False  # True -> sigmoid por clase, False -> softmax (mutuamente exclusivo)
 
-class TensorSegmentation(BaseModel):
+class TensorSegmentation(StrictModel):
     num_classes: int
     output_format: Literal["argmax_map", "softmax_map"] = "argmax_map"
     # argmax_map: el tensor ya es el indice de clase ganador por pixel (H x W)
@@ -56,7 +61,20 @@ class TensorSegmentation(BaseModel):
 # Output configs (una por tipo de modelo)
 # ---------------------------------------------------------------------------
 
-class DetectionOutput(BaseModel):
+class AnchorConfig(StrictModel):
+    """Parametros para generar la tabla de anchors de modelos con salida cruda
+    (pack_format == "anchor_deltas", ej: EfficientDet/SSD sin DetectionPostProcess).
+    Defaults = familia EfficientDet (automl)."""
+    min_level: int = 3
+    max_level: int = 7
+    num_scales: int = 3
+    aspect_ratios: List[float] = [1.0, 2.0, 0.5]
+    anchor_scale: float = 4.0
+    box_variance: List[float] = [1.0, 1.0, 1.0, 1.0]   # TF OD API usa [0.1, 0.1, 0.2, 0.2]
+    # "none": el tensor ya trae probabilidades; "sigmoid"/"softmax": aplicar sobre logits
+    scores_activation: Literal["none", "sigmoid", "softmax"] = "none"
+
+class DetectionOutput(StrictModel):
     apply_conf_filter: bool = True
     confidence_threshold: float = 0.5
     apply_nms: bool = False
@@ -65,8 +83,9 @@ class DetectionOutput(BaseModel):
     nms_threshold: float = 0.45
     tensor_structure: TensorDetection = Field(default_factory=TensorDetection)
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
+    anchor_config: Optional[AnchorConfig] = None   # requerido si pack_format == "anchor_deltas"
 
-class ClassificationOutput(BaseModel):
+class ClassificationOutput(StrictModel):
     apply_softmax: bool = True      # aplicar softmax sobre el vector de salida
     apply_sigmoid: bool = False     # usar en lugar de softmax cuando multi_label=True
     top_k: int = 1                  # cuantas predicciones devolver
@@ -75,7 +94,7 @@ class ClassificationOutput(BaseModel):
     tensor_structure: TensorClassification
     pack_format: Literal["softmax_out", "sigmoid_out", "logits_raw"] = "softmax_out"
 
-class SemanticSegmentationOutput(BaseModel):
+class SemanticSegmentationOutput(StrictModel):
     confidence_threshold: float = 0.5  # umbral minimo para reportar una clase (en softmax_map)
     label_map: Optional[Union[List[str], str]] = None
     tensor_structure: TensorSegmentation
@@ -85,7 +104,7 @@ class SemanticSegmentationOutput(BaseModel):
 # Runtime
 # ---------------------------------------------------------------------------
 
-class RuntimeShapes(BaseModel):
+class RuntimeShapes(StrictModel):
     input_width: int = 0
     input_height: int = 0
     orig_width: int = 0
@@ -98,25 +117,28 @@ class RuntimeShapes(BaseModel):
     })
     channels: int = 3
     out_coords_space: Literal["normalized_0_1", "tensor_pixels"] = "normalized_0_1"
+    # Estado runtime para anchor_deltas (NO van en el JSON: se generan al cargar el modelo)
+    anchors: Optional[Any] = Field(default=None, exclude=True)        # np.ndarray (N,4) [ay,ax,ah,aw] normalizados
+    box_variance: Optional[List[float]] = Field(default=None, exclude=True)
 
-class ThreadsConfig(BaseModel):
+class ThreadsConfig(StrictModel):
     intra_op: Optional[int] = None   # ONNXRuntime
     inter_op: Optional[int] = None   # ONNXRuntime
     num_threads: Optional[int] = None  # TFLite / general
 
-class WarmupConfig(BaseModel):
+class WarmupConfig(StrictModel):
     runs: int = 0
     enabled: bool = True
 
-class OnnxRuntimeConfig(BaseModel):
+class OnnxRuntimeConfig(StrictModel):
     providers: List[str] = Field(default_factory=list)
     provider_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
-class TfliteRuntimeConfig(BaseModel):
+class TfliteRuntimeConfig(StrictModel):
     delegates: List[str] = Field(default_factory=list)
     delegate_options: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
-class RuntimeConfig(BaseModel):
+class RuntimeConfig(StrictModel):
     runtimeShapes: Optional[RuntimeShapes] = Field(default_factory=RuntimeShapes)
     backend: BACKEND = "onnxruntime"
     device: Literal["cpu", "gpu"] = "cpu"
@@ -132,7 +154,7 @@ AnyOutputConfig = Union[DetectionOutput, ClassificationOutput, SemanticSegmentat
 # Config raiz
 # ---------------------------------------------------------------------------
 
-class ModelConfig(BaseModel):
+class ModelConfig(StrictModel):
     model_type: TYPE
     input: InputConfig
     output: Union[DetectionOutput, ClassificationOutput, SemanticSegmentationOutput]

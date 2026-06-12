@@ -1,4 +1,4 @@
-import { initVideoStream } from "./streamHandler.js";
+import { initVideoStream } from './streamHandler.js';
 
 let currentStream = null;
 let activeWebSocket = null;
@@ -26,7 +26,9 @@ export async function refreshCameras(cameraSelect) {
     await _populateCameraSelect(cameraSelect);
 
     // Si la camara que estaba seleccionada sigue disponible, mantenerla
-    const stillAvailable = [...cameraSelect.options].some(o => o.value === previousId);
+    const stillAvailable = [...cameraSelect.options].some(
+      (o) => o.value === previousId
+    );
     if (stillAvailable && previousId) {
       cameraSelect.value = previousId;
     }
@@ -41,7 +43,7 @@ export async function refreshCameras(cameraSelect) {
 
 async function _populateCameraSelect(cameraSelect) {
   const devices = await navigator.mediaDevices.enumerateDevices();
-  const videoDevices = devices.filter(device => device.kind === 'videoinput');
+  const videoDevices = devices.filter((device) => device.kind === 'videoinput');
 
   if (!videoDevices.length) {
     console.error('No se detectaron camaras');
@@ -49,14 +51,20 @@ async function _populateCameraSelect(cameraSelect) {
   }
 
   const currentValue = cameraSelect.value;
-  cameraSelect.innerHTML = videoDevices.map((device, index) => `
+  cameraSelect.innerHTML = videoDevices
+    .map(
+      (device, index) => `
     <option value="${device.deviceId}">
       ${device.label || `Camara ${index + 1}`}
     </option>
-  `).join('');
+  `
+    )
+    .join('');
 
   // Restaurar seleccion si sigue existiendo
-  const stillExists = [...cameraSelect.options].some(o => o.value === currentValue);
+  const stillExists = [...cameraSelect.options].some(
+    (o) => o.value === currentValue
+  );
   if (stillExists) cameraSelect.value = currentValue;
 }
 
@@ -67,7 +75,7 @@ export async function startSelectedCamera(deviceId) {
       activeWebSocket = null;
     }
     if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
+      currentStream.getTracks().forEach((track) => track.stop());
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -75,8 +83,8 @@ export async function startSelectedCamera(deviceId) {
         deviceId: { exact: deviceId },
         width: { ideal: 1280 },
         height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      }
+        frameRate: { ideal: 30 },
+      },
     });
 
     const video = document.getElementById('video');
@@ -87,8 +95,8 @@ export async function startSelectedCamera(deviceId) {
     const noVideoMsg = document.querySelector('.no-video-message');
     if (noVideoMsg) noVideoMsg.style.display = 'none';
 
-    activeWebSocket = initVideoStream(video);
-
+    // mirror: true -> efecto espejo solo para camara (los archivos no se espejan)
+    activeWebSocket = initVideoStream(video, { mirror: true });
   } catch (err) {
     const noVideoMsg = document.querySelector('.no-video-message');
     if (noVideoMsg) noVideoMsg.style.display = '';
@@ -102,7 +110,7 @@ export function stopCurrentStream() {
     activeWebSocket = null;
   }
   if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
+    currentStream.getTracks().forEach((track) => track.stop());
     currentStream = null;
   }
   const video = document.getElementById('video');

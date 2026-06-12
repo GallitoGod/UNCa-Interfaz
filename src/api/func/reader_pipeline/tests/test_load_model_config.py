@@ -43,15 +43,9 @@ def test_load_model_config_valido(tmp_path):
     config_file.parent.mkdir()
     config_file.write_text(json.dumps(config_data))
 
-    old_cwd = os.getcwd()
-    os.chdir(tmp_path)
-
-    try:
-        cfg = load_model_config(str(model_file))
-        assert cfg.model_type == "classification"
-        assert cfg.input.width == 224
-    finally:
-        os.chdir(old_cwd)
+    cfg = load_model_config(str(model_file), configs_dir=tmp_path / "configs")
+    assert cfg.model_type == "classification"
+    assert cfg.input.width == 224
 
 
 
@@ -61,13 +55,8 @@ def test_load_model_config_no_encontrado(tmp_path):
     model_file.write_text("fake content")
 
     # No se crea el archivo en configs/
-    old_cwd = os.getcwd()
-    os.chdir(tmp_path)
-    try:
-        with pytest.raises(FileNotFoundError):
-            load_model_config(str(model_file))
-    finally:
-        os.chdir(old_cwd)
+    with pytest.raises(FileNotFoundError):
+        load_model_config(str(model_file), configs_dir=tmp_path / "configs")
 
 
 def test_load_model_config_json_invalido(tmp_path):
@@ -79,13 +68,8 @@ def test_load_model_config_json_invalido(tmp_path):
     config_file.parent.mkdir()
     config_file.write_text("{invalid_json}")  # JSON mal formado
 
-    old_cwd = os.getcwd()
-    os.chdir(tmp_path)
-    try:
-        with pytest.raises(ValueError):
-            load_model_config(str(model_file))
-    finally:
-        os.chdir(old_cwd)
+    with pytest.raises(ValueError):
+        load_model_config(str(model_file), configs_dir=tmp_path / "configs")
 
 
 def test_load_model_config_datos_invalidos(tmp_path):
@@ -126,10 +110,5 @@ def test_load_model_config_datos_invalidos(tmp_path):
     config_file.parent.mkdir()
     config_file.write_text(json.dumps(config_data))
 
-    old_cwd = os.getcwd()
-    os.chdir(tmp_path)
-    try:
-        with pytest.raises(ValidationError):
-            load_model_config(str(model_file))
-    finally:
-        os.chdir(old_cwd)
+    with pytest.raises(ValidationError):
+        load_model_config(str(model_file), configs_dir=tmp_path / "configs")

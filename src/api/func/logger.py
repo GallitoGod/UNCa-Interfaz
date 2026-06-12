@@ -60,9 +60,9 @@ def setup_model_logger(model_name: str, log_dir: str = "logs"):
 
 class PerfMeter:
     """
-    Guarda los ultimos N tiempos y calcula fps promedio y p95.
-    Pensado para benchmark en loop.
-    Ventana chica (30) para que las metricas reflejen el estado actual rapidamente.
+    Guarda los ultimos `window` tiempos y calcula fps promedio y p95.
+    Pensado para benchmark en loop. El controller usa window=300 (~10s a 30fps):
+    suaviza el HUD a costa de inercia; bajar la ventana si se quiere reaccion rapida.
     """
     def __init__(self, window=30):
         self.window = window
@@ -116,6 +116,7 @@ def run_warmup(predict_fn, dummy_input, runs: int, logger=None):
 
 
 def make_dummy_input(preprocess_fn, input_adapter, input_cfg):
+    """input_cfg debe ser un InputConfig (config.input), NO el ModelConfig raiz."""
     h0, w0 = input_cfg.height, input_cfg.width
     img = np.zeros((h0, w0, 3), dtype=np.uint8)
 
