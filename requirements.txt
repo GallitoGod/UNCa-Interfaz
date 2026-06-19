@@ -17,21 +17,31 @@
 #   npm start
 # """
 
+# NOTA: dependencias DIRECTAS con versiones FIJAS, probadas en Python 3.8.10 y
+# CROSS-PLATFORM (instalables tanto en Linux como en Windows). Esta es la via
+# de instalacion recomendada en AMBOS sistemas:
+#     pip install -r requirements.txt
+# requirements.lock.txt es el cierre transitivo exacto, pero SOLO sirve en
+# Windows (ver su cabecera). En Linux usar este archivo.
+
 # ── Core API ──────────────────────────────
-fastapi[standard]
-uvicorn
-websockets
+fastapi[standard]==0.115.8
+uvicorn==0.33.0
+websockets==13.1
 
 # ── Inferencia ────────────────────────────
-tensorflow
-onnxruntime-gpu==1.17.1      # CUDA 11.8 — usar onnxruntime-gpu==1.18.x para CUDA 12.x
-torch>=2.0.0
+tensorflow==2.12.0
+# onnxruntime-gpu trae el Execution Provider de CUDA: es el runtime usado en
+# Linux con GPU (CUDA 11.8). En Windows tambien funciona; en CPU cae al
+# CPUExecutionProvider sin romper. Para CUDA 12.x usar onnxruntime-gpu==1.18.x.
+onnxruntime-gpu==1.17.1
+torch==2.4.1
 
 # ── Procesamiento de imagenes ─────────────
-Pillow>=7.1.2
-numpy>=1.23.0
-opencv-python
-python-multipart
+Pillow==10.4.0
+numpy==1.23.5
+opencv-python==4.11.0.86
+python-multipart==0.0.20
 
 # ── Entrenamiento YOLOv7 (no necesario para inferencia) ──
 # matplotlib>=3.2.2

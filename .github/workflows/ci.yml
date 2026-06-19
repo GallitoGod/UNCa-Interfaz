@@ -1,0 +1,76 @@
+# =============================================================================
+# CI minima de UNCaLens
+# -----------------------------------------------------------------------------
+# La app DEBE correr en Linux y en Windows, asi que el job de backend usa una
+# matriz de sistemas operativos. Se instala desde requirements.txt (versiones
+# fijas y cross-platform); requirements.lock.txt queda como snapshot exacto
+# solo-Windows para reproducir el entorno local bit a bit.
+#
+#   * backend  -> pytest (unitarios) en ubuntu-22.04 + windows-latest.
+#                 Se ignora el e2e de YOLOv7 (exige pesos pesados + GPU).
+#   * frontend -> prettier --check sobre el JS del renderer.
+#
+# Nota: ubuntu-22.04 (no ubuntu-latest) porque setup-python provee Python 3.8
+# de forma confiable en esa imagen.
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main, "refactor-*"]
+  pull_request:
+    branches: [main]
+
+# Cancela ejecuciones viejas de la misma rama si llega un push nuevo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest unitarios)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout (con LFS para los pesos de models/)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Configurar Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Instalar dependencias (versiones fijas cross-platform)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar pruebas unitarias
+        # Se ignora el end-to-end de YOLOv7: necesita el peso completo + GPU.
+        run: pytest --ignore=src/api/func/tests/test_end_to_end_yolov7.py
+
+  frontend:
+    name: Frontend (prettier --check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Instalar dependencias de Node
+        run: npm ci
+
+      - name: Validar formato del renderer
+        run: npx prettier --check "src/render/**/*.js"

@@ -1,0 +1,150 @@
+# =============================================================================
+# requirements.lock.txt — Entorno congelado y probado para UNCaLens
+# -----------------------------------------------------------------------------
+# Interprete: Python 3.8.10 (64-bit, Windows).
+# Generado con 'pip freeze' sobre el venv de desarrollo verificado (36 tests
+# verdes). Para una instalacion reproducible y libre de regresiones usar:
+#     pip install -r requirements.lock.txt
+# requirements.txt mantiene las dependencias directas con versiones FIJAS y
+# cross-platform (Linux + Windows); ESTE archivo fija el cierre transitivo
+# completo, pero SOLO sirve en Windows.
+#
+# OJO: incluye paquetes solo-Windows (pywin32, tensorflow-intel,
+# onnxruntime-directml) y NO trae las libs CUDA que torch/onnxruntime resuelven
+# en Linux. Por eso este lock NO es instalable en Linux: alli se usa
+# 'pip install -r requirements.txt' (la CI corre la matriz ubuntu + windows).
+# Para un lock exacto de Linux, generar requirements.lock.linux.txt con
+# 'pip freeze' sobre un venv 3.8 en una maquina Linux.
+# =============================================================================
+absl-py==2.1.0
+annotated-types==0.7.0
+anyio==4.5.2
+asttokens==3.0.0
+astunparse==1.6.3
+backcall==0.2.0
+cachetools==5.5.1
+certifi==2025.1.31
+charset-normalizer==3.4.1
+click==8.1.8
+colorama==0.4.6
+coloredlogs==15.0.1
+comm==0.2.2
+contourpy==1.1.1
+cycler==0.12.1
+debugpy==1.8.12
+decorator==5.1.1
+dnspython==2.6.1
+email_validator==2.2.0
+exceptiongroup==1.2.2
+executing==2.2.0
+fastapi==0.115.8
+fastapi-cli==0.0.7
+filelock==3.16.1
+flatbuffers==25.1.24
+fonttools==4.56.0
+fsspec==2025.2.0
+gast==0.4.0
+google-auth==2.38.0
+google-auth-oauthlib==1.0.0
+google-pasta==0.2.0
+grpcio==1.70.0
+h11==0.14.0
+h5py==3.11.0
+httpcore==1.0.7
+httptools==0.6.4
+httpx==0.28.1
+humanfriendly==10.0
+idna==3.10
+importlib_metadata==8.5.0
+importlib_resources==6.4.5
+iniconfig==2.1.0
+ipykernel==6.29.5
+ipython==8.12.3
+jax==0.4.13
+jedi==0.19.2
+Jinja2==3.1.5
+jupyter_client==8.6.3
+jupyter_core==5.7.2
+keras==2.12.0
+kiwisolver==1.4.7
+libclang==18.1.1
+Markdown==3.7
+markdown-it-py==3.0.0
+MarkupSafe==2.1.5
+matplotlib==3.7.5
+matplotlib-inline==0.1.7
+mdurl==0.1.2
+ml-dtypes==0.2.0
+mpmath==1.3.0
+nest-asyncio==1.6.0
+networkx==3.1
+numpy==1.23.5
+oauthlib==3.2.2
+onnxruntime-directml==1.19.2
+onnxruntime-gpu==1.17.1
+opencv-contrib-python==4.11.0.86
+opencv-python==4.11.0.86
+opt_einsum==3.4.0
+packaging==24.2
+pandas==2.0.3
+parso==0.8.4
+pickleshare==0.7.5
+pillow==10.4.0
+platformdirs==4.3.6
+pluggy==1.5.0
+prompt_toolkit==3.0.50
+protobuf==3.20.3
+psutil==7.0.0
+pure_eval==0.2.3
+pyasn1==0.6.1
+pyasn1_modules==0.4.1
+pydantic==2.10.6
+pydantic_core==2.27.2
+Pygments==2.19.1
+pyparsing==3.1.4
+pyreadline3==3.5.4
+pytest==8.3.5
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+python-multipart==0.0.20
+pytz==2025.1
+pywin32==308
+PyYAML==6.0.2
+pyzmq==26.2.1
+requests==2.32.3
+requests-oauthlib==2.0.0
+rich==13.9.4
+rich-toolkit==0.13.2
+rsa==4.9
+scipy==1.10.1
+shellingham==1.5.4
+six==1.17.0
+sniffio==1.3.1
+stack-data==0.6.3
+starlette==0.44.0
+sympy==1.13.3
+tensorboard==2.12.3
+tensorboard-data-server==0.7.2
+tensorflow==2.12.0
+tensorflow-estimator==2.12.0
+tensorflow-intel==2.12.0
+tensorflow-io-gcs-filesystem==0.31.0
+termcolor==2.4.0
+tomli==2.2.1
+torch==2.4.1
+torchvision==0.19.1
+tornado==6.4.2
+tqdm==4.67.1
+traitlets==5.14.3
+typer==0.15.1
+typing==3.7.4.3
+typing_extensions==4.12.2
+tzdata==2025.1
+urllib3==2.2.3
+uvicorn==0.33.0
+watchfiles==0.24.0
+wcwidth==0.2.13
+websockets==13.1
+Werkzeug==3.0.6
+wrapt==1.14.1
+zipp==3.20.2

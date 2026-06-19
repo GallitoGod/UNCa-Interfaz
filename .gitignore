@@ -1,9 +1,28 @@
-CLAUDE.md
-logs/
-node_modules/
-package-lock.json
-.vscode/
+# ── Entorno / dependencias ────────────────
 .venv/
-.prettierrc
-pytest.ini
+node_modules/
+
+# ── Editor / herramientas ─────────────────
+.vscode/
 **/__pycache__/
+.pytest_cache/
+
+# ── Artefactos en runtime ─────────────────
+logs/
+
+# ── Guia local del agente (no se versiona) ─
+CLAUDE.md
+
+# ── Documentacion binaria no versionada ───
+# Los .docx de /Informacion no se trackean (usar los .md equivalentes).
+Informacion/*.docx
+
+# ── Salidas y descartes de los tests ──────
+# Imagenes generadas por los tests y scripts de un solo uso (NO son fixtures).
+# La fixture real 'imagen_redimensionada.jpg' SI se versiona.
+src/api/func/tests/testing_images/horses_detected.jpg
+src/api/func/tests/testing_images/IA_ejecutada_en_entorno_propio.PNG
+src/api/func/tests/testing_images/script_de_desecho.py
+
+# NOTA: pytest.ini, .prettierrc y package-lock.json AHORA se versionan
+# (la CI los necesita en un checkout limpio para ejecutar pytest y prettier).

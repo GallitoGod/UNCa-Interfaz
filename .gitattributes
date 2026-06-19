@@ -1,0 +1,21 @@
+# =============================================================================
+# Git LFS — binarios pesados de modelos (pesos de IA).
+# Los archivos que coincidan con estos patrones se versionan como punteros LFS,
+# no como blobs en el arbol de git. Requiere 'git lfs install' una sola vez por
+# clon. La conversion se aplico SIN reescribir historia (los commits viejos
+# conservan los blobs originales; de aqui en adelante son punteros LFS).
+# =============================================================================
+models/**/*.onnx   filter=lfs diff=lfs merge=lfs -text
+models/**/*.tflite filter=lfs diff=lfs merge=lfs -text
+models/**/*.pt     filter=lfs diff=lfs merge=lfs -text
+models/**/*.pth    filter=lfs diff=lfs merge=lfs -text
+models/**/*.h5     filter=lfs diff=lfs merge=lfs -text
+models/**/*.keras  filter=lfs diff=lfs merge=lfs -text
+
+# Cubre tambien los modelos en la raiz de models/ (sin subcarpeta).
+models/*.onnx   filter=lfs diff=lfs merge=lfs -text
+models/*.tflite filter=lfs diff=lfs merge=lfs -text
+models/*.pt     filter=lfs diff=lfs merge=lfs -text
+models/*.pth    filter=lfs diff=lfs merge=lfs -text
+models/*.h5     filter=lfs diff=lfs merge=lfs -text
+models/*.keras  filter=lfs diff=lfs merge=lfs -text
