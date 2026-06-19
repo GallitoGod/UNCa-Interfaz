@@ -427,6 +427,11 @@ listadas como modelos, EfficientDet con cajas basura, etc.).
 
 ---
 
+### Idea de ejecucion de sistema multi-tipo:
+
+| Idea del model controller | En las ultimas reformas `model_controller` se convirtio en un operador con logica, enves de ser un orquestador abstraido de la logica con la que se opera en el sistema por dentro. Como idea para la restructuracion y administracion de pipelines multitipo propongo 
+
+
 ## 7. Apéndice — Entorno de ejecución
 
 ```bash

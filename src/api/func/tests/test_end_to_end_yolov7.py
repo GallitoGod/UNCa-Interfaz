@@ -103,7 +103,7 @@ def test_yolov7_tiny_on_horse_image():
 
     plt.figure()
     plt.imshow(cv2.cvtColor(output_img, cv2.COLOR_BGR2RGB))
-    plt.title("Detecciones YOLOv7-tiny")
+    plt.title(f"Detecciones {model_path}")
     plt.axis("off")
     plt.show()
 
