@@ -1,6 +1,7 @@
 # tflite_load.py
 from __future__ import annotations
 
+import threading
 from typing import Optional, Sequence, Any, Callable, List
 import numpy as np
 import tensorflow as tf
@@ -95,6 +96,12 @@ def tfliteLoader(model_path: str, runtime_cfg: Any = None, logger=None) -> Calla
 
     expects_batch1 = (len(in_shape) >= 1 and in_shape[0] == 1)  # Heuristica
 
+    # El Interpreter de TFLite NO es thread-safe: set_tensor/invoke/get_tensor
+    # comparten el estado interno del interprete. Como el controller ahora corre
+    # inferencias en paralelo (tarea 1 Fase 2), serializamos ESTE backend con su
+    # propio lock. Solo se serializa TFLite; ORT/TF/Torch corren concurrentes.
+    _predict_lock = threading.Lock()
+
     if logger:
         gpu_status  = "ON" if gpu_enabled else "NO DISPONIBLE"
         xnnpack_status = "NO (GPU delegate activo)" if gpu_enabled else "SI (delegate CPU por defecto en TFLite moderno)"
@@ -119,14 +126,18 @@ def tfliteLoader(model_path: str, runtime_cfg: Any = None, logger=None) -> Calla
         if arr.dtype != in_dtype:
             arr = arr.astype(in_dtype, copy=False)
 
-        interpreter.set_tensor(in_index, arr)
-        interpreter.invoke()
+        # Region critica: el interprete es estado mutable compartido. Se copia el
+        # resultado dentro del lock (get_tensor devuelve una vista al buffer interno
+        # que la proxima invoke() pisaria).
+        with _predict_lock:
+            interpreter.set_tensor(in_index, arr)
+            interpreter.invoke()
 
-        if single_output:
-            return interpreter.get_tensor(out_indices[0])
+            if single_output:
+                return np.array(interpreter.get_tensor(out_indices[0]))
 
-        # Multi-output: devuelve tuple de np.ndarray
-        return tuple(interpreter.get_tensor(i) for i in out_indices)
+            # Multi-output: devuelve tuple de np.ndarray (copias)
+            return tuple(np.array(interpreter.get_tensor(i)) for i in out_indices)
 
     return tflite_predict
 
