@@ -13,6 +13,7 @@ from pathlib import Path
 from api.func.model_controller import ModelController
 from api.func.reader_pipeline.config_schema import (
     ModelConfig, build_config_template, anchor_defaults)
+from api.func.reader_pipeline.output_shape import introspect_output_shapes
 
 # Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -225,6 +226,20 @@ def save_config(name: str, config: ModelConfig):
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"No se pudo escribir la config: {e}")
     return {"status": "ok", "name": name, "path": str(dest)}
+
+
+@app.get("/model/output_shape/{model_name}", summary="Forma del tensor crudo de salida del modelo")
+def get_output_shape(model_name: str):
+    """Introspecta el modelo en models/<model_name>.* y devuelve la(s) shape(s) de
+    sus tensores de salida (columna izquierda de la vista de mapeo, Fase 4 tarea 3).
+    ONNX/TFLite/Keras se leen estaticamente; TorchScript devuelve `available=false`
+    para que el cliente pida la forma a mano. 404 si no existe el archivo de pesos.
+    """
+    try:
+        model_path = _find_model_file(model_name)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return introspect_output_shapes(model_path)
 
 
 # ════════════════════════════════════════

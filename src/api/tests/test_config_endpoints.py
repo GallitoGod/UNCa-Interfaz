@@ -3,13 +3,17 @@
 #   GET  /config/template/{model_type}  -> defaults generados desde Pydantic
 #   POST /configs/{name}                -> validacion estricta + escritura segura
 import json
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
 import api.mainAPI as mainAPI
 from api.mainAPI import app
+from api.func.reader_pipeline.output_shape import introspect_output_shapes
 
 client = TestClient(app)
+
+_MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
 
 
 # --------------------------- GET /config/template ---------------------------
@@ -90,3 +94,35 @@ def test_guardar_config_nombre_inseguro_rechazado(tmp_path, monkeypatch, bad_nam
     template = client.get("/config/template/detection").json()["template"]
     r = client.post(f"/configs/{bad_name}", json=template)
     assert r.status_code in (404, 422)
+
+
+# ----------------------- GET /model/output_shape ----------------------------
+
+def test_introspeccion_pytorch_no_disponible_sin_cargar():
+    # TorchScript no expone shapes estaticamente -> available False (sin tocar disco).
+    out = introspect_output_shapes("/ruta/inventada/modelo.pt")
+    assert out["backend"] == "pytorch" and out["available"] is False
+    assert out["shapes"] is None
+
+
+def test_introspeccion_extension_desconocida():
+    out = introspect_output_shapes("/ruta/modelo.xyz")
+    assert out["available"] is False and out["backend"] == "desconocido"
+
+
+def test_output_shape_modelo_inexistente_404():
+    r = client.get("/model/output_shape/no_existe_este_modelo")
+    assert r.status_code == 404
+
+
+@pytest.mark.skipif(
+    not (_MODELS_DIR / "yolov7-tiny.onnx").exists(),
+    reason="yolov7-tiny.onnx no presente (git-lfs)")
+def test_output_shape_onnx_real():
+    r = client.get("/model/output_shape/yolov7-tiny")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["backend"] == "onnxruntime" and body["available"] is True
+    assert isinstance(body["shapes"], list) and len(body["shapes"]) >= 1
+    # yolov7-tiny: salida tipo [N, 7] (det index + xyxy + conf + cls)
+    assert all(isinstance(s, list) for s in body["shapes"])
