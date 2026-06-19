@@ -30,8 +30,8 @@
   --header-height: 4rem;
   --sidebar-width: 16rem;
 
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-    "Helvetica Neue", sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 
   --background: var(--light-background);
   --foreground: var(--light-foreground);
@@ -62,7 +62,9 @@ body {
   font-family: var(--font-sans);
   background-color: var(--background);
   color: var(--foreground);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .app-container {
@@ -139,7 +141,9 @@ body {
   border-radius: var(--radius);
   overflow: hidden;
   aspect-ratio: 16 / 9;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -377,19 +381,19 @@ label {
   right: 0;
   bottom: 0;
   background-color: var(--input);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 1rem;
 }
 
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 1.125rem;
   width: 1.125rem;
   left: 0.1875rem;
   bottom: 0.1875rem;
   background-color: var(--card);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
@@ -440,7 +444,9 @@ input:checked + .slider:before {
   border-radius: var(--radius);
   width: 100%;
   max-width: 28rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   animation: modalFadeIn 0.3s ease;
 }
@@ -663,7 +669,6 @@ input:checked + .slider:before {
   transition: transform 0.3s ease;
 }
 
-
 .app-nav {
   display: flex;
   gap: 0.25rem;
@@ -694,9 +699,12 @@ input:checked + .slider:before {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.view { display: none; }
-.view.active { display: block; }
-
+.view {
+  display: none;
+}
+.view.active {
+  display: block;
+}
 
 .models-layout {
   display: grid;
@@ -736,7 +744,6 @@ input:checked + .slider:before {
   padding: 1rem 0;
 }
 
-
 .model-card {
   display: flex;
   flex-direction: column;
@@ -772,12 +779,24 @@ input:checked + .slider:before {
   width: fit-content;
 }
 
-.model-badge-onnx   { background: rgba(2, 132, 199, 0.15); color: #38bdf8; }
-.model-badge-tflite { background: rgba(234, 88, 12, 0.15);  color: #fb923c; }
+.model-badge-onnx {
+  background: rgba(2, 132, 199, 0.15);
+  color: #38bdf8;
+}
+.model-badge-tflite {
+  background: rgba(234, 88, 12, 0.15);
+  color: #fb923c;
+}
 .model-badge-keras,
-.model-badge-h5     { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+.model-badge-h5 {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
 .model-badge-pt,
-.model-badge-pth    { background: rgba(234, 179, 8, 0.15);  color: #facc15; }
+.model-badge-pth {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+}
 
 .model-card-name {
   font-size: 0.875rem;
@@ -803,9 +822,12 @@ input:checked + .slider:before {
   border-top: 1px solid var(--border);
 }
 
-.status-ok      { color: #4ade80; }
-.status-missing { color: var(--muted); }
-
+.status-ok {
+  color: #4ade80;
+}
+.status-missing {
+  color: var(--muted);
+}
 
 .model-dropzone {
   background-color: var(--card);
@@ -855,9 +877,12 @@ input:checked + .slider:before {
   margin-top: 0.25rem;
 }
 
-.feedback-success { color: #4ade80; }
-.feedback-error   { color: var(--destructive); }
-
+.feedback-success {
+  color: #4ade80;
+}
+.feedback-error {
+  color: var(--destructive);
+}
 
 .config-builder {
   background-color: var(--card);
@@ -913,7 +938,6 @@ input:checked + .slider:before {
   color: var(--destructive);
 }
 
-
 .stepper-bar {
   display: flex;
   align-items: center;
@@ -963,8 +987,12 @@ input:checked + .slider:before {
   font-weight: 500;
 }
 
-.step-item.active .step-label { color: var(--primary); }
-.step-item.done  .step-label  { color: #4ade80; }
+.step-item.active .step-label {
+  color: var(--primary);
+}
+.step-item.done .step-label {
+  color: #4ade80;
+}
 
 .step-line {
   flex: 1;
@@ -975,8 +1003,9 @@ input:checked + .slider:before {
   transition: background-color 0.2s ease;
 }
 
-.step-line.done { background-color: #4ade80; }
-
+.step-line.done {
+  background-color: #4ade80;
+}
 
 .step-content {
   padding: 1.5rem;
@@ -1048,14 +1077,13 @@ input:checked + .slider:before {
   user-select: none;
 }
 
-.check-label input[type="checkbox"] {
+.check-label input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
   accent-color: var(--primary);
   cursor: pointer;
   flex-shrink: 0;
 }
-
 
 .type-cards {
   display: grid;
@@ -1074,7 +1102,9 @@ input:checked + .slider:before {
   gap: 0.4rem;
 }
 
-.type-card:hover { border-color: var(--primary); }
+.type-card:hover {
+  border-color: var(--primary);
+}
 
 .type-card.selected {
   border-color: var(--primary);
@@ -1091,7 +1121,6 @@ input:checked + .slider:before {
   color: var(--muted);
   line-height: 1.4;
 }
-
 
 .builder-footer {
   display: flex;
@@ -1115,7 +1144,123 @@ input:checked + .slider:before {
   border-top: 1px solid var(--border);
 }
 
-.save-ok    { color: #4ade80; background-color: rgba(74, 222, 128, 0.08); }
-.save-error { color: var(--destructive); background-color: rgba(239, 68, 68, 0.08); }
+.save-ok {
+  color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.08);
+}
+.save-error {
+  color: var(--destructive);
+  background-color: rgba(239, 68, 68, 0.08);
+}
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
+
+/* ── Mensajes del builder (carga/errores) ─────────────────────────────────── */
+.builder-message {
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+.builder-message.builder-error {
+  color: var(--destructive);
+}
+
+/* ── Vista de mapeo de contratos (3 columnas) — Fase 4 ────────────────────── */
+.mapping-view {
+  display: grid;
+  grid-template-columns: 0.85fr 1.3fr 0.85fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .mapping-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mapping-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+/* La columna del medio (controles) se distingue del resto. */
+.mapping-controls {
+  border-color: var(--primary);
+}
+
+.mapping-col-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--card-foreground);
+}
+
+.mapping-col-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: -0.5rem;
+}
+
+/* Raw Output (izquierda) */
+.raw-shape-box {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  background-color: rgba(2, 132, 199, 0.08);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 0.25rem);
+  padding: 0.6rem 0.75rem;
+  text-align: center;
+  word-break: break-all;
+}
+.raw-shape-note {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.raw-shape-warn {
+  color: var(--destructive);
+}
+.raw-shape-loading {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Contrato destino (derecha): bloque inmutable [X1|Y1|X2|Y2|Conf|Class] */
+.contract-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.contract-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background-color: rgba(0, 191, 255, 0.06);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: calc(var(--radius) - 0.25rem);
+  padding: 0.45rem 0.65rem;
+}
+.contract-slot-label {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--card-foreground);
+}
+.contract-slot-src {
+  font-size: 0.72rem;
+  color: var(--muted);
+}

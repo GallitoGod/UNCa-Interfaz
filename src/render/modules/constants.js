@@ -17,3 +17,7 @@ export const metricsSnapshotUrl = `${localHost}/metrics/snapshot`;
 export const configTemplateUrl = (modelType) =>
   `${localHost}/config/template/${modelType}`;
 export const configsUrl = (name) => `${localHost}/configs/${name}`;
+
+// Forma del tensor crudo de salida (columna izquierda de la vista de mapeo, Fase 4)
+export const modelOutputShapeUrl = (name) =>
+  `${localHost}/model/output_shape/${name}`;

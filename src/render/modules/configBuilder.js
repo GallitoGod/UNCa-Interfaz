@@ -1,121 +1,94 @@
 // configBuilder.js — wizard de 4 pasos que arma el JSON de config de un modelo.
 //
-// Post-hardening: el renderer no escribe archivos. El guardado delega en
-// window.uncaAPI.writeConfig (IPC al main process), que valida el nombre y
-// escribe configs/<modelo>.json. Donde queda el archivo lo decide el main,
-// por eso este modulo ya no conoce rutas.
+// Fase 3/4: el cliente YA NO hardcodea defaults ni escribe por fs. Los defaults
+// salen del backend (GET /config/template/{model_type}, single source of truth) y
+// el guardado va por POST /configs/{name} (validacion Pydantic estricta antes de
+// escribir). El paso 3 de deteccion es la "vista de mapeo de contratos" de 3
+// columnas: Raw Output (del modelo) -> Adaptador -> Contrato (N,6) inmutable.
+
+import {
+  configTemplateUrl,
+  configsUrl,
+  modelOutputShapeUrl,
+} from './constants.js';
 
 // ── Estado del builder ──────────────────────────────────────────────────────
 let _state = null;
 let _builderEl = null;
 let _onSave = null;
 
-// ── Defaults por tipo ───────────────────────────────────────────────────────
-const OUTPUT_DEFAULTS = {
-  detection: {
-    apply_conf_filter: true,
-    confidence_threshold: 0.5,
-    apply_nms: false,
-    top_k: 0,
-    nms_per_class: false,
-    nms_threshold: 0.45,
-    tensor_structure: {
-      box_format: 'xyxy',
-      coordinates: { x1: 1, y1: 2, x2: 3, y2: 4 },
-      confidence_index: 6,
-      class_index: 5,
-      num_classes: 80,
-    },
-    pack_format: 'raw',
-    out_coords_space: 'tensor_pixels',
-  },
-  classification: {
-    apply_softmax: true,
-    apply_sigmoid: false,
-    top_k: 1,
-    confidence_threshold: 0.5,
-    label_map: null,
-    tensor_structure: {
-      num_classes: 1000,
-      output_format: 'logits',
-      multi_label: false,
-    },
-    pack_format: 'softmax_out',
-  },
-  segmentation: {
-    confidence_threshold: 0.5,
-    label_map: null,
-    tensor_structure: {
-      num_classes: 21,
-      output_format: 'argmax_map',
-      output_stride: 1,
-      resize_to_input: true,
-      colormap: null,
-    },
-    pack_format: 'argmax_map',
-  },
-};
+// ── Helpers de red (single source of truth en el backend) ───────────────────
 
-// Defaults de anchors = familia EfficientDet (automl)
-const ANCHOR_DEFAULTS = {
-  min_level: 3,
-  max_level: 7,
-  num_scales: 3,
-  aspect_ratios: [1.0, 2.0, 0.5],
-  anchor_scale: 4.0,
-  box_variance: [1.0, 1.0, 1.0, 1.0],
-  scores_activation: 'none',
-};
+async function fetchTemplate(type) {
+  const res = await fetch(configTemplateUrl(type));
+  if (!res.ok) throw new Error(`plantilla ${type}: HTTP ${res.status}`);
+  return res.json(); // { model_type, template, anchor_defaults? }
+}
 
-const INPUT_DEFAULTS = {
-  width: 640,
-  height: 640,
-  channels: 3,
-  normalize: true,
-  mean: [0.0, 0.0, 0.0],
-  std: [1.0, 1.0, 1.0],
-  scale: true,
-  letterbox: false,
-  auto_pad_color: [114, 114, 114],
-  preserve_aspect_ratio: true,
-  color_order: 'RGB',
-  input_str: { layout: 'HWC', dtype: 'float32', quantized: false },
-};
+async function fetchRawShape(baseName) {
+  // Best-effort: si el backend no puede introspectar (TorchScript, modelo no
+  // cargable), se cae al ingreso manual sin romper el wizard.
+  try {
+    const res = await fetch(modelOutputShapeUrl(baseName));
+    if (!res.ok)
+      return { available: false, shapes: null, detail: `HTTP ${res.status}` };
+    return res.json();
+  } catch (e) {
+    return { available: false, shapes: null, detail: e.message };
+  }
+}
 
-const RUNTIME_DEFAULTS = {
-  backend: 'onnxruntime',
-  device: 'cpu',
-  threads: { intra_op: null, inter_op: null, num_threads: null },
-  onnx: { providers: ['CPUExecutionProvider'], provider_options: {} },
-  tflite: null,
-  warmup: { runs: 0, enabled: true },
-  runtimeShapes: { out_coords_space: 'tensor_pixels' },
-};
+// El builder maneja out_coords_space dentro de output por comodidad de la UI; en
+// el schema vive en runtime.runtimeShapes. Lo copiamos al abrir y lo devolvemos
+// a su lugar al guardar.
+function liftOutCoordsSpace() {
+  if (_state.config.model_type !== 'detection') return;
+  const rs = _state.config.runtime?.runtimeShapes;
+  if (rs?.out_coords_space && !_state.config.output.out_coords_space) {
+    _state.config.output.out_coords_space = rs.out_coords_space;
+  }
+}
 
 // ── API publica ─────────────────────────────────────────────────────────────
 
-export function openBuilder(builderEl, modelFile, existing, onSave) {
+export async function openBuilder(builderEl, modelFile, existing, onSave) {
   _builderEl = builderEl;
   _onSave = onSave;
+
+  builderEl.style.display = 'block';
+  builderEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const type = existing?.model_type || 'detection';
   _state = {
     modelFile,
     step: 1,
-    config: existing ? clone(existing) : buildDefault(type),
+    config: null,
+    anchorDefaults: null,
+    rawShape: null, // se introspecta al entrar al paso 3 (deteccion)
+    rawShapeManual: '',
   };
 
-  // Asegurar que el campo out_coords_space exista en output para el builder
-  if (_state.config.model_type === 'detection') {
-    const rs = _state.config.runtime?.runtimeShapes;
-    if (rs?.out_coords_space && !_state.config.output.out_coords_space) {
-      _state.config.output.out_coords_space = rs.out_coords_space;
-    }
-  }
+  renderMessage('Cargando configuración por defecto del backend…');
 
-  builderEl.style.display = 'block';
-  builderEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  render();
+  try {
+    if (existing) {
+      _state.config = clone(existing);
+      // Igual pedimos la plantilla para tener anchor_defaults a mano.
+      const tpl = await fetchTemplate(_state.config.model_type);
+      _state.anchorDefaults = tpl.anchor_defaults || null;
+    } else {
+      const tpl = await fetchTemplate(type);
+      _state.config = tpl.template;
+      _state.anchorDefaults = tpl.anchor_defaults || null;
+    }
+    liftOutCoordsSpace();
+    render();
+  } catch (e) {
+    renderMessage(
+      `No se pudieron cargar los defaults del backend (¿está corriendo?): ${e.message}`,
+      true
+    );
+  }
 }
 
 export function closeBuilder() {
@@ -131,17 +104,23 @@ export function closeBuilder() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function buildDefault(type) {
-  return {
-    model_type: type,
-    input: clone(INPUT_DEFAULTS),
-    output: clone(OUTPUT_DEFAULTS[type]),
-    runtime: clone(RUNTIME_DEFAULTS),
-  };
-}
-
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
+}
+
+function renderMessage(text, isError = false) {
+  _builderEl.innerHTML = `
+    <div class="builder-header">
+      <div class="builder-title">
+        <span class="builder-label">Configurando</span>
+      </div>
+      <button class="close-builder-btn" id="close-builder-btn" title="Cerrar">✕</button>
+    </div>
+    <div class="builder-message ${isError ? 'builder-error' : ''}">${text}</div>
+  `;
+  document
+    .getElementById('close-builder-btn')
+    .addEventListener('click', closeBuilder);
 }
 
 // ── Render principal ─────────────────────────────────────────────────────────
@@ -329,81 +308,147 @@ function step3(config) {
   }
 }
 
+// ── Vista de mapeo de contratos (3 columnas) — Fase 4 tarea 3 ────────────────
+
 function step3Detection(out) {
   const ts = out.tensor_structure || {};
   const fmt = ts.box_format || 'xyxy';
-  const coordKeys = {
-    xyxy: ['x1', 'y1', 'x2', 'y2'],
-    cxcywh: ['cx', 'cy', 'w', 'h'],
-    yxyx: ['y1', 'x1', 'y2', 'x2'],
-  };
-  const keys = coordKeys[fmt] || coordKeys['xyxy'];
   const co = ts.coordinates || {};
-  const ac = out.anchor_config || ANCHOR_DEFAULTS;
+  const ac = out.anchor_config || _state.anchorDefaults || {};
+  const keys = coordKeysFor(fmt);
   return `
-    <div class="step-section">
-      <h3 class="step-section-title">Formato del tensor de salida</h3>
-      <div class="form-grid-2">
-        ${sel('output.pack_format', 'Formato de empaquetado', out.pack_format, ['raw', 'yolo_flat', 'boxes_scores', 'tflite_detpost', 'anchor_deltas'])}
-        ${sel('output.out_coords_space', 'Espacio de coordenadas', out.out_coords_space || 'tensor_pixels', ['tensor_pixels', 'normalized_0_1'])}
+    <div class="mapping-view">
+
+      <!-- IZQUIERDA: tensor crudo que escupe el modelo -->
+      <div class="mapping-col mapping-raw">
+        <div class="mapping-col-title">Raw Output</div>
+        <div class="mapping-col-sub">Lo que emite el modelo</div>
+        <div id="raw-shape-panel">${rawShapePanel()}</div>
       </div>
-    </div>
-    <div id="anchor-section" class="step-section ${out.pack_format === 'anchor_deltas' ? '' : 'hidden'}">
-      <h3 class="step-section-title">Anchors (salida cruda sin postproceso)</h3>
-      <div class="form-grid-3">
-        ${num('output.anchor_config.min_level', 'Nivel mínimo', ac.min_level ?? 3)}
-        ${num('output.anchor_config.max_level', 'Nivel máximo', ac.max_level ?? 7)}
-        ${num('output.anchor_config.num_scales', 'Escalas por nivel', ac.num_scales ?? 3)}
+
+      <!-- CENTRO: controles del adaptador -->
+      <div class="mapping-col mapping-controls">
+        <div class="mapping-col-title">Adaptador</div>
+        <div class="mapping-col-sub">Cómo se interpreta el tensor</div>
+
+        <div class="form-grid-2">
+          ${sel('output.pack_format', 'Empaquetado', out.pack_format, ['raw', 'yolo_flat', 'boxes_scores', 'tflite_detpost', 'anchor_deltas'])}
+          ${sel('output.out_coords_space', 'Espacio de coords', out.out_coords_space || 'tensor_pixels', ['tensor_pixels', 'normalized_0_1'])}
+        </div>
+
+        <div id="anchor-section" class="${out.pack_format === 'anchor_deltas' ? '' : 'hidden'}">
+          <div class="form-grid-label">Anchors (salida cruda)</div>
+          <div class="form-grid-3">
+            ${num('output.anchor_config.min_level', 'Nivel mín', ac.min_level ?? 3)}
+            ${num('output.anchor_config.max_level', 'Nivel máx', ac.max_level ?? 7)}
+            ${num('output.anchor_config.num_scales', 'Escalas', ac.num_scales ?? 3)}
+          </div>
+          <div class="form-grid-2">
+            ${numf('output.anchor_config.anchor_scale', 'Escala base', ac.anchor_scale ?? 4.0)}
+            ${sel('output.anchor_config.scores_activation', 'Activación scores', ac.scores_activation || 'none', ['none', 'sigmoid', 'softmax'])}
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          ${sel('output.tensor_structure.box_format', 'Formato de boxes', fmt, ['xyxy', 'cxcywh', 'yxyx'])}
+          ${num('output.tensor_structure.num_classes', 'N° de clases', ts.num_classes ?? 80)}
+        </div>
+        <div class="form-grid-label">Índices de coordenadas</div>
+        <div class="form-grid-coords" id="coords-grid">
+          ${keys.map((k) => num(`output.tensor_structure.coordinates.${k}`, k, co[k] ?? 0)).join('')}
+        </div>
+        <div class="form-grid-2">
+          ${num('output.tensor_structure.confidence_index', 'Índice de confianza', ts.confidence_index ?? 6)}
+          ${num('output.tensor_structure.class_index', 'Índice de clase', ts.class_index ?? 5)}
+        </div>
+
+        <div class="form-grid-2">
+          ${numf('output.confidence_threshold', 'Umbral de confianza', out.confidence_threshold ?? 0.5)}
+          ${num('output.top_k', 'Top-K (0 = sin límite)', out.top_k ?? 0)}
+        </div>
+        <div class="form-checks">
+          ${chk('output.apply_conf_filter', 'Filtro de confianza', out.apply_conf_filter ?? true)}
+          ${chk('output.apply_nms', 'Aplicar NMS', out.apply_nms ?? false)}
+          ${chk('output.nms_per_class', 'NMS por clase', out.nms_per_class ?? false)}
+        </div>
+        <div id="nms-fields" class="${out.apply_nms ? '' : 'hidden'}">
+          ${numf('output.nms_threshold', 'Umbral IoU (NMS)', out.nms_threshold ?? 0.45)}
+        </div>
       </div>
-      <div class="form-grid-2">
-        ${numf('output.anchor_config.anchor_scale', 'Escala base de anchor', ac.anchor_scale ?? 4.0)}
-        ${sel('output.anchor_config.scores_activation', 'Activación de scores', ac.scores_activation || 'none', ['none', 'sigmoid', 'softmax'])}
+
+      <!-- DERECHA: contrato destino inmutable -->
+      <div class="mapping-col mapping-contract">
+        <div class="mapping-col-title">Contrato (N, 6)</div>
+        <div class="mapping-col-sub">Lo que entiende el sistema</div>
+        <div class="contract-slots" id="contract-slots">${contractSlots(out)}</div>
       </div>
-      <div class="form-grid-label">Aspect ratios</div>
-      <div class="form-grid-3">
-        ${numf('output.anchor_config.aspect_ratios.0', 'AR 1', ac.aspect_ratios?.[0] ?? 1.0)}
-        ${numf('output.anchor_config.aspect_ratios.1', 'AR 2', ac.aspect_ratios?.[1] ?? 2.0)}
-        ${numf('output.anchor_config.aspect_ratios.2', 'AR 3', ac.aspect_ratios?.[2] ?? 0.5)}
-      </div>
-      <div class="form-grid-label">Box variance [y, x, h, w] (EfficientDet: 1.0 — TF OD API: 0.1/0.2)</div>
-      <div class="form-grid-coords">
-        ${numf('output.anchor_config.box_variance.0', 'y', ac.box_variance?.[0] ?? 1.0)}
-        ${numf('output.anchor_config.box_variance.1', 'x', ac.box_variance?.[1] ?? 1.0)}
-        ${numf('output.anchor_config.box_variance.2', 'h', ac.box_variance?.[2] ?? 1.0)}
-        ${numf('output.anchor_config.box_variance.3', 'w', ac.box_variance?.[3] ?? 1.0)}
-      </div>
-    </div>
-    <div class="step-section">
-      <h3 class="step-section-title">Estructura por detección</h3>
-      <div class="form-grid-2">
-        ${sel('output.tensor_structure.box_format', 'Formato de boxes', fmt, ['xyxy', 'cxcywh', 'yxyx'])}
-        ${num('output.tensor_structure.num_classes', 'Número de clases', ts.num_classes ?? 80)}
-      </div>
-      <div class="form-grid-2">
-        ${num('output.tensor_structure.confidence_index', 'Índice de confianza', ts.confidence_index ?? 6)}
-        ${num('output.tensor_structure.class_index', 'Índice de clase', ts.class_index ?? 5)}
-      </div>
-      <div class="form-grid-label">Índices de coordenadas</div>
-      <div class="form-grid-coords" id="coords-grid">
-        ${keys.map((k) => num(`output.tensor_structure.coordinates.${k}`, k, co[k] ?? 0)).join('')}
-      </div>
-    </div>
-    <div class="step-section">
-      <h3 class="step-section-title">Filtrado y NMS</h3>
-      <div class="form-grid-2">
-        ${numf('output.confidence_threshold', 'Umbral de confianza', out.confidence_threshold ?? 0.5)}
-        ${num('output.top_k', 'Top-K (0 = sin límite)', out.top_k ?? 0)}
-      </div>
-      <div class="form-checks">
-        ${chk('output.apply_conf_filter', 'Aplicar filtro de confianza', out.apply_conf_filter ?? true)}
-        ${chk('output.apply_nms', 'Aplicar NMS', out.apply_nms ?? false)}
-        ${chk('output.nms_per_class', 'NMS por clase', out.nms_per_class ?? false)}
-      </div>
-      <div id="nms-fields" class="${out.apply_nms ? '' : 'hidden'}">
-        ${numf('output.nms_threshold', 'Umbral IoU para NMS', out.nms_threshold ?? 0.45)}
-      </div>
+
     </div>
   `;
+}
+
+function rawShapePanel() {
+  const rs = _state.rawShape;
+  if (rs == null) {
+    return `<div class="raw-shape-loading">Consultando el modelo…</div>`;
+  }
+  if (rs.available && Array.isArray(rs.shapes) && rs.shapes.length) {
+    const shapes = rs.shapes
+      .map((s) => `<div class="raw-shape-box">[${s.join(', ')}]</div>`)
+      .join('');
+    return `${shapes}<div class="raw-shape-note">backend: ${rs.backend}</div>`;
+  }
+  // No disponible -> ingreso manual (estrategia híbrida).
+  return `
+    <div class="raw-shape-note raw-shape-warn">
+      No se pudo leer del modelo${rs.detail ? ` (${rs.detail})` : ''}. Ingresala a mano:
+    </div>
+    ${txt('__raw_shape_manual', 'Forma del tensor (ej: 1, 25200, 85)', _state.rawShapeManual || '')}
+    ${_state.rawShapeManual ? `<div class="raw-shape-box">[${_state.rawShapeManual}]</div>` : ''}
+  `;
+}
+
+function contractSlots(out) {
+  const ts = out.tensor_structure || {};
+  const fmt = ts.box_format || 'xyxy';
+  const co = ts.coordinates || {};
+  const idx = (k) => (co[k] === undefined || co[k] === null ? '?' : co[k]);
+  const boxSrc =
+    fmt === 'cxcywh'
+      ? { X1: 'cx − w/2', Y1: 'cy − h/2', X2: 'cx + w/2', Y2: 'cy + h/2' }
+      : {
+          X1: `idx ${idx('x1')}`,
+          Y1: `idx ${idx('y1')}`,
+          X2: `idx ${idx('x2')}`,
+          Y2: `idx ${idx('y2')}`,
+        };
+  const slots = [
+    ['X1', boxSrc.X1],
+    ['Y1', boxSrc.Y1],
+    ['X2', boxSrc.X2],
+    ['Y2', boxSrc.Y2],
+    ['Conf', `idx ${ts.confidence_index ?? '?'}`],
+    ['Class', `idx ${ts.class_index ?? '?'}`],
+  ];
+  return slots
+    .map(
+      ([label, src]) => `
+      <div class="contract-slot">
+        <div class="contract-slot-label">${label}</div>
+        <div class="contract-slot-src">${src}</div>
+      </div>`
+    )
+    .join('');
+}
+
+function coordKeysFor(fmt) {
+  return (
+    {
+      xyxy: ['x1', 'y1', 'x2', 'y2'],
+      cxcywh: ['cx', 'cy', 'w', 'h'],
+      yxyx: ['y1', 'x1', 'y2', 'x2'],
+    }[fmt] || ['x1', 'y1', 'x2', 'y2']
+  );
 }
 
 function step3Classification(out) {
@@ -550,22 +595,10 @@ function bindListeners(step) {
   const content = document.getElementById('step-content');
   if (!content) return;
 
-  // Step 1: type cards
+  // Step 1: type cards (el cambio de tipo re-pide la plantilla al backend)
   if (step === 1) {
     content.querySelectorAll('.type-card').forEach((card) => {
-      card.addEventListener('click', () => {
-        const radio = card.querySelector('input[type=radio]');
-        if (!radio) return;
-        const newType = radio.value;
-        if (newType !== _state.config.model_type) {
-          _state.config.model_type = newType;
-          _state.config.output = clone(OUTPUT_DEFAULTS[newType]);
-        }
-        content
-          .querySelectorAll('.type-card')
-          .forEach((c) => c.classList.remove('selected'));
-        card.classList.add('selected');
-      });
+      card.addEventListener('click', () => applyTypeChange(card, content));
     });
     return;
   }
@@ -575,6 +608,14 @@ function bindListeners(step) {
     const target = e.target;
     const key = target.dataset.field;
     if (!key) return;
+
+    // Campo solo-UI: forma cruda manual (no va al config)
+    if (key === '__raw_shape_manual') {
+      _state.rawShapeManual = target.value;
+      const panel = document.getElementById('raw-shape-panel');
+      if (panel) panel.innerHTML = rawShapePanel();
+      return;
+    }
 
     let value;
     if (target.type === 'checkbox') {
@@ -630,7 +671,7 @@ function bindListeners(step) {
     if (key === 'output.pack_format') {
       const isAnchor = value === 'anchor_deltas';
       if (isAnchor && !_state.config.output.anchor_config) {
-        _state.config.output.anchor_config = clone(ANCHOR_DEFAULTS);
+        _state.config.output.anchor_config = clone(_state.anchorDefaults || {});
         render(); // re-render para poblar la seccion con los defaults
         return;
       }
@@ -641,12 +682,7 @@ function bindListeners(step) {
       toggleHidden('tflite-section', value !== 'tflite');
     }
     if (key === 'output.tensor_structure.box_format') {
-      const coordKeys = {
-        xyxy: ['x1', 'y1', 'x2', 'y2'],
-        cxcywh: ['cx', 'cy', 'w', 'h'],
-        yxyx: ['y1', 'x1', 'y2', 'x2'],
-      };
-      const keys = coordKeys[value] || coordKeys['xyxy'];
+      const keys = coordKeysFor(value);
       _state.config.output.tensor_structure.coordinates = {};
       const grid = document.getElementById('coords-grid');
       if (grid)
@@ -654,7 +690,43 @@ function bindListeners(step) {
           .map((k) => num(`output.tensor_structure.coordinates.${k}`, k, 0))
           .join('');
     }
+    // La columna derecha (contrato) refleja en vivo los índices del adaptador.
+    if (
+      key.startsWith('output.tensor_structure') ||
+      key === 'output.pack_format'
+    ) {
+      const slots = document.getElementById('contract-slots');
+      if (slots) slots.innerHTML = contractSlots(_state.config.output);
+    }
   });
+}
+
+// Cambio de tipo de modelo: re-pide la plantilla (defaults) al backend.
+async function applyTypeChange(card, content) {
+  const radio = card.querySelector('input[type=radio]');
+  if (!radio) return;
+  const newType = radio.value;
+
+  content
+    .querySelectorAll('.type-card')
+    .forEach((c) => c.classList.remove('selected'));
+  card.classList.add('selected');
+
+  if (newType === _state.config.model_type) return;
+
+  try {
+    const tpl = await fetchTemplate(newType);
+    _state.config.model_type = newType;
+    _state.config.output = tpl.template.output; // solo el output cambia por tipo
+    _state.anchorDefaults = tpl.anchor_defaults || _state.anchorDefaults;
+    _state.rawShape = null; // se vuelve a introspectar al entrar al paso 3
+    liftOutCoordsSpace();
+  } catch (e) {
+    showMsg(
+      `No se pudieron cargar defaults de ${newType}: ${e.message}`,
+      'save-error'
+    );
+  }
 }
 
 function toggleHidden(id, shouldHide) {
@@ -686,14 +758,23 @@ function prevStep() {
   }
 }
 
-function nextStep() {
+async function nextStep() {
   if (_state.step < 4) {
     _state.step++;
+    // Al entrar al paso 3 de deteccion, introspectar la forma cruda del modelo.
+    if (
+      _state.step === 3 &&
+      _state.config.model_type === 'detection' &&
+      _state.rawShape == null
+    ) {
+      const baseName = _state.modelFile.replace(/\.[^.]+$/, '');
+      _state.rawShape = await fetchRawShape(baseName);
+    }
     render();
   } else save();
 }
 
-// ── Guardar ──────────────────────────────────────────────────────────────────
+// ── Guardar (POST /configs/{name} — validacion Pydantic en el backend) ───────
 
 async function save() {
   const { config, modelFile } = _state;
@@ -720,15 +801,35 @@ async function save() {
     final.output.anchor_config = null;
   }
 
-  // La escritura real la hace el main process (valida baseName y serializa);
-  // aca solo se espera el resultado y se informa al usuario.
-  const res = await window.uncaAPI.writeConfig(baseName, final);
-  if (res.ok) {
-    showMsg('Config guardada correctamente', 'save-ok');
-    if (_onSave) _onSave();
-  } else {
-    showMsg(`Error al guardar: ${res.error}`, 'save-error');
+  // El backend valida contra ModelConfig (estricto) ANTES de escribir.
+  try {
+    const res = await fetch(configsUrl(baseName), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(final),
+    });
+    if (res.ok) {
+      showMsg('Config guardada y validada', 'save-ok');
+      if (_onSave) _onSave();
+    } else {
+      const body = await res.json().catch(() => ({}));
+      showMsg(`Error ${res.status}: ${formatError(body.detail)}`, 'save-error');
+    }
+  } catch (e) {
+    showMsg(`No se pudo contactar al backend: ${e.message}`, 'save-error');
   }
+}
+
+// FastAPI 422 devuelve detail como string o lista de errores; lo aplanamos.
+function formatError(detail) {
+  if (!detail) return 'config inválida';
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => `${(d.loc || []).join('.')}: ${d.msg}`)
+      .join(' · ');
+  }
+  return JSON.stringify(detail);
 }
 
 function showMsg(text, cls) {
