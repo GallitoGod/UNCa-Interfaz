@@ -197,8 +197,13 @@ class ModelController:
 
             # Commit atomico del nuevo pipeline (bajo _lock: o se ve todo el set
             # nuevo, o el anterior; nunca un estado a medias).
-            self.perf.reset()
-            self._frame_idx = 0
+            with self._stats_lock:
+                # Cierre de la sesion anterior: volcar sus metricas al log antes de
+                # pisar el pipeline (Fase 4 tarea 4). self.logger sigue siendo el del
+                # modelo viejo en este punto (se reasigna mas abajo).
+                self._snapshot_metrics(self.logger)
+                self.perf.reset()
+                self._frame_idx = 0
             self.model_format = os.path.splitext(model_path)[1].lower()
             self.config = config
             self.predict_fn = pipeline["predict_fn"]
@@ -246,8 +251,8 @@ class ModelController:
             ) from e
         finally:
             # La corrida dummy no debe contaminar metricas ni contadores
-            self.perf.reset()
             with self._stats_lock:
+                self.perf.reset()
                 self._frame_idx = 0
         logger.info(
             f"Validacion post-carga OK ({len(result)} detecciones sobre frame dummy).")
@@ -356,8 +361,38 @@ class ModelController:
         if logger:
             logger.info(f"Confianza actualizada a {new_threshold}.")
 
+    def _snapshot_metrics(self, logger):
+        """Vuelca las metricas de la sesion actual al log del modelo (Fase 4 tarea 4).
+        NO toma locks: el llamador debe sostener _stats_lock (o garantizar exclusion)."""
+        if logger is None:
+            return
+        s = self.perf.stats()
+        if not s:
+            return
+        logger.info(
+            "SNAPSHOT de sesion -> n=%d avg=%.2fms p95=%.2fms fps=%.2f | "
+            "pre=%.2f inf=%.2f post=%.2f",
+            s["n"], s["avg_ms"], s["p95_ms"], s["fps_avg"],
+            s["pre_avg_ms"], s["inf_avg_ms"], s["post_avg_ms"])
+
+    def snapshot_metrics(self) -> dict:
+        """Vuelca al log las metricas actuales y las devuelve, SIN descargar el modelo.
+        Pensado para cerrar una 'sesion' de streaming (ej: al frenar la camara) y dejar
+        registro ordenado en el log del modelo. Devuelve {} si no hay datos/modelo."""
+        with self._lock:
+            logger = self.logger
+        with self._stats_lock:
+            stats = self.perf.stats()
+            self._snapshot_metrics(logger)
+        return stats or {}
+
     def unload_model(self):
         with self._lock:
+            # Cierre de sesion: volcar metricas al log antes de soltar el pipeline.
+            with self._stats_lock:
+                self._snapshot_metrics(self.logger)
+                self.perf.reset()
+                self._frame_idx = 0
             self.predict_fn = None
             self.input_adapter = None
             self.output_adapter = None

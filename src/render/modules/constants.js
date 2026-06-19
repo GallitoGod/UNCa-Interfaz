@@ -8,3 +8,12 @@ export const confidenceUrl = `${localHost}/config/confidence`;
 export const inferenceLogsUrl = `${localHost}/logs/inference`;
 export const metricsUrl = `${localHost}/metrics`;
 export const streamUrl = `${websocketBase}/video_stream`;
+
+// Snapshot de metricas de la sesion (Fase 4 tarea 4)
+export const metricsSnapshotUrl = `${localHost}/metrics/snapshot`;
+
+// Single source of truth de configs (Fase 3). configTemplateUrl recibe el
+// model_type por path; configsUrl recibe el nombre del modelo por path.
+export const configTemplateUrl = (modelType) =>
+  `${localHost}/config/template/${modelType}`;
+export const configsUrl = (name) => `${localHost}/configs/${name}`;

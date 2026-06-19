@@ -94,6 +94,41 @@ def test_stats_consistentes_bajo_concurrencia():
     assert mc._frame_idx == M
 
 
+def _snapshot_fue_logueado(logger):
+    return any("SNAPSHOT" in str(c.args[0]) for c in logger.info.call_args_list)
+
+
+def test_snapshot_metrics_vuelca_al_log_y_devuelve_stats():
+    """Fase 4 tarea 4: snapshot_metrics() registra las metricas en el log y las
+    devuelve, sin descargar el modelo."""
+    mc = ModelController()
+    _wire_fake_pipeline(mc, lambda x: np.array([[0, 0, 1, 1, 0.5, 0.0]], dtype=np.float32))
+
+    for _ in range(5):
+        mc.inference(np.zeros((2, 2, 3), dtype=np.uint8))
+
+    stats = mc.snapshot_metrics()
+    assert stats and stats["n"] == 5
+    assert _snapshot_fue_logueado(mc.logger)
+    # No descargo el modelo: sigue inferible.
+    assert mc.predict_fn is not None
+
+
+def test_unload_vuelca_snapshot_y_resetea_metricas():
+    mc = ModelController()
+    _wire_fake_pipeline(mc, lambda x: np.array([[0, 0, 1, 1, 0.5, 0.0]], dtype=np.float32))
+
+    for _ in range(3):
+        mc.inference(np.zeros((2, 2, 3), dtype=np.uint8))
+
+    logger = mc.logger
+    mc.unload_model()
+
+    assert _snapshot_fue_logueado(logger)
+    assert mc.perf.stats() is None    # metricas reseteadas al cerrar sesion
+    assert mc.predict_fn is None      # pipeline liberado
+
+
 def _fake_config(model_type):
     cfg = MagicMock()
     cfg.model_type = model_type

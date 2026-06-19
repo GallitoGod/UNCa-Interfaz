@@ -313,3 +313,14 @@ def get_metrics():
     if stats is None:
         return {"status": "no_data", "metrics": None}
     return {"status": "ok", "metrics": stats}
+
+
+@app.post("/metrics/snapshot", summary="Volcar las metricas de la sesion al log del modelo")
+def snapshot_metrics():
+    """Registra un snapshot ordenado de las metricas actuales en el log del modelo
+    (Fase 4 tarea 4) SIN descargar el modelo. Pensado para cerrar una sesion de
+    streaming (ej: al frenar la camara). Devuelve las metricas volcadas."""
+    stats = controller.snapshot_metrics()
+    if not stats:
+        return {"status": "no_data", "metrics": None}
+    return {"status": "ok", "metrics": stats}
