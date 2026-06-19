@@ -2,6 +2,8 @@ from collections import deque
 import asyncio
 import base64
 import datetime
+import json
+import re
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
@@ -9,6 +11,8 @@ import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
+from api.func.reader_pipeline.config_schema import (
+    ModelConfig, build_config_template, anchor_defaults)
 
 # Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -18,6 +22,9 @@ CONFIGS_DIR = _ROOT / "configs"
 MODEL_EXTENSIONS = {".onnx", ".tflite", ".h5", ".keras", ".pt", ".pth"}
 # Orden de preferencia cuando un basename tiene varios archivos (ej: yolo.onnx + yolo.tflite)
 _EXTENSION_PREFERENCE = [".onnx", ".tflite", ".h5", ".keras", ".pt", ".pth"]
+# Nombre de config valido: solo basename alfanumerico (sin extension, sin rutas).
+# Bloquea path traversal ('..', '/', '\\') de raiz: ningun separador entra al regex.
+_SAFE_CONFIG_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 
 app = FastAPI(
     title="UNCaLens — Sistema de Vision por Computadora",
@@ -166,6 +173,58 @@ def update_confidence(data: ConfidenceUpdateRequest):
 def unload_model():
     controller.unload_model()
     return {"status": "ok", "message": "Modelo descargado."}
+
+
+# ════════════════════════════════════════
+# 3b Configuraciones: plantilla (defaults) + guardado validado (Fase 3)
+# ════════════════════════════════════════
+
+@app.get("/config/template/{model_type}", summary="Plantilla de config con los defaults del schema")
+def get_config_template(model_type: str):
+    """Single Source of Truth de defaults: devuelve una `ModelConfig` con TODOS los
+    defaults del schema Pydantic para el `model_type` pedido (placeholders en los
+    pocos campos requeridos sin default). El frontend consume esto en vez de
+    hardcodear los defaults. Para `detection` incluye `anchor_defaults`.
+
+    404 si el `model_type` no existe.
+    """
+    try:
+        template = build_config_template(model_type)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    resp = {"model_type": model_type, "template": template.model_dump()}
+    if model_type == "detection":
+        resp["anchor_defaults"] = anchor_defaults()
+    return resp
+
+
+@app.post("/configs/{name}", summary="Validar y guardar una config de modelo")
+def save_config(name: str, config: ModelConfig):
+    """Valida la config contra el schema Pydantic ESTRICTO y, solo si pasa, la
+    escribe en `configs/<name>.json`. Reemplaza la escritura directa con `fs` del
+    frontend: la validacion ocurre en el backend ANTES de tocar el disco.
+
+    - FastAPI valida el body contra `ModelConfig` -> 422 con detalle si es invalido.
+    - `name` debe ser un basename seguro `[A-Za-z0-9_-]` (sin extension ni rutas):
+      bloquea path traversal. 422 si no cumple.
+    """
+    if not _SAFE_CONFIG_NAME.match(name):
+        raise HTTPException(
+            status_code=422,
+            detail="Nombre de config invalido: solo [A-Za-z0-9_-], sin extension ni rutas.")
+    dest = (CONFIGS_DIR / f"{name}.json").resolve()
+    # Defensa en profundidad: aunque el regex ya lo impide, re-verificar que el
+    # destino cae dentro de configs/.
+    if dest.parent != CONFIGS_DIR.resolve():
+        raise HTTPException(status_code=422, detail="Ruta resultante fuera de configs/.")
+    try:
+        CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            json.dumps(config.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8")
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo escribir la config: {e}")
+    return {"status": "ok", "name": name, "path": str(dest)}
 
 
 # ════════════════════════════════════════

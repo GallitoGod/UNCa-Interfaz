@@ -167,3 +167,51 @@ class ModelConfig(StrictModel):
     Pydantic resuelve el Union de output intentando cada tipo en orden: Detection -> Classification -> Segmentation.
     Si hay ambiguedad en un JSON, mover el tipo mas restrictivo primero en el Union.
 '''
+
+# ---------------------------------------------------------------------------
+# Single Source of Truth de defaults (Fase 3)
+# ---------------------------------------------------------------------------
+# El frontend (configBuilder.js) duplicaba a mano los defaults del schema (incluido
+# ANCHOR_DEFAULTS). Estas funciones generan los defaults DESDE Pydantic para que el
+# backend sea el unico origen: el endpoint GET /config/template/{model_type} los
+# expone y el cliente deja de hardcodearlos.
+
+# Placeholders para los campos REQUERIDOS que no tienen default en el schema
+# (el usuario los completa en el wizard). No son defaults "reales", son semillas
+# razonables para que la plantilla sea una ModelConfig valida de punta a punta.
+_TEMPLATE_INPUT_PLACEHOLDER = {"width": 640, "height": 640, "channels": 3}
+_TEMPLATE_CLS_NUM_CLASSES = 1000   # ej: ImageNet
+_TEMPLATE_SEG_NUM_CLASSES = 21     # ej: Pascal VOC
+
+
+def build_config_template(model_type: str) -> "ModelConfig":
+    """Construye una ModelConfig con TODOS los defaults del schema para 'model_type',
+    con placeholders en los pocos campos requeridos sin default. El resultado es una
+    config valida que ademas round-trip-ea por POST /configs/{name} sin tocar nada."""
+    base_input = InputConfig(**_TEMPLATE_INPUT_PLACEHOLDER)
+
+    if model_type == "detection":
+        output = DetectionOutput()
+    elif model_type == "classification":
+        output = ClassificationOutput(
+            tensor_structure=TensorClassification(num_classes=_TEMPLATE_CLS_NUM_CLASSES))
+    elif model_type == "segmentation":
+        output = SemanticSegmentationOutput(
+            tensor_structure=TensorSegmentation(num_classes=_TEMPLATE_SEG_NUM_CLASSES))
+    else:
+        raise ValueError(
+            f"model_type '{model_type}' desconocido. "
+            f"Validos: {list(TYPE.__args__)}.")
+
+    return ModelConfig(
+        model_type=model_type,
+        input=base_input,
+        output=output,
+        runtime=RuntimeConfig(),
+    )
+
+
+def anchor_defaults() -> dict:
+    """Defaults de AnchorConfig (familia EfficientDet) tal cual viven en el schema.
+    Reemplaza el ANCHOR_DEFAULTS hardcodeado del frontend."""
+    return AnchorConfig().model_dump()
