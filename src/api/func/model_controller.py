@@ -84,19 +84,49 @@ def _build_detection_pipeline(model_path: str, config, logger) -> dict:
 
 
 def _build_classification_pipeline(model_path: str, config, logger) -> dict:
-    # El despachador YA reconoce el tipo; falta el pipeline real (unpackers
-    # softmax/sigmoid/logits + postproceso top-k + contrato con el cliente).
+    """CABLE Fase 2 tarea 3 — clasificacion. El despachador ya enruta hasta aca; la
+    LOGICA todavia no existe. El lado de INPUT del pipeline es generico y ya esta
+    disponible (Model_loader.load / build_preprocessor / generate_input_adapter):
+    cuando se conecte, esos tres se reutilizan tal cual. Falta conectar:
+
+      1) UNPACKER: implementar el builder real para pack_format softmax_out /
+         sigmoid_out / logits_raw en unpackers/registry.py (hoy stub en
+         _PENDING_FORMATS). Debe entregar un vector (num_classes,) de scores.
+      2) POSTPROCESO: top-k (ClassificationOutput.top_k) + confidence_threshold +
+         mapear ids con label_map -> [(class_id, score), ...] ordenado por score.
+      3) CONTRATO CON EL CLIENTE (decision de diseno PENDIENTE): hoy /video_stream
+         devuelve cajas [x1,y1,x2,y2,conf,cls]. Definir el JSON de clasificacion
+         (ej: {"classification": [{"id": .., "score": ..}]}) y su render en overlay.js.
+      4) INFERENCE: el lado de salida de inference() es detection-shaped (adapter +
+         postprocess que devuelve cajas). Para CLS habra que despachar el postproceso
+         por tipo (o que cada pipeline traiga su propia inference_fn).
+
+    Se requieren varios modelos de CLS para implementarlo y validarlo en serio."""
     raise NotImplementedError(
         "model_type 'classification' reconocido por el despachador pero su pipeline "
-        "todavia no esta implementado (unpacker + postproceso + contrato de salida "
-        "pendientes).")
+        "todavia no esta implementado (unpacker + postproceso top-k + contrato de "
+        "salida con el cliente pendientes). Ver el checklist en _build_classification_pipeline.")
 
 
 def _build_segmentation_pipeline(model_path: str, config, logger) -> dict:
+    """CABLE Fase 2 tarea 3 — segmentacion semantica. Mismo patron que clasificacion:
+    el INPUT generico ya existe; falta conectar la LOGICA. Falta:
+
+      1) UNPACKER: builder real para pack_format argmax_map / softmax_map /
+         binary_mask en unpackers/registry.py (hoy stub en _PENDING_FORMATS).
+      2) POSTPROCESO: decodificar la mascara (argmax por pixel o umbral sobre
+         softmax_map), aplicar output_stride / resize_to_input al tamano original
+         usando el meta del frame, y opcional colormap por clase.
+      3) CONTRATO CON EL CLIENTE (decision de diseno PENDIENTE): una mascara HxW es
+         pesada para el WS actual (cajas JSON). Decidir formato (PNG/RLE/array) y el
+         render en el canvas. <-- es trabajo de backend Y frontend (encaja con Fase 4).
+      4) INFERENCE: igual que CLS, el lado de salida hoy es detection-shaped.
+
+    Se requieren varios modelos de SEG para implementarlo y validarlo en serio."""
     raise NotImplementedError(
         "model_type 'segmentation' reconocido por el despachador pero su pipeline "
         "todavia no esta implementado (decodificacion de mascara + contrato de salida "
-        "pendientes).")
+        "con el cliente pendientes). Ver el checklist en _build_segmentation_pipeline.")
 
 
 _PIPELINE_BUILDERS = {

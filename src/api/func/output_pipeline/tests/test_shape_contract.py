@@ -50,3 +50,20 @@ def test_unpack_out_raw_aplica_el_contrato():
     fn = unpack_out(_RawCfg())
     out = fn(np.zeros((1, 7, 12), dtype=np.float64), None)  # batch 3D float64
     assert out.shape == (7, 12) and out.dtype == np.float32
+
+
+class _PendingCfg:
+    def __init__(self, fmt):
+        self.pack_format = fmt
+
+
+@pytest.mark.parametrize("fmt", [
+    "softmax_out", "sigmoid_out", "logits_raw",   # clasificacion
+    "argmax_map", "softmax_map", "binary_mask",   # segmentacion
+])
+def test_formatos_cls_seg_son_cables_no_implementados(fmt):
+    # CABLE Fase 2 tarea 3: el formato esta reconocido (unpack_out no explota al
+    # construir) pero su logica no existe -> NotImplementedError al invocarlo.
+    fn = unpack_out(_PendingCfg(fmt))
+    with pytest.raises(NotImplementedError):
+        fn(np.zeros((1, 4), dtype=np.float32), None)
