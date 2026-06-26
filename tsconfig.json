@@ -1,0 +1,33 @@
+{
+  // tsconfig del frontend React (client/). Scopeado SOLO a client/src para no
+  // mezclarse con el backend Python ni con el Electron JS que viven en src/.
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+
+    // Resolucion y modulos pensados para bundler (Vite/esbuild).
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    // Chequeo estricto: el frontend nuevo arranca con la guardia alta.
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    // Alias '@' -> client/src (espejo del alias de vite.config.ts).
+    "baseUrl": ".",
+    "paths": { "@/*": ["client/src/*"] }
+  },
+  "include": ["client/src"]
+}

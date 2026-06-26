@@ -1,9 +1,13 @@
-CLAUDE.md
 logs/
 node_modules/
 package-lock.json
+client/dist/
 .vscode/
 .venv/
 .prettierrc
 pytest.ini
 **/__pycache__/
+.claude/
+.agents/
+skills-lock.json
+.pytest_cache

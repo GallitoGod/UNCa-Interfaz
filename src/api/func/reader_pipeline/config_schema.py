@@ -167,3 +167,47 @@ class ModelConfig(StrictModel):
     Pydantic resuelve el Union de output intentando cada tipo en orden: Detection -> Classification -> Segmentation.
     Si hay ambiguedad en un JSON, mover el tipo mas restrictivo primero en el Union.
 '''
+
+# ---------------------------------------------------------------------------
+# Templates de configuracion (single source of truth de los defaults)
+# ---------------------------------------------------------------------------
+# El frontend (ConfigWizard) NO duplica defaults: los pide a GET /config/template/
+# {model_type}. Estos helpers arman un ModelConfig por defecto a partir del propio
+# schema Pydantic, rellenando los pocos campos requeridos (width/height, num_classes)
+# con valores tipicos editables por el usuario.
+
+# Dimensiones de entrada tipicas por tipo (el usuario las ajusta en el wizard).
+_TEMPLATE_INPUT_SIZE = {
+    "detection": 640,
+    "classification": 224,
+    "segmentation": 512,
+}
+
+
+def build_config_template(model_type: str) -> dict:
+    """Devuelve un ModelConfig por defecto (como dict JSON-serializable) para el tipo."""
+    size = _TEMPLATE_INPUT_SIZE.get(model_type)
+    if size is None:
+        raise ValueError(f"model_type desconocido: {model_type}")
+
+    base_input = InputConfig(width=size, height=size, channels=3, input_str=InputTensor())
+
+    if model_type == "detection":
+        output: AnyOutputConfig = DetectionOutput()
+    elif model_type == "classification":
+        output = ClassificationOutput(tensor_structure=TensorClassification(num_classes=1000))
+    else:  # segmentation
+        output = SemanticSegmentationOutput(tensor_structure=TensorSegmentation(num_classes=21))
+
+    cfg = ModelConfig(
+        model_type=model_type,  # type: ignore[arg-type]
+        input=base_input,
+        output=output,
+        runtime=RuntimeConfig(),
+    )
+    return cfg.model_dump()
+
+
+def anchor_defaults() -> dict:
+    """Defaults de anchors (familia EfficientDet) para pack_format == 'anchor_deltas'."""
+    return AnchorConfig().model_dump()

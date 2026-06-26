@@ -2,13 +2,20 @@ from collections import deque
 import asyncio
 import base64
 import datetime
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+import json
+import re
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
 import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
+from api.func.reader_pipeline.config_schema import (
+    ModelConfig,
+    build_config_template,
+    anchor_defaults,
+)
 
 # Rutas absolutas relativas a este archivo (src/api/mainAPI.py → ../../)
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -101,6 +108,38 @@ def get_models():
                               for p in MODELS_DIR.glob(f"{cfg.stem}.*"))
             if has_weights:
                 models.append(cfg.stem)
+        return {"models": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ════════════════════════════════════════
+# 1a-bis Listar TODOS los pesos con su estado de config (vista Modelos)
+# ════════════════════════════════════════
+
+@app.get("/models", summary="Listar archivos de pesos con estado de config")
+def list_models():
+    """Escanea models/ y devuelve cada peso soportado con si tiene config JSON.
+
+    A diferencia de /get_models (que lista solo los cargables = config+pesos, para el
+    selector de inferencia), este lista TODOS los pesos para la vista de Modelos: por
+    eso incluye los que todavia no tienen config (hasConfig=false). Reemplaza el viejo
+    IPC 'models:list' (el frontend ya no toca disco — ver SDD: thin client sin disco).
+    """
+    try:
+        models = []
+        for p in sorted(MODELS_DIR.glob("*")):
+            ext = p.suffix.lower()
+            if ext not in MODEL_EXTENSIONS:
+                continue
+            base = p.stem
+            has_config = (CONFIGS_DIR / f"{base}.json").exists()
+            models.append({
+                "file": p.name,
+                "ext": ext.lstrip("."),
+                "baseName": base,
+                "hasConfig": has_config,
+            })
         return {"models": models}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -254,3 +293,115 @@ def get_metrics():
     if stats is None:
         return {"status": "no_data", "metrics": None}
     return {"status": "ok", "metrics": stats}
+
+
+# ════════════════════════════════════════
+# 7 Templates de config + escritura de config (single source of truth)
+# ════════════════════════════════════════
+
+_VALID_MODEL_TYPES = {"detection", "classification", "segmentation"}
+# Nombre de config seguro: sin separadores ni "..". Mismo criterio que el IPC del front.
+_SAFE_CONFIG_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+@app.get("/config/template/{model_type}", summary="Defaults de config por tipo de modelo")
+def config_template(model_type: str):
+    """Defaults generados desde el schema Pydantic (no duplicados en el frontend).
+
+    Para detection incluye ademas los defaults de anchors (pack_format anchor_deltas).
+    """
+    if model_type not in _VALID_MODEL_TYPES:
+        raise HTTPException(status_code=404, detail=f"model_type desconocido: {model_type}")
+    return {
+        "config": build_config_template(model_type),
+        "anchor_defaults": anchor_defaults() if model_type == "detection" else None,
+    }
+
+
+@app.post("/configs/{name}", summary="Validar y guardar una config de modelo")
+def write_config(name: str, body: dict = Body(...)):
+    """Valida el body contra ModelConfig (estricto) y lo escribe en configs/<name>.json.
+
+    422 si el nombre es inseguro o el body no cumple el schema.
+    """
+    if not _SAFE_CONFIG_NAME.match(name):
+        raise HTTPException(status_code=422, detail=f"nombre de config inseguro: '{name}'")
+    try:
+        cfg = ModelConfig.model_validate(body)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=json.loads(e.json()))
+
+    CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
+    path = CONFIGS_DIR / f"{name}.json"
+    path.write_text(
+        json.dumps(cfg.model_dump(), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return {"ok": True, "path": str(path)}
+
+
+@app.get("/configs/{name}", summary="Leer la config existente de un modelo")
+def read_config(name: str):
+    """Devuelve configs/<name>.json parseado, o config:null si no existe.
+
+    Reemplaza el viejo IPC 'configs:read'. Contrato pensado para el wizard:
+    - faltante  -> 200 {config: null}  (el wizard arranca con el template del backend).
+    - corrupto  -> 500  (el frontend cae al template igual; regla SDD 4.1.4: no bloquea).
+    - nombre inseguro -> 422.
+    """
+    if not _SAFE_CONFIG_NAME.match(name):
+        raise HTTPException(status_code=422, detail=f"nombre de config inseguro: '{name}'")
+    path = CONFIGS_DIR / f"{name}.json"
+    if not path.exists():
+        return {"config": None}
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=f"config corrupta o ilegible: {e}")
+    return {"config": config}
+
+
+# ════════════════════════════════════════
+# 8 Subida de pesos por multipart (reemplaza el IPC 'models:import')
+# ════════════════════════════════════════
+
+# Tamano de chunk para volcar el upload a disco sin cargarlo entero en RAM.
+_UPLOAD_CHUNK = 1024 * 1024  # 1 MiB
+
+
+@app.post("/models/upload", summary="Subir un archivo de pesos a models/")
+async def upload_model(file: UploadFile = File(...)):
+    """Recibe UN peso por multipart y lo escribe en models/<archivo>.
+
+    Valida extension y nombre seguro ANTES de leer el stream (fail fast) y copia en
+    chunks para soportar archivos grandes sin agotar memoria. Sobrescribe si ya existe
+    (mismo comportamiento que el viejo copyFileSync del IPC). El frontend sube de a un
+    archivo (un request por archivo) para poder reportar progreso y errores por archivo.
+    """
+    # Path(...).name descarta cualquier componente de ruta que venga en el filename.
+    filename = Path(file.filename or "").name
+    stem = Path(filename).stem
+    ext = Path(filename).suffix.lower()
+
+    if ext not in MODEL_EXTENSIONS:
+        raise HTTPException(status_code=422, detail=f"extension no soportada: '{ext}'")
+    if not _SAFE_CONFIG_NAME.match(stem):
+        raise HTTPException(status_code=422, detail=f"nombre de archivo inseguro: '{stem}'")
+
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = MODELS_DIR / f"{stem}{ext}"
+    try:
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(_UPLOAD_CHUNK)
+                if not chunk:
+                    break
+                out.write(chunk)
+    except OSError as e:
+        # Limpia el archivo parcial para no dejar un peso corrupto a medio escribir.
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"fallo al escribir el modelo: {e}")
+    finally:
+        await file.close()
+
+    return {"ok": True, "file": dest.name}

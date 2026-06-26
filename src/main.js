@@ -1,10 +1,19 @@
 // main.js — proceso principal de Electron.
 // Crea la ventana con la configuracion de seguridad recomendada y registra
 // los handlers IPC que concentran TODO el acceso a disco (ipc-handlers.js).
+//
+// Carga el frontend NUEVO (React/Vite):
+//   - dev (electron . --dev): el dev-server de Vite (http://localhost:5173) con HMR.
+//   - prod (electron .):      el build estatico en client/dist/index.html.
+// El frontend viejo (static/index.html + src/render) queda sin uso y se puede borrar.
 
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc-handlers');
+
+// --dev usa el dev-server de Vite (correr `npm run dev` en otra terminal).
+const IS_DEV = process.argv.includes('--dev');
+const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 
 let mainWindow;
 
@@ -25,7 +34,14 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
-  mainWindow.loadFile('./static/index.html');
+  if (IS_DEV) {
+    mainWindow.loadURL(DEV_SERVER_URL);
+    mainWindow.webContents.openDevTools();
+  } else {
+    // base relativa en vite.config.mts -> assets con rutas ./, validas bajo file://
+    mainWindow.loadFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+  }
+
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
