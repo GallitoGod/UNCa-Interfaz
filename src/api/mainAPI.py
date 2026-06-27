@@ -31,9 +31,10 @@ app = FastAPI(
     description=(
         "API para carga de modelos de deteccion y ejecucion de inferencias sobre "
         "imagenes y video. El streaming va por WebSocket `/video_stream`: el cliente "
-        "envia frames JPEG binarios y recibe JSON con las detecciones "
+        "envia frames JPEG binarios y recibe un envelope JSON etiquetado por tarea "
+        "`{task, result, error}`. Para deteccion, `result` son las cajas "
         "`[x1, y1, x2, y2, conf, cls]` en pixeles de la imagen original. "
-        "El dibujo de cajas es responsabilidad del cliente."
+        "El dibujo es responsabilidad del cliente."
     ),
     version="2",
 )
@@ -228,13 +229,17 @@ def _decode_frame(message: dict):
 
 @app.websocket("/video_stream")
 async def video_stream(websocket: WebSocket):
-    """Protocolo: el cliente envia un frame JPEG (binario) y espera UN mensaje JSON:
+    """Protocolo: el cliente envia un frame JPEG (binario) y espera UN mensaje JSON
+    con envelope etiquetado por tarea:
 
-        {"detections": [[x1, y1, x2, y2, conf, cls], ...], "error": null}
+        {"task": "detection", "result": [[x1,y1,x2,y2,conf,cls], ...], "error": null}
+        {"task": "classification", "result": [{"cls": 3, "score": 0.91}, ...], "error": null}
+        {"task": "segmentation", "result": {"mask": "...", "shape": [h,w]}, "error": null}
 
-    Las coordenadas vienen en pixeles de la imagen original; el cliente dibuja.
-    SIEMPRE se responde (aunque el frame sea invalido o falle la inferencia) para
-    que el cliente nunca quede esperando un frame que no va a llegar.
+    El cliente despacha por 'task'. La forma de 'result' la decide la estrategia del
+    modelo cargado (controller.serialize_result). SIEMPRE se responde (aunque el frame
+    sea invalido o falle la inferencia) para que el cliente nunca quede esperando un
+    frame que no va a llegar.
     """
     await websocket.accept()
     try:
@@ -243,12 +248,12 @@ async def video_stream(websocket: WebSocket):
             if message.get("type") == "websocket.disconnect":
                 break
 
-            response = {"detections": [], "error": None}
+            response = {"task": None, "result": None, "error": None}
             img_bgr = _decode_frame(message)
 
             if img_bgr is None:
                 response["error"] = "frame_invalido"
-            elif controller.predict_fn is None:
+            elif not controller.is_loaded:
                 response["error"] = "no_model"
             else:
                 try:
@@ -256,11 +261,11 @@ async def video_stream(websocket: WebSocket):
                     # En threadpool: la inferencia es bloqueante y no debe congelar
                     # el event loop (los endpoints REST siguen respondiendo).
                     loop = asyncio.get_event_loop()
-                    detections = await loop.run_in_executor(
+                    result = await loop.run_in_executor(
                         None, controller.inference, img_rgb)
-                    response["detections"] = [
-                        [round(float(v), 2) for v in det] for det in detections
-                    ]
+                    # La estrategia activa serializa su resultado de dominio al envelope.
+                    response["task"] = controller.active_task
+                    response["result"] = controller.serialize_result(result)
                 except Exception as e:
                     _inference_errors.append({
                         "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),

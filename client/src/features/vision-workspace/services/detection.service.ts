@@ -7,16 +7,21 @@ import type { VisionStrategy, VisionFrameContext } from './types';
 type Detection = [number, number, number, number, number, number];
 
 interface DetectionPayload {
-  detections?: Detection[];
+  task?: string;
+  result?: Detection[];
 }
 
 export const detectionStrategy: VisionStrategy<Detection[]> = {
   type: 'detection',
   implemented: true,
 
-  // El WS de deteccion responde { detections: [[x1,y1,x2,y2,conf,cls], ...], error }.
+  // El WS responde un envelope etiquetado: { task, result, error }.
+  // Para deteccion, result = [[x1,y1,x2,y2,conf,cls], ...].
   parse(payload): Detection[] | null {
-    const dets = (payload as DetectionPayload | null)?.detections;
+    const p = payload as DetectionPayload | null;
+    // Guard de consistencia: si el envelope trae task y no es 'detection', no es lo nuestro.
+    if (p?.task && p.task !== 'detection') return null;
+    const dets = p?.result;
     return dets && dets.length > 0 ? dets : null;
   },
 
