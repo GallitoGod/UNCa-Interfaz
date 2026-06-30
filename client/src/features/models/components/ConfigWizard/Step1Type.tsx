@@ -4,10 +4,12 @@
 import type { ModelConfig, ModelType } from '@/shared/api/types';
 import { cn } from '@/shared/ui/cn';
 
-const TYPES: { value: ModelType; label: string; desc: string }[] = [
-  { value: 'detection', label: 'Deteccion', desc: 'Localiza objetos con bounding boxes.' },
-  { value: 'classification', label: 'Clasificacion', desc: 'Asigna una o varias clases a la imagen.' },
-  { value: 'segmentation', label: 'Segmentacion', desc: 'Asigna una clase a cada pixel.' },
+// enabled=false: el pipeline del backend aun no esta implementado (TaskNotImplemented->501).
+// Las tarjetas se muestran como "proximamente" pero no son seleccionables.
+const TYPES: { value: ModelType; label: string; desc: string; enabled: boolean }[] = [
+  { value: 'detection', label: 'Deteccion', desc: 'Localiza objetos con bounding boxes.', enabled: true },
+  { value: 'classification', label: 'Clasificacion', desc: 'Asigna una o varias clases a la imagen.', enabled: false },
+  { value: 'segmentation', label: 'Segmentacion', desc: 'Asigna una clase a cada pixel.', enabled: false },
 ];
 
 export function Step1Type({
@@ -25,15 +27,22 @@ export function Step1Type({
           <button
             key={t.value}
             type="button"
-            onClick={() => onSelectType(t.value)}
+            disabled={!t.enabled}
+            aria-disabled={!t.enabled}
+            onClick={() => t.enabled && onSelectType(t.value)}
             className={cn(
               'rounded-[var(--radius-md)] border p-4 text-left transition-colors',
-              active
-                ? 'border-accent bg-accent-soft'
-                : 'border-border bg-control hover:border-border-strong',
+              !t.enabled
+                ? 'cursor-not-allowed border-border bg-control/40 opacity-40'
+                : active
+                  ? 'border-accent bg-accent-soft'
+                  : 'border-border bg-control hover:border-border-strong',
             )}
           >
-            <div className="text-sm font-medium text-fg">{t.label}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-fg">{t.label}</span>
+              {!t.enabled && <span className="lbl">proximamente</span>}
+            </div>
             <div className="mt-1 text-xs text-fg-muted">{t.desc}</div>
           </button>
         );

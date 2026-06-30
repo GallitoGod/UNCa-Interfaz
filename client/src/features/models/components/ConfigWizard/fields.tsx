@@ -59,11 +59,16 @@ export function SelectField<T extends string>({
   value,
   options,
   onChange,
+  labels,
+  disabled,
 }: {
   label: string;
   value: T;
   options: readonly T[];
   onChange: (v: T) => void;
+  // Etiquetas legibles opcionales por valor (si falta, se muestra el valor crudo).
+  labels?: Partial<Record<T, string>>;
+  disabled?: boolean;
 }) {
   return (
     <label className="block space-y-1">
@@ -71,11 +76,12 @@ export function SelectField<T extends string>({
       <select
         className={inputCls}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value as T)}
       >
         {options.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {labels?.[o] ?? o}
           </option>
         ))}
       </select>
@@ -111,5 +117,69 @@ export function FieldGroup({ title, children }: { title: string; children: React
       <h4 className="lbl">{title}</h4>
       {children}
     </section>
+  );
+}
+
+// ColorField — color picker que mapea un [r,g,b] (0-255) al <input type=color> (hex).
+// Si el valor es null cae al gris de padding por defecto (114,114,114).
+const DEFAULT_PAD: [number, number, number] = [114, 114, 114];
+
+function rgbToHex([r, g, b]: number[]): string {
+  const h = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+function hexToRgb(hex: string): number[] {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return [...DEFAULT_PAD];
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+
+export function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number[] | null;
+  onChange: (v: number[]) => void;
+}) {
+  const rgb = value && value.length >= 3 ? value : [...DEFAULT_PAD];
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium text-fg-muted">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          className="h-9 w-12 cursor-pointer rounded-[var(--radius-sm)] border border-border bg-control p-1"
+          value={rgbToHex(rgb)}
+          onChange={(e) => onChange(hexToRgb(e.target.value))}
+        />
+        <span className="font-mono text-xs text-fg-muted">
+          {rgb.map((n) => Math.round(n)).join(', ')}
+        </span>
+      </div>
+    </label>
+  );
+}
+
+// AdvancedSection — bloque colapsable (cerrado por defecto) para parametros que el caso
+// comun no toca. Reusa <details>/<summary> nativos (accesibles sin JS extra).
+export function AdvancedSection({
+  title = 'Avanzado',
+  defaultOpen = false,
+  children,
+}: {
+  title?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-[var(--radius-md)] border border-border bg-control/40">
+      <summary className="lbl cursor-pointer list-none px-3 py-2 marker:content-none">
+        <span className="select-none">▸ {title}</span>
+      </summary>
+      <div className="space-y-3 px-3 pb-3 pt-1">{children}</div>
+    </details>
   );
 }

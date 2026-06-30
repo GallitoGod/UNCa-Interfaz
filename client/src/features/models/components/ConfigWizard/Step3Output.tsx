@@ -10,7 +10,8 @@ import type {
   RuntimeShapes,
   SegmentationOutput,
 } from '@/shared/api/types';
-import { CheckField, FieldGroup, NumberField, SelectField } from './fields';
+import { AdvancedSection, CheckField, FieldGroup, NumberField, SelectField } from './fields';
+import { applyPackPreset, isCoordsSpaceLocked } from '../../lib/wizardPresets';
 
 interface Props {
   config: ModelConfig;
@@ -55,9 +56,19 @@ function DetectionStep({
   const ts = out.tensor_structure;
   const keys = COORD_KEYS[ts.box_format] ?? COORD_KEYS.xyxy;
   const ac = out.anchor_config;
+  const isRaw = out.pack_format === 'raw';
+  const coordsLocked = isCoordsSpaceLocked(out.pack_format);
 
   function onPackFormat(v: DetectionOutput['pack_format']) {
     setField('output.pack_format', v);
+    // El formato es el descriptor maestro: autocompleta la estructura del tensor y el
+    // espacio de coordenadas con las constantes conocidas del unpacker (salvo 'raw',
+    // que es manual por definicion). Ver lib/wizardPresets.
+    const preset = applyPackPreset(v, ts.num_classes);
+    if (preset) {
+      setField('output.tensor_structure', preset.tensor_structure);
+      setField('output.out_coords_space', preset.out_coords_space);
+    }
     if (v === 'anchor_deltas' && !out.anchor_config && anchorDefaults) {
       setField('output.anchor_config', anchorDefaults);
     }
@@ -69,6 +80,20 @@ function DetectionStep({
     const fresh: Record<string, number> = {};
     (COORD_KEYS[v] ?? COORD_KEYS.xyxy).forEach((k) => (fresh[k] = 0));
     setField('output.tensor_structure.coordinates', fresh);
+  }
+
+  // El espacio de coordenadas vive en output durante la edicion; toBackendConfig lo
+  // mueve a runtime.runtimeShapes al guardar. Fallback al valor de runtimeShapes.
+  const coordsSpace =
+    (out as { out_coords_space?: string }).out_coords_space ??
+    rs?.out_coords_space ??
+    'tensor_pixels';
+
+  // apply_conf_filter se deriva del umbral: 0 = sin filtro, >0 = filtra.
+  function onConfThreshold(v: number | null) {
+    const value = v ?? 0;
+    setField('output.confidence_threshold', value);
+    setField('output.apply_conf_filter', value > 0);
   }
 
   return (
@@ -83,11 +108,13 @@ function DetectionStep({
           />
           <SelectField
             label="Espacio de coordenadas"
-            value={rs?.out_coords_space ?? 'tensor_pixels'}
+            value={coordsSpace as 'tensor_pixels' | 'normalized_0_1'}
             options={['tensor_pixels', 'normalized_0_1'] as const}
-            onChange={(v) => setField('runtime.runtimeShapes.out_coords_space', v)}
+            disabled={coordsLocked}
+            onChange={(v) => setField('output.out_coords_space', v)}
           />
         </div>
+        <NumberField label="Numero de clases" value={ts.num_classes ?? 80} onChange={(v) => setField('output.tensor_structure.num_classes', v)} />
       </FieldGroup>
 
       {out.pack_format === 'anchor_deltas' && ac && (
@@ -104,13 +131,26 @@ function DetectionStep({
         </FieldGroup>
       )}
 
-      <FieldGroup title="Estructura por deteccion">
+      <FieldGroup title="Filtrado y NMS">
+        <div className="grid grid-cols-2 gap-3">
+          <NumberField label="Umbral de confianza (0 = sin filtro)" value={out.confidence_threshold} step={0.01} onChange={onConfThreshold} />
+          <NumberField label="Top-K (0 = sin limite)" value={out.top_k} onChange={(v) => setField('output.top_k', v)} />
+        </div>
+        <CheckField label="Aplicar NMS" checked={out.apply_nms} onChange={(v) => setField('output.apply_nms', v)} />
+        {out.apply_nms && (
+          <NumberField label="Umbral IoU para NMS" value={out.nms_threshold} step={0.01} onChange={(v) => setField('output.nms_threshold', v)} />
+        )}
+      </FieldGroup>
+
+      {/* Estructura por deteccion: para los formatos con nombre los indices son constantes
+          del unpacker (autocompletadas). Queda como override avanzado; para 'raw' se abre
+          por defecto porque ese formato es manual por definicion. */}
+      <AdvancedSection title="Estructura por deteccion (override)" defaultOpen={isRaw}>
         <div className="grid grid-cols-2 gap-3">
           <SelectField label="Formato de boxes" value={ts.box_format} options={['xyxy', 'cxcywh', 'yxyx'] as const} onChange={onBoxFormat} />
-          <NumberField label="Numero de clases" value={ts.num_classes ?? 80} onChange={(v) => setField('output.tensor_structure.num_classes', v)} />
+          <NumberField label="Indice de confianza" value={ts.confidence_index} onChange={(v) => setField('output.tensor_structure.confidence_index', v)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <NumberField label="Indice de confianza" value={ts.confidence_index} onChange={(v) => setField('output.tensor_structure.confidence_index', v)} />
           <NumberField label="Indice de clase" value={ts.class_index} onChange={(v) => setField('output.tensor_structure.class_index', v)} />
         </div>
         <div className="grid grid-cols-4 gap-3">
@@ -123,22 +163,8 @@ function DetectionStep({
             />
           ))}
         </div>
-      </FieldGroup>
-
-      <FieldGroup title="Filtrado y NMS">
-        <div className="grid grid-cols-2 gap-3">
-          <NumberField label="Umbral de confianza" value={out.confidence_threshold} step={0.01} onChange={(v) => setField('output.confidence_threshold', v)} />
-          <NumberField label="Top-K (0 = sin limite)" value={out.top_k} onChange={(v) => setField('output.top_k', v)} />
-        </div>
-        <div className="space-y-2">
-          <CheckField label="Aplicar filtro de confianza" checked={out.apply_conf_filter} onChange={(v) => setField('output.apply_conf_filter', v)} />
-          <CheckField label="Aplicar NMS" checked={out.apply_nms} onChange={(v) => setField('output.apply_nms', v)} />
-          <CheckField label="NMS por clase" checked={out.nms_per_class} onChange={(v) => setField('output.nms_per_class', v)} />
-        </div>
-        {out.apply_nms && (
-          <NumberField label="Umbral IoU para NMS" value={out.nms_threshold} step={0.01} onChange={(v) => setField('output.nms_threshold', v)} />
-        )}
-      </FieldGroup>
+        <CheckField label="NMS por clase" checked={out.nms_per_class} onChange={(v) => setField('output.nms_per_class', v)} />
+      </AdvancedSection>
     </div>
   );
 }
