@@ -26,8 +26,7 @@
     "color_order": "RGB",
     "input_str": {
       "layout": "NCHW",
-      "dtype": "float32",
-      "quantized": false
+      "dtype": "float32"
     }
   },
   "output": {

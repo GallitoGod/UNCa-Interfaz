@@ -16,7 +16,6 @@ class StrictModel(BaseModel):
 class InputTensor(StrictModel):
     layout: Literal["HWC", "CHW", "NHWC", "NCHW"] = "HWC"
     dtype: Literal["float32", "uint8", "int8"] = "float32"
-    quantized: bool = False
 
 class InputConfig(StrictModel):
     width: int
