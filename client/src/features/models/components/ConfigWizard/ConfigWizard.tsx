@@ -103,7 +103,7 @@ export function ConfigWizard({
                 key={label}
                 className={cn(
                   'flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1 text-xs',
-                  step === n ? 'bg-accent/15 text-accent' : 'text-fg-subtle',
+                  step === n ? 'bg-accent-soft text-accent' : 'text-fg-subtle',
                 )}
               >
                 <span className="font-mono">{step > n ? '✓' : n}</span>

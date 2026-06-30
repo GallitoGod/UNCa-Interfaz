@@ -10,7 +10,10 @@ export default function ModelsView() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto bg-canvas p-4">
+      <h1 className="text-[25px] font-bold tracking-tight text-fg [text-wrap:balance]">
+        Modelos
+      </h1>
       <div className="grid grid-cols-[1fr_18rem] gap-4">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
           <ModelsGrid selectedFile={selectedFile} onSelect={setSelectedFile} />

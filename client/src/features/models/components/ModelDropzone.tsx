@@ -66,7 +66,7 @@ export function ModelDropzone() {
       }}
       className={cn(
         'flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-dashed p-6 text-center transition-colors',
-        dragOver ? 'border-accent bg-accent/5' : 'border-border',
+        dragOver ? 'border-accent bg-accent-soft' : 'border-border bg-control',
         busy && 'opacity-70',
       )}
     >

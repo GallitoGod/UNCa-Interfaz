@@ -21,8 +21,8 @@ export function FileSource() {
   }
 
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-fg-muted">Archivo local</label>
+    <div className="space-y-2">
+      <label className="lbl">Archivo local</label>
       <input
         ref={inputRef}
         type="file"
@@ -35,7 +35,7 @@ export function FileSource() {
         }}
       />
       <Button variant="outline" className="w-full" onClick={() => inputRef.current?.click()}>
-        Cargar video o imagen
+        video/imagen
       </Button>
     </div>
   );

@@ -44,7 +44,9 @@ export function Tabs<K extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className="inline-flex gap-1 rounded-[var(--radius-md)] bg-control p-1"
+      // Control segmentado del spec: pista oscura con padding fino; el activo es un
+      // bloque cian solido que se desliza sobre la pista.
+      className="inline-flex gap-[3px] rounded-[8px] border border-border bg-control p-[3px]"
     >
       {tabs.map((tab, i) => {
         const active = tab.key === value;
@@ -62,11 +64,9 @@ export function Tabs<K extends string>({
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              'rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium',
+              'rounded-[var(--radius-sm)] px-3.5 py-1.5 text-sm font-semibold',
               'transition-colors duration-150 focus-visible:outline-none',
-              active
-                ? 'bg-surface-raised text-fg shadow-sm'
-                : 'text-fg-muted hover:text-fg',
+              active ? 'bg-accent text-accent-fg' : 'text-fg-subtle hover:text-fg',
             )}
           >
             {tab.label}

@@ -18,7 +18,7 @@ export function ModelCard({
       onClick={onSelect}
       className={cn(
         'rounded-[var(--radius-md)] border p-3 text-left transition-colors',
-        selected ? 'border-accent bg-accent/5' : 'border-border hover:border-border-strong',
+        selected ? 'border-accent bg-accent-soft' : 'border-border bg-control hover:border-border-strong',
       )}
     >
       <div className="flex items-center justify-between">

@@ -29,8 +29,8 @@ export function Step1Type({
             className={cn(
               'rounded-[var(--radius-md)] border p-4 text-left transition-colors',
               active
-                ? 'border-accent bg-accent/10'
-                : 'border-border hover:border-border-strong',
+                ? 'border-accent bg-accent-soft'
+                : 'border-border bg-control hover:border-border-strong',
             )}
           >
             <div className="text-sm font-medium text-fg">{t.label}</div>

@@ -1,12 +1,14 @@
-// ModelSelector.tsx — selecciona el modelo a cargar en el backend y fija el modelo
-// activo del workspace (cuyo type enruta la estrategia de presentacion).
-// Vive en el slot del Header.
+// ModelSelector.tsx — lista de modelos cargables del panel izquierdo de inferencia.
+// Selecciona el modelo a cargar en el backend y fija el modelo activo del workspace
+// (cuyo type enruta la estrategia de presentacion). Misma logica que antes; ahora se
+// presenta como lista de ModelRow en vez de un <select>.
 
 import { useEffect, useRef } from 'react';
 import type { ModelType } from '@/shared/api/types';
 import { useModels, useSelectModel } from '../hooks/useModels';
 import { getModelType } from '../api/models';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
+import { ModelRow } from './ModelRow';
 
 export function ModelSelector() {
   const { data: models, isLoading } = useModels();
@@ -44,22 +46,23 @@ export function ModelSelector() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models]);
 
+  if (isLoading) {
+    return <p className="px-1 font-mono text-xs text-fg-subtle">Cargando modelos...</p>;
+  }
+  if (!models?.length) {
+    return <p className="px-1 font-mono text-xs text-fg-subtle">Sin modelos disponibles</p>;
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      <label className="text-xs font-medium text-fg-muted">Modelo</label>
-      <select
-        value={activeModel?.name ?? ''}
-        disabled={isLoading || !models?.length}
-        onChange={(e) => void handleSelect(e.target.value)}
-        className="h-8 rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none disabled:opacity-50"
-      >
-        {!models?.length && <option value="">Sin modelos</option>}
-        {models?.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-1.5">
+      {models.map((m) => (
+        <ModelRow
+          key={m}
+          name={m}
+          active={activeModel?.name === m}
+          onSelect={() => void handleSelect(m)}
+        />
+      ))}
     </div>
   );
 }

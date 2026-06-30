@@ -27,7 +27,15 @@ export function VisionWorkspace({
   const unsupported = activeModel ? !getStrategy(activeModel.type).implemented : false;
 
   return (
-    <div className="relative grid h-full place-items-center overflow-hidden rounded-[var(--radius-lg)] border border-border bg-black">
+    <div
+      className="relative grid h-full place-items-center overflow-hidden rounded-[var(--radius-lg)] border border-border bg-feed"
+      // Grilla sutil de instrumento (cian al 5%) en las bandas de letterbox.
+      style={{
+        backgroundImage:
+          'linear-gradient(rgba(52,214,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(52,214,255,.05) 1px, transparent 1px)',
+        backgroundSize: '30px 30px',
+      }}
+    >
       {/* Fuente: oculta, solo alimenta al stream. */}
       <video ref={videoRef} className="hidden" playsInline muted />
 

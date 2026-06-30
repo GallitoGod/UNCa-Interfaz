@@ -20,13 +20,13 @@ export function CameraSource() {
   }, [cameras, source.kind, setCameraSource]);
 
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-fg-muted">Seleccionar camara</label>
+    <div className="space-y-2">
+      <label className="lbl">Camara</label>
       <div className="flex gap-2">
         <select
           value={selected}
           onChange={(e) => setCameraSource(e.target.value)}
-          className="h-9 flex-1 rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none"
+          className="h-9 flex-1 rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent"
         >
           {cameras.length === 0 && <option value="">Sin camaras</option>}
           {cameras.map((c, i) => (

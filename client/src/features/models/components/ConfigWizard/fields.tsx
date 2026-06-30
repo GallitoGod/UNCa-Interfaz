@@ -2,7 +2,7 @@
 // del configBuilder viejo). Puros: reciben value + onChange, no conocen el store.
 
 const inputCls =
-  'h-9 w-full rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none';
+  'h-9 w-full rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent';
 
 export function NumberField({
   label,
@@ -108,7 +108,7 @@ export function CheckField({
 export function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h4 className="text-sm font-semibold text-fg">{title}</h4>
+      <h4 className="lbl">{title}</h4>
       {children}
     </section>
   );

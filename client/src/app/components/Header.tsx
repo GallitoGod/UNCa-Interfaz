@@ -1,18 +1,26 @@
-// Header.tsx — chrome superior: marca, navegacion de vistas, slot del selector de
-// modelo y el toggle de tema. La navegacion escribe en el uiStore.
+// Header.tsx — title bar: marca, navegacion de vistas (segmentado) y el modelo
+// activo (solo lectura). La seleccion de modelo vive en el panel izquierdo de
+// Inferencia; aca solo se refleja cual esta cargado.
 //
-// Firma visual: una marca de reticula/apertura junto al wordmark (dominio camara/
-// optica). El acento cian aparece solo en la pestana activa (color = scarce resource).
+// Firma visual: marca de reticula/apertura junto al wordmark (dominio camara/optica)
+// con "Lens" en cian. El acento cian aparece solo en la pestana activa y en el dato
+// del modelo (color = recurso escaso).
 
-import { type ReactNode } from 'react';
 import { useUiStore, type View } from '../store/uiStore';
-import { ThemeToggle } from './ThemeToggle';
-import { cn } from '@/shared/ui/cn';
+import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
+import { Tabs } from '@/shared/ui/Tabs';
 
-const NAV: { view: View; label: string }[] = [
-  { view: 'inference', label: 'Inferencia' },
-  { view: 'models', label: 'Modelos' },
+const NAV: { key: View; label: string }[] = [
+  { key: 'inference', label: 'Inferencia' },
+  { key: 'models', label: 'Modelos' },
 ];
+
+// Etiqueta corta del tipo de modelo para el badge del title bar.
+const TYPE_LABEL: Record<string, string> = {
+  detection: 'DET',
+  classification: 'CLS',
+  segmentation: 'SEG',
+};
 
 // Marca de apertura/reticula: el signo del dominio (visor de camara).
 function ReticleMark() {
@@ -30,45 +38,37 @@ function ReticleMark() {
   );
 }
 
-export function Header({ modelSelector }: { modelSelector?: ReactNode }) {
+export function Header() {
   const activeView = useUiStore((s) => s.activeView);
   const setView = useUiStore((s) => s.setView);
+  const activeModel = useWorkspaceStore((s) => s.activeModel);
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-6 border-b border-border bg-canvas px-5">
+    <header className="flex h-14 shrink-0 items-center gap-6 border-b border-border bg-surface px-5">
       {/* Marca */}
       <div className="flex items-center gap-2">
         <ReticleMark />
-        <span className="text-sm font-semibold tracking-tight">UNCaLens</span>
+        <span className="text-sm font-semibold tracking-tight">
+          UNCa<span className="text-accent">Lens</span>
+        </span>
       </div>
 
-      {/* Navegacion de vistas */}
-      <nav className="flex items-center gap-1">
-        {NAV.map(({ view, label }) => {
-          const active = view === activeView;
-          return (
-            <button
-              key={view}
-              type="button"
-              aria-current={active ? 'page' : undefined}
-              onClick={() => setView(view)}
-              className={cn(
-                'rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium',
-                'transition-colors duration-150 focus-visible:outline-none',
-                active ? 'bg-control text-fg' : 'text-fg-muted hover:text-fg',
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+      {/* Navegacion de vistas (control segmentado) */}
+      <Tabs aria-label="Vista" tabs={NAV} value={activeView} onChange={setView} />
 
-      {/* Empuja el cluster derecho */}
-      <div className="ml-auto flex items-center gap-4">
-        {/* Slot del selector de modelo (lo provee la feature inference, slice 3) */}
-        {modelSelector}
-        <ThemeToggle />
+      {/* Modelo activo (solo lectura): nombre mono + badge de tipo. */}
+      <div className="ml-auto flex items-center gap-2">
+        {activeModel ? (
+          <>
+            <span className="lbl">Modelo</span>
+            <span className="font-mono text-xs text-fg">{activeModel.name}</span>
+            <span className="rounded-[var(--radius-sm)] bg-accent-soft px-1.5 py-0.5 font-mono text-[9px] font-semibold text-accent">
+              {TYPE_LABEL[activeModel.type] ?? activeModel.type}
+            </span>
+          </>
+        ) : (
+          <span className="font-mono text-xs text-fg-subtle">Sin modelo</span>
+        )}
       </div>
     </header>
   );
