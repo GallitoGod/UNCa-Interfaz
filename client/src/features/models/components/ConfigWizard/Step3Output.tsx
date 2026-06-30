@@ -89,13 +89,6 @@ function DetectionStep({
     rs?.out_coords_space ??
     'tensor_pixels';
 
-  // apply_conf_filter se deriva del umbral: 0 = sin filtro, >0 = filtra.
-  function onConfThreshold(v: number | null) {
-    const value = v ?? 0;
-    setField('output.confidence_threshold', value);
-    setField('output.apply_conf_filter', value > 0);
-  }
-
   return (
     <div className="space-y-6">
       <FieldGroup title="Formato de salida">
@@ -132,10 +125,9 @@ function DetectionStep({
       )}
 
       <FieldGroup title="Filtrado y NMS">
-        <div className="grid grid-cols-2 gap-3">
-          <NumberField label="Umbral de confianza (0 = sin filtro)" value={out.confidence_threshold} step={0.01} onChange={onConfThreshold} />
-          <NumberField label="Top-K (0 = sin limite)" value={out.top_k} onChange={(v) => setField('output.top_k', v)} />
-        </div>
+        {/* El umbral de confianza no se edita aca: se ajusta en vivo con el slider de
+            inferencia. El JSON conserva el default del template como valor inicial. */}
+        <NumberField label="Top-K (0 = sin limite)" value={out.top_k} onChange={(v) => setField('output.top_k', v)} />
         <CheckField label="Aplicar NMS" checked={out.apply_nms} onChange={(v) => setField('output.apply_nms', v)} />
         {out.apply_nms && (
           <NumberField label="Umbral IoU para NMS" value={out.nms_threshold} step={0.01} onChange={(v) => setField('output.nms_threshold', v)} />

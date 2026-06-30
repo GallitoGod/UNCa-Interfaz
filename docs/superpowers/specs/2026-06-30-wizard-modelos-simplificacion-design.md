@@ -89,10 +89,12 @@ las tablas (si no coincide con ningun preset conocido -> `Personalizado`).
   (para exports raros que difieran del unpacker estandar). Para `raw` conviene mostrarla
   expandida por defecto, porque ese formato es por definicion "decime vos donde esta cada cosa".
 - **Filtrado y NMS:**
-  - Se quita el checkbox `apply_conf_filter`. Regla: `confidence_threshold == 0` => sin
-    filtro; `> 0` => filtra. El wizard setea `apply_conf_filter` en consecuencia.
+  - Se quita el checkbox `apply_conf_filter`.
+  - Se quita tambien el campo `confidence_threshold` del wizard: el umbral se ajusta en
+    vivo con el slider de inferencia, asi que el valor del JSON es solo el inicial (queda
+    el default del template). `apply_conf_filter` conserva el valor del template/config.
   - `nms_per_class` -> "Avanzado".
-  - `apply_nms` + `nms_threshold` se mantienen visibles.
+  - `top_k`, `apply_nms` + `nms_threshold` se mantienen visibles.
 
 **Constantes por `pack_format` (a fijar en implementacion):** los indices exactos de
 `tensor_structure` por formato se obtienen **leyendo cada unpacker** (`unpackers/*.py`) y
