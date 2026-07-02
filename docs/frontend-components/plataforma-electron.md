@@ -3,7 +3,17 @@
 La capa nativa: creación de la ventana con hardening de seguridad y el puente seguro
 `contextBridge`. La app se mantiene en Electron como contenedor nativo.
 
-Archivos as-is: `src/main.js`, `src/preload.js`, `src/ipc-handlers.js`.
+Archivos as-is: `src/main.js`, `src/preload.js`, `src/ipc-handlers.js`,
+`src/backend-process.js`.
+
+> **Estado (2026-07-02): cierre de la migración.** El cliente viejo (`src/render/` +
+> `static/`) **se eliminó del árbol** (queda en el historial de git). Además el main
+> process ahora **arranca y detiene uvicorn** vía `src/backend-process.js` (portado de la
+> rama `refactor-agente-fase1`): `startBackend()` en `app.whenReady()` (no bloquea la
+> ventana; el frontend reintenta sus queries mientras el backend bootea) y `stopBackend()`
+> en `before-quit`. Escapes: `UNCA_NO_SPAWN=1` (backend a mano) y `UNCA_PYTHON` (forzar
+> intérprete). Verificado en Electron real (dev y prod `file://`): render + fuentes,
+> carga de modelo, inferencia sobre archivo y round-trip del wizard.
 
 > **🔴 Estado (2026-06-26): cambio de diseño grande.** El SDD impone un **thin client SIN
 > acceso a disco desde Electron** (§2, §1.2). En consecuencia **se eliminó todo el IPC de
@@ -44,8 +54,8 @@ Archivos as-is: `src/main.js`, `src/preload.js`, `src/ipc-handlers.js`.
 - **Mapeo al destino React:** `electron/main.ts`. La única diferencia con React+Vite:
   `loadFile('static/index.html')` pasa a cargar el build de Vite (`loadURL` al dev server
   en desarrollo, `loadFile(dist/index.html)` en producción). El hardening se mantiene
-  idéntico. (Nota: `CLAUDE.md` menciona un `backend-process.js` que arranca/mata uvicorn
-  desde el main; **no existe en disco** — si se quiere, es trabajo aparte.)
+  idéntico. (Nota 2026-07-02: el `backend-process.js` que arranca/mata uvicorn desde el
+  main **ya existe** — ver la nota de estado de arriba.)
 
 ## PreloadBridge (`uncaAPI`)
 
@@ -129,9 +139,10 @@ React **nunca** toca disco directamente.
 
 ```
 src/
-├── main.js          # carga client/dist/index.html (prod) | dev server (electron . --dev)
-├── preload.js       # contextBridge VACIO (sin API de disco)
-└── ipc-handlers.js  # registerIpcHandlers() no-op (sin handlers de disco)
+├── main.js             # carga client/dist (prod) | dev server (electron . --dev); arranca uvicorn
+├── preload.js          # contextBridge VACIO (sin API de disco)
+├── ipc-handlers.js     # registerIpcHandlers() no-op (sin handlers de disco)
+└── backend-process.js  # startBackend/stopBackend: ciclo de vida de uvicorn (2026-07-02)
 ```
 
 ### MainProcess → `electron/main.ts` *(liviano)*
@@ -147,9 +158,9 @@ if (import.meta.env?.DEV || process.env.NODE_ENV === 'development') {
 ```
 
 El hardening (`nodeIntegration:false`, `contextIsolation:true`, `sandbox:true`) y el
-registro de handlers antes de crear la ventana **no cambian**. (Nota: el `backend-process.js`
-que arranca/mata uvicorn mencionado en CLAUDE.md **no existe**; si se quiere, es trabajo
-aparte y se sumaría acá.)
+registro de handlers antes de crear la ventana **no cambian**. (Nota 2026-07-02: el
+`backend-process.js` que arranca/mata uvicorn **ya existe y está cableado** en `main.js` —
+ver la nota de estado del principio.)
 
 ### PreloadBridge → `electron/preload.ts` + `uncaAPI.d.ts` *(liviano)*
 

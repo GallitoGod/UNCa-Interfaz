@@ -16,7 +16,9 @@ en componentes, con el **mapeo al destino** de la nueva arquitectura.
 > **✅ Estado (2026-06-26): el to-be está IMPLEMENTADO** en `client/` (rama
 > `refactor-frontend-react`, sin commitear). El loop guiado por el SDD
 > (`Informacion/UNCa-Lens-SDD.md`) cerró los 5 componentes. Las secciones *as-is* de cada
-> doc describen el frontend viejo (`src/render` + `static/`), hoy **muerto/removible**. Hubo
+> doc describen el frontend viejo (`src/render` + `static/`), **eliminado del árbol el
+> 2026-07-02** (queda en el historial de git; la tabla de mapeo de abajo es registro
+> histórico). Hubo
 > **dos cambios de decisión** respecto al to-be original de estos docs:
 > 1. **Thin client SIN disco:** el SDD prohíbe el acceso a disco desde Electron. **El IPC de
 >    disco se eliminó** — listar/leer/escribir/importar modelos y configs van por HTTP al
