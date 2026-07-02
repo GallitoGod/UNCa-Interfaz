@@ -3,7 +3,7 @@
 // override manual de providers viven en "Avanzado".
 
 import type { ModelConfig } from '@/shared/api/types';
-import { AdvancedSection, CheckField, FieldGroup, NumberField, SelectField } from './fields';
+import { AdvancedSection, AutoHint, CheckField, FieldGroup, NumberField, SelectField } from './fields';
 import { delegatesForDevice, providersForDevice } from '../../lib/wizardPresets';
 
 interface Props {
@@ -47,6 +47,7 @@ export function Step4Runtime({ config, setField }: Props) {
           <SelectField label="Backend" value={rt.backend} options={['onnxruntime', 'tflite', 'tensorflow', 'pytorch'] as const} onChange={(v) => setField('runtime.backend', v)} />
           <SelectField label="Dispositivo" value={rt.device} options={['cpu', 'gpu'] as const} onChange={onDevice} />
         </div>
+        <AutoHint>providers / delegates derivados del dispositivo</AutoHint>
       </FieldGroup>
 
       <AdvancedSection>

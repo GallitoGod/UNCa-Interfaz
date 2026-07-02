@@ -17,7 +17,8 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'bg-accent text-accent-fg hover:bg-accent-hover',
   outline: 'border border-border text-fg hover:bg-control hover:border-border-strong',
   ghost: 'text-fg-muted hover:bg-control hover:text-fg',
-  danger: 'bg-danger text-white hover:opacity-90',
+  // Rojo tenue enmarcado (spec Modelos §07): accion destructiva sin gritar.
+  danger: 'border border-danger/40 bg-danger/10 text-danger hover:bg-danger/20',
 };
 
 const SIZES: Record<Size, string> = {

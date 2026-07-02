@@ -2,7 +2,7 @@
 // del configBuilder viejo). Puros: reciben value + onChange, no conocen el store.
 
 const inputCls =
-  'h-9 w-full rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent';
+  'h-9 w-full rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent disabled:opacity-55';
 
 export function NumberField({
   label,
@@ -111,6 +111,20 @@ export function CheckField({
   );
 }
 
+// AutoHint — pista de derivacion (spec: regla maestro -> derivado): badge AUTO en
+// cian-soft + texto mono corto que dice QUE campos se autocompletan y desde donde.
+// Los campos AUTO se muestran asi, nunca como inputs vacios que haya que adivinar.
+export function AutoHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 font-mono text-[11px] text-fg-subtle">
+      <span className="shrink-0 rounded border border-accent-border bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.5px] text-accent">
+        AUTO
+      </span>
+      {children}
+    </p>
+  );
+}
+
 export function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
@@ -176,8 +190,9 @@ export function AdvancedSection({
 }) {
   return (
     <details open={defaultOpen} className="group rounded-[var(--radius-md)] border border-border bg-control/40">
-      <summary className="lbl cursor-pointer list-none px-3 py-2 marker:content-none">
-        <span className="select-none">▸ {title}</span>
+      <summary className="lbl flex cursor-pointer select-none items-center gap-2 list-none px-3 py-2 marker:content-none">
+        <span className="inline-block transition-transform duration-150 group-open:rotate-90">▸</span>
+        {title}
       </summary>
       <div className="space-y-3 px-3 pb-3 pt-1">{children}</div>
     </details>

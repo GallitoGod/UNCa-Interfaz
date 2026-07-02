@@ -14,7 +14,8 @@ export default function ModelsView() {
       <h1 className="text-[25px] font-bold tracking-tight text-fg [text-wrap:balance]">
         Modelos
       </h1>
-      <div className="grid grid-cols-[1fr_18rem] gap-4">
+      {/* Dropzone al costado con ancho fijo ~252px (spec §02). */}
+      <div className="grid grid-cols-[1fr_252px] gap-4">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
           <ModelsGrid selectedFile={selectedFile} onSelect={setSelectedFile} />
         </div>

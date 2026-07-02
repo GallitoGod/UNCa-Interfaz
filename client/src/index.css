@@ -71,6 +71,8 @@
   --color-accent: var(--c-accent);
   --color-accent-soft: var(--c-accent-soft);
   --color-accent-fg: var(--c-accent-fg);
+  --color-accent-border: var(--c-accent-border);
+  --color-accent-hover: var(--c-accent-hover);
 
   --color-danger: var(--c-danger);
   --color-warn: var(--c-warn);
@@ -106,6 +108,8 @@
   --c-accent: #34d6ff; /* accion / activo / dato en vivo */
   --c-accent-soft: rgba(52, 214, 255, 0.12); /* fondo de chip/fila activa */
   --c-accent-fg: #04121a; /* texto sobre cian (ink) */
+  --c-accent-border: rgba(52, 214, 255, 0.35); /* borde de seleccion/activo (bA del spec) */
+  --c-accent-hover: #5fdfff; /* hover del boton primario cian */
 
   --c-danger: #ff4d4f; /* fallo / REC */
   --c-warn: #febc2e; /* degradado */

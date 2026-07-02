@@ -21,7 +21,7 @@ export function ModelsGrid({
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-fg">Modelos disponibles</h2>
         <Button variant="ghost" size="sm" onClick={() => void refetch()}>
-          Actualizar
+          ↻ Actualizar
         </Button>
       </div>
 
@@ -36,7 +36,9 @@ export function ModelsGrid({
       ) : models.length === 0 ? (
         <p className="text-sm text-fg-subtle">No hay modelos. Arrastra uno al area de la derecha.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        // Bloques compactos y macizos: auto-fill deja que entren los que quepan.
+        // pt-1 da aire a los studs de la primera fila (sobresalen -5px del borde).
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-[13px] pt-1">
           {models.map((entry) => (
             <ModelCard
               key={entry.file}

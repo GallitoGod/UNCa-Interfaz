@@ -10,7 +10,7 @@ import type {
   RuntimeShapes,
   SegmentationOutput,
 } from '@/shared/api/types';
-import { AdvancedSection, CheckField, FieldGroup, NumberField, SelectField } from './fields';
+import { AdvancedSection, AutoHint, CheckField, FieldGroup, NumberField, SelectField } from './fields';
 import { applyPackPreset, isCoordsSpaceLocked } from '../../lib/wizardPresets';
 
 interface Props {
@@ -107,6 +107,7 @@ function DetectionStep({
             onChange={(v) => setField('output.out_coords_space', v)}
           />
         </div>
+        {!isRaw && <AutoHint>tensor_structure y coords derivados de pack_format</AutoHint>}
         <NumberField label="Numero de clases" value={ts.num_classes ?? 80} onChange={(v) => setField('output.tensor_structure.num_classes', v)} />
       </FieldGroup>
 

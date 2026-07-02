@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type { ModelConfig } from '@/shared/api/types';
 import {
   AdvancedSection,
+  AutoHint,
   ColorField,
   FieldGroup,
   NumberField,
@@ -74,6 +75,7 @@ export function Step2Input({ config, setField }: Props) {
           <NumberField label="Alto" value={inp.height} min={1} onChange={(v) => setField('input.height', v)} />
           <SelectField label="Orden de color" value={inp.color_order} options={['RGB', 'BGR', 'GRAY'] as const} onChange={onColorOrder} />
         </div>
+        <AutoHint>channels derivado del orden de color (GRAY→1, RGB/BGR→3)</AutoHint>
       </FieldGroup>
 
       <FieldGroup title="Normalizacion">
@@ -84,6 +86,9 @@ export function Step2Input({ config, setField }: Props) {
           labels={NORM_PRESET_LABELS}
           onChange={onNormPreset}
         />
+        {normPreset !== 'custom' && (
+          <AutoHint>scale · normalize · mean · std derivados del preset</AutoHint>
+        )}
         {normPreset === 'custom' && (
           <div className="space-y-2">
             <div className="grid grid-cols-3 gap-3">

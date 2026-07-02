@@ -16,6 +16,8 @@ import { Step3Output } from './Step3Output';
 import { Step4Runtime } from './Step4Runtime';
 
 const STEP_LABELS = ['Tipo', 'Input', 'Output', 'Runtime'];
+// Progreso de la micro-barra por paso (spec stepper 1b: 12 -> 37 -> 62 -> 100).
+const STEP_PROGRESS = [12, 37, 62, 100];
 
 export function ConfigWizard({
   onClose,
@@ -89,28 +91,56 @@ export function ConfigWizard({
 
   return (
     <div className="space-y-5">
-      {/* Stepper */}
-      <div className="flex items-center justify-between border-b border-border pb-4">
-        <div className="flex items-center gap-2">
+      {/* Stepper 1b (spec §04): header contextual + barra de instrumento segmentada
+          + micro-barra de progreso. El actual va solido en cian (texto ink), los
+          completados en cian-soft con ✓ y son clicables (retroceso); los pendientes
+          quedan apagados y no navegables (se avanza solo con "Siguiente"). */}
+      <div className="space-y-3 border-b border-border pb-4">
+        <div className="flex items-baseline gap-2">
           <span className="text-xs text-fg-muted">Configurando</span>
-          <span className="font-mono text-sm font-medium text-fg">{baseName}</span>
+          <span className="font-mono text-sm font-semibold text-fg">{baseName}</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex gap-[5px]">
           {STEP_LABELS.map((label, i) => {
-            const n = i + 1;
+            const n = (i + 1) as WizardStep;
+            const done = step > n;
+            const cur = step === n;
             return (
-              <div
+              <button
                 key={label}
+                type="button"
+                disabled={!done}
+                onClick={() => setStep(n)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1 text-xs',
-                  step === n ? 'bg-accent-soft text-accent' : 'text-fg-subtle',
+                  'flex h-[50px] flex-1 flex-col justify-center gap-0.5 rounded-[9px] border px-[15px] text-left transition-colors',
+                  cur
+                    ? 'border-accent bg-accent'
+                    : done
+                      ? 'border-accent-border bg-[rgba(52,214,255,0.07)] hover:bg-accent-soft'
+                      : 'border-border bg-control disabled:pointer-events-none',
                 )}
               >
-                <span className="font-mono">{step > n ? '✓' : n}</span>
-                <span>{label}</span>
-              </div>
+                <span
+                  className={cn(
+                    'font-mono text-[11px] font-bold tracking-[0.5px]',
+                    cur ? 'text-accent-fg' : done ? 'text-accent' : 'text-fg-subtle',
+                  )}
+                >
+                  {String(n).padStart(2, '0')}
+                  {done && ' ✓'}
+                </span>
+                <span className={cn('text-[13px] font-semibold', cur ? 'text-accent-fg' : 'text-fg-muted')}>
+                  {label}
+                </span>
+              </button>
             );
           })}
+        </div>
+        <div className="h-[3px] overflow-hidden rounded-[2px] bg-border">
+          <div
+            className="h-full bg-accent transition-[width] duration-300"
+            style={{ width: `${STEP_PROGRESS[step - 1]}%` }}
+          />
         </div>
       </div>
 
@@ -151,7 +181,7 @@ export function ConfigWizard({
         <Button variant="outline" onClick={prev} disabled={step === 1}>
           Anterior
         </Button>
-        <span className="font-mono text-xs text-fg-muted">{step} / 4</span>
+        <span className="font-mono text-[13px] font-semibold text-fg-muted">{step} / 4</span>
         <Button variant="primary" onClick={next} disabled={save.isPending}>
           {step === 4 ? (save.isPending ? 'Guardando...' : 'Guardar') : 'Siguiente'}
         </Button>
