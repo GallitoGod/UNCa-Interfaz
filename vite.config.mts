@@ -1,9 +1,8 @@
-// vite.config.ts — configuracion del frontend nuevo (React) de UNCaLens.
+// vite.config.ts — configuracion del frontend React de UNCaLens.
 //
-// Vive en la raiz del repo pero su "root" apunta a client/, asi el frontend
-// nuevo convive con la app vieja (src/render + static/) SIN tocarla: Vite solo
-// mira lo que cuelga de client/index.html. El switch a este build se hace recien
-// al final de la migracion (Electron cargara client/dist/index.html).
+// Vive en la raiz del repo pero su "root" apunta a client/: Vite solo mira lo
+// que cuelga de client/index.html (el backend Python y el main de Electron en
+// src/ quedan afuera). Electron carga client/dist/index.html en produccion.
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';

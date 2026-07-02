@@ -1,11 +1,11 @@
 // main.js — proceso principal de Electron.
-// Crea la ventana con la configuracion de seguridad recomendada y registra
-// los handlers IPC que concentran TODO el acceso a disco (ipc-handlers.js).
+// Crea la ventana con la configuracion de seguridad recomendada, registra los
+// handlers IPC (hoy no-op: thin client sin disco) y arranca/detiene el backend
+// uvicorn (backend-process.js).
 //
-// Carga el frontend NUEVO (React/Vite):
+// Carga el frontend React/Vite (client/):
 //   - dev (electron . --dev): el dev-server de Vite (http://localhost:5173) con HMR.
 //   - prod (electron .):      el build estatico en client/dist/index.html.
-// El frontend viejo (static/index.html + src/render) queda sin uso y se puede borrar.
 
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
