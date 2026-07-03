@@ -27,8 +27,7 @@ def test_load_model_config_valido(tmp_path):
             "color_order": "RGB",
             "input_str": {
                 "layout": "HWC",
-                "dtype": "float32",
-                "quantized": False
+                "dtype": "float32"
             }
         },
         "output": {
@@ -92,8 +91,7 @@ def test_load_model_config_datos_invalidos(tmp_path):
             "color_order": "RGB",
             "input_tensor": {
                 "layout": "HWC",
-                "dtype": "float32",
-                "quantized": False
+                "dtype": "float32"
             }
         },
         "output": {

@@ -58,13 +58,15 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
     # El postprocesador ahora recibe (rows, meta)
     fake_post = MagicMock(side_effect=lambda rows, meta: rows)
 
+    # El armado del pipeline vive ahora en tasks/detection.py: los símbolos del armado
+    # se parchean alli. load_model_config y setup_model_logger siguen en el controller.
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
-         patch("api.func.model_controller.Model_loader.load", return_value=fake_predict), \
-         patch("api.func.model_controller.build_preprocessor", return_value=fake_pre), \
-         patch("api.func.model_controller.generate_input_adapter", return_value=fake_input_adapter), \
-         patch("api.func.model_controller.unpack_out", autospec=True) as mock_unpack_factory, \
-         patch("api.func.model_controller.generate_output_adapter", return_value=fake_output_adapter), \
-         patch("api.func.model_controller.buildPostprocessor", return_value=fake_post), \
+         patch("api.func.tasks.detection.Model_loader.load", return_value=fake_predict), \
+         patch("api.func.tasks.detection.build_preprocessor", return_value=fake_pre), \
+         patch("api.func.tasks.detection.generate_input_adapter", return_value=fake_input_adapter), \
+         patch("api.func.tasks.detection.unpack_out", autospec=True) as mock_unpack_factory, \
+         patch("api.func.tasks.detection.generate_output_adapter", return_value=fake_output_adapter), \
+         patch("api.func.tasks.detection.buildPostprocessor", return_value=fake_post), \
          patch("api.func.model_controller.setup_model_logger", return_value=fake_logger):
 
         mock_unpack_factory.return_value = fake_unpack
@@ -101,12 +103,12 @@ def test_update_confidence_strict_runtime(fake_config):
     fake_logger = MagicMock()
 
     with patch("api.func.model_controller.load_model_config", return_value=fake_config), \
-         patch("api.func.model_controller.Model_loader.load", return_value=lambda x: x), \
-         patch("api.func.model_controller.build_preprocessor", return_value=lambda x: (x, {})), \
-         patch("api.func.model_controller.generate_input_adapter", return_value=lambda x: x), \
-         patch("api.func.model_controller.unpack_out", return_value=lambda raw, runtime=None: [[0, 0, 1, 1, 0.5, 0.0]]), \
-         patch("api.func.model_controller.generate_output_adapter", return_value=lambda row: row), \
-         patch("api.func.model_controller.buildPostprocessor", return_value=lambda rows, meta: rows), \
+         patch("api.func.tasks.detection.Model_loader.load", return_value=lambda x: x), \
+         patch("api.func.tasks.detection.build_preprocessor", return_value=lambda x: (x, {})), \
+         patch("api.func.tasks.detection.generate_input_adapter", return_value=lambda x: x), \
+         patch("api.func.tasks.detection.unpack_out", return_value=lambda raw, runtime=None: [[0, 0, 1, 1, 0.5, 0.0]]), \
+         patch("api.func.tasks.detection.generate_output_adapter", return_value=lambda row: row), \
+         patch("api.func.tasks.detection.buildPostprocessor", return_value=lambda rows, meta: rows), \
          patch("api.func.model_controller.setup_model_logger", return_value=fake_logger):
 
         mc = ModelController()
