@@ -4,11 +4,17 @@
 import type { ModelConfig, ModelType } from '@/shared/api/types';
 import { cn } from '@/shared/ui/cn';
 
-// enabled=false: el pipeline del backend aun no esta implementado (TaskNotImplemented->501).
-// Las tarjetas se muestran como "proximamente" pero no son seleccionables.
+// enabled=false: el pipeline del backend aun no esta implementado (TaskNotImplemented->501),
+// asi que dejar crear el config seria prometer algo que al cargar falla. Las tarjetas se
+// muestran como "proximamente" pero no son seleccionables.
+//
+// Clasificacion se habilito el 2026-08-21: su pipeline quedo completo el 2026-08-13
+// (unpacker + postprocesador + tasks/classification.py + panel en el cliente). El resto
+// del wizard ya era type-aware -handleSelectType pide el template del tipo y el paso 3
+// tiene su ClassificationStep-, asi que no hubo mas que abrir la compuerta.
 const TYPES: { value: ModelType; label: string; desc: string; enabled: boolean }[] = [
   { value: 'detection', label: 'Deteccion', desc: 'Localiza objetos con bounding boxes.', enabled: true },
-  { value: 'classification', label: 'Clasificacion', desc: 'Asigna una o varias clases a la imagen.', enabled: false },
+  { value: 'classification', label: 'Clasificacion', desc: 'Asigna una o varias clases a la imagen.', enabled: true },
   { value: 'segmentation', label: 'Segmentacion', desc: 'Asigna una clase a cada pixel.', enabled: false },
 ];
 

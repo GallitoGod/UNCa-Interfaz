@@ -169,20 +169,32 @@ function ClassificationStep({
   out: ClassificationOutput;
   setField: Props['setField'];
 }) {
+  // pack_format es el descriptor maestro, igual que en deteccion: es la clave del
+  // registry de unpackers y es lo que el backend obedece. apply_softmax/apply_sigmoid
+  // dicen lo mismo y NO se consumen (tasks/classification.py solo loguea un warning si
+  // se contradicen), asi que se derivan en vez de dejarlos contradecirse a mano.
+  // Cuando se podan del schema (pendiente #22) esto se borra entero.
+  function onPackFormat(v: ClassificationOutput['pack_format']) {
+    setField('output.pack_format', v);
+    setField('output.apply_softmax', v === 'softmax_out');
+    setField('output.apply_sigmoid', v === 'sigmoid_out');
+  }
+
   return (
     <div className="space-y-6">
       <FieldGroup title="Formato de salida">
         <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Empaquetado" value={out.pack_format} options={['softmax_out', 'sigmoid_out', 'logits_raw'] as const} onChange={(v) => setField('output.pack_format', v)} />
+          <SelectField label="Empaquetado" value={out.pack_format} options={['softmax_out', 'sigmoid_out', 'logits_raw'] as const} onChange={onPackFormat} />
           <SelectField label="El modelo emite" value={out.tensor_structure.output_format} options={['logits', 'probabilities'] as const} onChange={(v) => setField('output.tensor_structure.output_format', v)} />
         </div>
         <CheckField label="Multi-etiqueta (sigmoid por clase)" checked={out.tensor_structure.multi_label} onChange={(v) => setField('output.tensor_structure.multi_label', v)} />
+        <AutoHint>
+          {out.tensor_structure.output_format === 'probabilities'
+            ? 'El modelo ya emite probabilidades: no se aplica ninguna activacion'
+            : 'La activacion se deriva del empaquetado'}
+        </AutoHint>
       </FieldGroup>
       <FieldGroup title="Postprocesamiento">
-        <div className="space-y-2">
-          <CheckField label="Aplicar softmax" checked={out.apply_softmax} onChange={(v) => setField('output.apply_softmax', v)} />
-          <CheckField label="Aplicar sigmoid (multi-label)" checked={out.apply_sigmoid} onChange={(v) => setField('output.apply_sigmoid', v)} />
-        </div>
         <div className="grid grid-cols-3 gap-3">
           <NumberField label="Numero de clases" value={out.tensor_structure.num_classes} onChange={(v) => setField('output.tensor_structure.num_classes', v)} />
           <NumberField label="Top-K" value={out.top_k} onChange={(v) => setField('output.top_k', v)} />
