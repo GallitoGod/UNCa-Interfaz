@@ -8,9 +8,17 @@ import type { DrawSettings } from '../services/types';
 
 interface WorkspaceState {
   activeModel: { name: string; type: ModelType } | null;
+  /**
+   * Modelo que se esta armando en el backend ahora mismo (null = ninguno). Cargar
+   * un modelo no es instantaneo -sesion del runtime + warmup- y durante ese rato el
+   * canvas mostraba el frame viejo como si nada, dando la sensacion de que la app se
+   * colgo. El workspace lo lee para tapar el feed con el cartel de carga.
+   */
+  loadingModel: string | null;
   drawSettings: DrawSettings;
   setActiveModel: (name: string, type: ModelType) => void;
   clearActiveModel: () => void;
+  setLoadingModel: (name: string | null) => void;
   setDrawSettings: (patch: Partial<DrawSettings>) => void;
 }
 
@@ -41,10 +49,12 @@ function readStoredDrawSettings(): DrawSettings {
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeModel: null,
+  loadingModel: null,
   drawSettings: readStoredDrawSettings(),
 
   setActiveModel: (name, type) => set({ activeModel: { name, type } }),
   clearActiveModel: () => set({ activeModel: null }),
+  setLoadingModel: (loadingModel) => set({ loadingModel }),
   setDrawSettings: (patch) =>
     set((s) => {
       const next = { ...s.drawSettings, ...patch };

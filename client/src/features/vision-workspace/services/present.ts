@@ -41,6 +41,19 @@ function releasePrevious(
   else lastTypeByOverlay.delete(overlayRoot);
 }
 
+/**
+ * Desmonta YA la capa de la estrategia presentada por ultima vez en este overlay.
+ *
+ * releasePrevious() solo corre cuando llega un frame nuevo. Con una fuente estatica
+ * (imagen) no hay frame siguiente: al cambiar de modelo la capa vieja se quedaba
+ * pegada en pantalla hasta que el usuario cambiaba de fuente. Esto la suelta en el
+ * momento del cambio, sin esperar. El registro de "que habia" sigue viviendo aca,
+ * asi que no hay dos fuentes de verdad.
+ */
+export function releaseOverlay(overlayRoot: HTMLElement, frame: VisionFrameContext): void {
+  releasePrevious(overlayRoot, frame, null);
+}
+
 export function presentFrame({
   canvas,
   ctx,

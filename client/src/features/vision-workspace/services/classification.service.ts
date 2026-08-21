@@ -34,10 +34,14 @@ function createPanel(overlayRoot: HTMLElement): PanelNodes {
   const root = document.createElement('div');
   // Estilos inline con los tokens --c-* de index.css: no dependen de que Tailwind
   // escanee este archivo, y siguen la piel Cabina Tecnica.
+  // Esquina INFERIOR izquierda, no la superior: arriba-izquierda la ocupa el
+  // MetricsHUD (left-3 top-3, mismas coordenadas exactas) y arriba-derecha el badge
+  // "En vivo" de camara. Verificado el 2026-08-21: con top:12px el chip de FPS tapaba
+  // el titulo del panel y la primera clase.
   root.style.cssText = [
     'position:absolute',
     'left:12px',
-    'top:12px',
+    'bottom:12px',
     'min-width:150px',
     'padding:8px 10px',
     'border-radius:var(--radius-md)',

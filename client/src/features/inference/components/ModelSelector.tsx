@@ -8,6 +8,7 @@ import type { ModelType } from '@/shared/api/types';
 import { useModels, useSelectModel } from '../hooks/useModels';
 import { getModelType } from '../api/models';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
+import { useStreamStore } from '../store/streamStore';
 import { ModelRow } from './ModelRow';
 
 export function ModelSelector() {
@@ -15,10 +16,20 @@ export function ModelSelector() {
   const selectModel = useSelectModel();
   const activeModel = useWorkspaceStore((s) => s.activeModel);
   const setActiveModel = useWorkspaceStore((s) => s.setActiveModel);
+  const resendStill = useStreamStore((s) => s.resendStill);
   const autoSelected = useRef(false);
+
+  // Modelo que se esta cargando ahora mismo. Vive en el workspaceStore y no en la
+  // mutation porque el cartel "armando hot path" que tapa el feed tambien lo
+  // necesita, y la carga no termina cuando responde /select_model: falta leer el
+  // model_type del config. Una sola fuente de verdad para fila + overlay.
+  const loadingName = useWorkspaceStore((s) => s.loadingModel);
+  const setLoadingModel = useWorkspaceStore((s) => s.setLoadingModel);
 
   async function handleSelect(name: string) {
     if (!name) return;
+    if (useWorkspaceStore.getState().loadingModel) return; // una carga por vez
+    setLoadingModel(name);
     try {
       await selectModel.mutateAsync(name);
       // Leer el model_type real del config (GET /configs/{name}) para enrutar la
@@ -32,8 +43,15 @@ export function ModelSelector() {
         console.warn('No se pudo leer el model_type del config, se asume detection:', e);
       }
       setActiveModel(name, type);
+      // Fuente estatica: volver a inferir el frame actual con el modelo nuevo. Sin
+      // esto la pantalla queda mostrando el resultado del modelo anterior.
+      resendStill();
     } catch (err) {
       console.error('No se pudo seleccionar el modelo:', err);
+    } finally {
+      // En finally: si la carga falla (404/422/501) el cartel TIENE que irse igual,
+      // si no la pantalla queda tapada para siempre.
+      setLoadingModel(null);
     }
   }
 
@@ -60,6 +78,10 @@ export function ModelSelector() {
           key={m}
           name={m}
           active={activeModel?.name === m}
+          loading={loadingName === m}
+          // Mientras carga uno, el resto queda inerte: evita encolar cargas y deja
+          // claro que la app esta ocupada, no colgada.
+          disabled={loadingName !== null && loadingName !== m}
           onSelect={() => void handleSelect(m)}
         />
       ))}

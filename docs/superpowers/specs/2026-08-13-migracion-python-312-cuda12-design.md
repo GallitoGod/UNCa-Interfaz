@@ -17,6 +17,10 @@ Este es el **paso 1 de tres** en el plan acordado:
    sin tocar el transporte
 3. Dibujar en el backend con los anotadores de supervision y mandar el frame
    compuesto por el WebSocket
+   → **detallado el 2026-08-21** en
+   `2026-08-21-render-backend-supervision-design.md`. La decisión quedó firme
+   (el usuario midió la latencia): el cliente deja de dibujar y se vuelve thin
+   client puro. Clasificación queda como está.
 
 **Objetivo del paso 1**: dejar el proyecto corriendo sobre 3.12 con GPU funcionando,
 **sin cambiar ni una línea de lógica de negocio**, y con una regresión numérica que

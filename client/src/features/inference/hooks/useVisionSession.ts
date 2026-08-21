@@ -7,7 +7,7 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { useStreamStore } from '../store/streamStore';
 import { useUiStore } from '@/app/store/uiStore';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
-import { presentFrame } from '@/features/vision-workspace/services/present';
+import { presentFrame, releaseOverlay } from '@/features/vision-workspace/services/present';
 import {
   sendSingleFrame,
   startVideoStream,
@@ -23,11 +23,18 @@ interface SessionRefs {
 export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRefs) {
   const source = useStreamStore((s) => s.source);
   const activeView = useUiStore((s) => s.activeView);
+  // Disparadores de re-inferencia para fuentes ESTATICAS (ver stillNonce en el store).
+  const stillNonce = useStreamStore((s) => s.stillNonce);
+  const activeType = useWorkspaceStore((s) => s.activeModel?.type ?? null);
 
   // Refs vivos a la sesion en curso, para que el effect de navegacion pueda
   // pausar/reanudar SIN re-ejecutar el effect principal (que reconstruiria todo).
   const handleRef = useRef<VideoStreamHandle | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  // Frame fijo de la fuente 'file-image' y el render vigente, guardados para poder
+  // volver a inferir sin re-ejecutar el effect principal (que revoca el objectURL).
+  const stillRef = useRef<HTMLCanvasElement | null>(null);
+  const renderRef = useRef<((payload: unknown, src: HTMLCanvasElement) => void) | null>(null);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current || !overlayRef.current) return;
@@ -58,6 +65,8 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
         drawSettings,
       });
     };
+    // Se expone para los re-envios de fuente estatica (effect de mas abajo).
+    renderRef.current = render;
 
     const setStatus = useStreamStore.getState().setStatus;
 
@@ -111,6 +120,9 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
             tmp.width = img.naturalWidth;
             tmp.height = img.naturalHeight;
             tmp.getContext('2d')?.drawImage(img, 0, 0);
+            // Se cachea para poder re-inferir el mismo frame al cambiar de modelo o
+            // de umbral, sin volver a cargar la imagen ni tocar el objectURL.
+            stillRef.current = tmp;
             sendSingleFrame(tmp, render);
           };
           img.src = source.url;
@@ -131,6 +143,7 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
       if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
       handleRef.current = null;
       mediaStreamRef.current = null;
+      stillRef.current = null; // el frame fijo pertenece a ESTA fuente
       video.srcObject = null;
       video.removeAttribute('src');
       if (source.kind === 'file-video' || source.kind === 'file-image') {
@@ -148,4 +161,34 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
     if (onInference) handleRef.current?.resume();
     else handleRef.current?.pause();
   }, [activeView]);
+
+  // Cambio de TIPO de modelo: soltar la capa de la estrategia anterior en el acto.
+  // Con camara/video el proximo frame la limpiaria solo, pero con una imagen fija no
+  // hay proximo frame y los labels quedaban pegados en pantalla.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !overlay || !ctx) return;
+    releaseOverlay(overlay, {
+      canvas,
+      ctx,
+      overlayRoot: overlay,
+      frameWidth: canvas.width,
+      frameHeight: canvas.height,
+      settings: useWorkspaceStore.getState().drawSettings,
+    });
+  }, [activeType, canvasRef, overlayRef]);
+
+  // Re-inferir el frame fijo cuando cambia un parametro (modelo, umbral). El envio
+  // inicial lo hace el effect principal; aca solo se atienden los re-envios, por eso
+  // se ignora el nonce 0.
+  useEffect(() => {
+    if (stillNonce === 0) return;
+    if (source.kind !== 'file-image') return; // camara/video ya refrescan solos
+    const still = stillRef.current;
+    const render = renderRef.current;
+    if (!still || !render) return;
+    sendSingleFrame(still, render);
+  }, [stillNonce, source.kind]);
 }

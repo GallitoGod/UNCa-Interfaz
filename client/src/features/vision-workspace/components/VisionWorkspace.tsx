@@ -7,6 +7,7 @@ import { type ReactNode, type RefObject } from 'react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { getStrategy } from '../services/registry';
 import { UnsupportedOverlay } from './UnsupportedOverlay';
+import { ModelLoadingOverlay } from './ModelLoadingOverlay';
 
 interface VisionWorkspaceProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -24,6 +25,7 @@ export function VisionWorkspace({
   children,
 }: VisionWorkspaceProps) {
   const activeModel = useWorkspaceStore((s) => s.activeModel);
+  const loadingModel = useWorkspaceStore((s) => s.loadingModel);
   const unsupported = activeModel ? !getStrategy(activeModel.type).implemented : false;
 
   return (
@@ -58,6 +60,10 @@ export function VisionWorkspace({
       {unsupported && activeModel && <UnsupportedOverlay type={activeModel.type} />}
 
       {children}
+
+      {/* Ultimo en el arbol y con z-10: mientras se arma un modelo tapa TODO lo de
+          arriba (frame, HUD, badges). Es el estado dominante de la pantalla. */}
+      {loadingModel && <ModelLoadingOverlay name={loadingModel} />}
     </div>
   );
 }

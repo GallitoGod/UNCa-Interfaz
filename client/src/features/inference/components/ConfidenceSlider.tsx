@@ -3,17 +3,23 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import { useUpdateConfidence } from '../hooks/useDiagnostics';
+import { useStreamStore } from '../store/streamStore';
 
 export function ConfidenceSlider() {
   const [value, setValue] = useState(50); // porcentaje [0,100]
   const update = useUpdateConfidence();
   const timer = useRef<number | undefined>(undefined);
+  const resendStill = useStreamStore((s) => s.resendStill);
 
   function onChange(percent: number) {
     setValue(percent);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      update.mutate(percent / 100); // backend espera [0,1]
+      // El backend lee el umbral en CADA inferencia, asi que con camara/video el
+      // cambio se ve en el frame siguiente. Con una imagen fija hay que pedir
+      // explicitamente una inferencia nueva, si no la pantalla queda con el
+      // resultado viejo y parece que el umbral no se respeta.
+      update.mutate(percent / 100, { onSuccess: () => resendStill() }); // backend espera [0,1]
     }, 200);
   }
 

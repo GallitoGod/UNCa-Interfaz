@@ -15,18 +15,28 @@ interface StreamState {
   source: Source;
   status: StreamStatus;
   lastError: string | null;
+  /**
+   * Contador de "volve a inferir el frame actual". Solo aplica a fuentes ESTATICAS
+   * (imagen): con camara o video ya llega un frame nuevo cada tick y el cambio se ve
+   * solo. Con una imagen el envio es one-shot, asi que cambiar de modelo o mover el
+   * umbral no producia ninguna inferencia nueva y la pantalla quedaba mostrando el
+   * resultado viejo. Quien cambia un parametro llama a resendStill().
+   */
+  stillNonce: number;
   setCameraSource: (deviceId: string) => void;
   setFileVideo: (url: string) => void;
   setFileImage: (url: string) => void;
   clearSource: () => void;
   setStatus: (status: StreamStatus) => void;
   setError: (error: string | null) => void;
+  resendStill: () => void;
 }
 
 export const useStreamStore = create<StreamState>((set) => ({
   source: { kind: 'none' },
   status: 'closed',
   lastError: null,
+  stillNonce: 0,
 
   setCameraSource: (deviceId) =>
     set({ source: { kind: 'camera', deviceId }, lastError: null }),
@@ -36,4 +46,6 @@ export const useStreamStore = create<StreamState>((set) => ({
 
   setStatus: (status) => set({ status }),
   setError: (lastError) => set({ lastError }),
+
+  resendStill: () => set((s) => ({ stillNonce: s.stillNonce + 1 })),
 }));
