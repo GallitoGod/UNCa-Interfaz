@@ -29,6 +29,16 @@ en componentes, con el **mapeo al destino** de la nueva arquitectura.
 
 ---
 
+> ### 👉 Empezá por [`mapa-del-cliente.md`](./mapa-del-cliente.md)
+>
+> Los cinco documentos de abajo describen **la migración** (frontend viejo → destino React) y
+> son referencia componente por componente. Si lo que querés es entender **cómo funciona el
+> cliente que existe hoy**, leé primero `mapa-del-cliente.md`: recorre los tres flujos reales
+> (arranque, loop de inferencia, wizard) con diagramas, explica quién guarda cada estado y trae
+> una tabla de "quiero cambiar X → abro Y".
+
+---
+
 ## Cómo leer cada documento
 
 Cada componente se documenta con seis campos fijos:
@@ -47,6 +57,7 @@ Cada componente se documenta con seis campos fijos:
 
 | Documento | Vista / capa | Componentes |
 |---|---|---|
+| [`mapa-del-cliente.md`](./mapa-del-cliente.md) | **El cliente as-is (2026-08-13)** | Recorrido por flujos: capas · loop caliente · estado · arranque · wizard · dónde tocar |
 | [`app-shell.md`](./app-shell.md) | Chrome común | Bootstrap · ViewRouter · SourceTabs · ThemeToggle · BackendClient |
 | [`feature-inferencia.md`](./feature-inferencia.md) | Vista "Inferencia" | VideoStreamClient · CameraSource · FileSource · DetectionOverlay · Recorder · ModelSelector · ConfidenceControl · MetricsHUD · InferenceLogPanel · DrawSettingsModal |
 | [`vision-workspace.md`](./vision-workspace.md) | Diseño (to-be) del canvas | VisionWorkspace · estrategias por tipo (detection/classification/segmentation) · registry |

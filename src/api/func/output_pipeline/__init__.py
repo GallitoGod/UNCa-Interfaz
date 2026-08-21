@@ -1,23 +1,30 @@
 from .output_adapter import generate_output_adapter
-from .output_transformer import buildPostprocessor
+from .output_transformer import buildPostprocessor, build_classification_postprocessor
 
 __all__ = [
     'generate_output_adapter',
-    'buildPostprocessor'
+    'buildPostprocessor',
+    'build_classification_postprocessor',
 ]
 
 '''
-    Output_pipeline devuelve los bouding boxes generados por la IA de la manera correcta para poder ser 
-aplicados sobre la imagen original por el cliente.
+    Output_pipeline convierte la salida cruda del modelo en el resultado de dominio
+que el cliente puede consumir. Hay un postprocesador por familia de modelo:
 
-    La superposicion de las cajas no es responsabilidad del postproceso, sino de quien consume el output, por ejemplo:
+    - buildPostprocessor                  -> DETECCION. Devuelve cajas
+      [x1, y1, x2, y2, conf, cls] en pixeles de la imagen original.
+    - build_classification_postprocessor  -> CLASIFICACION. Devuelve (K, 2)
+      [class_id, score] ordenado por score desc.
+
+    El DIBUJO no es responsabilidad del postproceso sino de quien consume el output:
         Una app cliente (web, movil, escritorio)
         Un visor de detecciones (por ejemplo, un servicio de monitoreo en tiempo real)
         Una funcion de visualizacion (draw_boxes(img, detections))
 
-    Ellos toman las coordenadas [x1, y1, x2, y2], y dibujan las cajas sobre la imagen original capturada por la camara.
+    Ellos toman las coordenadas [x1, y1, x2, y2], y dibujan las cajas sobre la imagen
+original capturada por la camara.
 
-    ES IMPORTANTE RECALCAR QUE TANTO INPUT_PIPELINE COMO OUTPUT_PIPELINE ESTAN ESTANDARIZADOS EN DETECCION DE OBJETOS.
-    UNA VEZ TODA ESTA RUTA DE ENSAMBLAJE ESTE COMPLETADA, SE VA A EMPEZAR A ACTUALIZAR LA APLICACION PARA TENER PIPELINES
-DE CLASIFICACION, SEGMENTACION, ETC.
+    NOTA HISTORICA: hasta 2026-08-13 todo este paquete estaba estandarizado SOLO en
+deteccion de objetos. La clasificacion ya tiene su unpacker (unpackers/classification.py)
+y su postprocesador. Falta segmentacion (decode de mascara).
 '''

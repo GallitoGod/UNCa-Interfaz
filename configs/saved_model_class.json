@@ -1,0 +1,72 @@
+{
+  "model_type": "classification",
+  "input": {
+    "width": 299,
+    "height": 299,
+    "channels": 3,
+    "normalize": true,
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "std": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": true,
+    "letterbox": false,
+    "auto_pad_color": [
+      114,
+      114,
+      114
+    ],
+    "preserve_aspect_ratio": false,
+    "color_order": "RGB",
+    "input_str": {
+      "layout": "NHWC",
+      "dtype": "float32"
+    }
+  },
+  "output": {
+    "apply_softmax": false,
+    "apply_sigmoid": false,
+    "top_k": 5,
+    "confidence_threshold": 0.3,
+    "label_map": null,
+    "tensor_structure": {
+      "num_classes": 1103,
+      "output_format": "probabilities",
+      "multi_label": true
+    },
+    "pack_format": "sigmoid_out"
+  },
+  "runtime": {
+    "runtimeShapes": {
+      "input_width": 0,
+      "input_height": 0,
+      "channels": 3,
+      "out_coords_space": "normalized_0_1"
+    },
+    "backend": "onnxruntime",
+    "device": "gpu",
+    "threads": {
+      "intra_op": null,
+      "inter_op": null,
+      "num_threads": null
+    },
+    "onnx": {
+      "providers": [
+        "CUDAExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "provider_options": {}
+    },
+    "tflite": null,
+    "warmup": {
+      "runs": 2,
+      "enabled": true
+    }
+  }
+}

@@ -203,3 +203,63 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
         return arr.astype(float, copy=False).tolist()
 
     return _postprocess
+
+
+def build_classification_postprocessor(output_cfg: AnyOutputConfig) -> Callable[[np.ndarray], np.ndarray]:
+    """
+    Postprocesador de CLASIFICACION. Contraparte de buildPostprocessor (deteccion).
+
+    Devuelve un callable que toma el vector de puntajes por clase (C,) que produjo
+    el unpacker y devuelve un ndarray (K, 2) float32:
+        columna 0 = class_id
+        columna 1 = score
+    ordenado por score descendente.
+
+    Pasos:
+      1) Filtro por umbral de confianza — leido EN CADA LLAMADA, igual que en
+         deteccion, para que el slider del cliente tenga efecto en vivo.
+      2) Top-K (0 o negativo = sin limite).
+      3) Orden por score descendente.
+
+    Si ninguna clase supera el umbral devuelve (0, 2): "no reconoci nada con
+    suficiente confianza" es una respuesta honesta, no un error.
+
+    NO recibe 'meta': a diferencia de deteccion, la clasificacion no produce
+    coordenadas, asi que no hay letterbox ni escala que deshacer. El meta del
+    preprocesador existe igual (lo devuelve build_preprocessor) pero aca se
+    descarta.
+    """
+    # top_k no cambia en vivo: se resuelve una sola vez al armar el pipeline.
+    top_k_opt = getattr(output_cfg, "top_k", None)
+    top_k: Optional[int] = int(top_k_opt) if isinstance(top_k_opt, (int, float)) and int(top_k_opt) > 0 else None
+
+    def _postprocess(scores: np.ndarray) -> np.ndarray:
+        scores = np.asarray(scores, dtype=np.float32)
+
+        if scores.ndim != 1:
+            raise ValueError(
+                f"classification_postprocessor: se esperaba un vector (C,) de "
+                f"puntajes por clase. Shape = {scores.shape}"
+            )
+        if scores.size == 0:
+            return np.empty((0, 2), dtype=np.float32)
+
+        class_ids = np.arange(scores.shape[0], dtype=np.float32)
+
+        # 1) Umbral (leido en cada llamada -> slider "en vivo")
+        conf_thr = float(getattr(output_cfg, "confidence_threshold", 0.0) or 0.0)
+        if conf_thr > 0:
+            keep = scores >= conf_thr
+            if not np.any(keep):
+                return np.empty((0, 2), dtype=np.float32)
+            scores = scores[keep]
+            class_ids = class_ids[keep]
+
+        # 2) Orden por score desc + 3) Top-K
+        order = np.argsort(scores)[::-1]
+        if top_k is not None:
+            order = order[:top_k]
+
+        return np.column_stack([class_ids[order], scores[order]]).astype(np.float32, copy=False)
+
+    return _postprocess
