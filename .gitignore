@@ -12,9 +12,10 @@ pytest.ini
 skills-lock.json
 .pytest_cache
 
-# Pesos del clasificador: 171 MB cada uno, por encima del limite de 100 MB por
-# archivo de GitHub, y models/ NO esta en git-LFS (pendientes #11/#13). Se
-# distribuyen aparte; configs/saved_model_class.json describe como usarlos.
-# Si algun dia models/ pasa a LFS, esto se saca.
-models/saved_model_class.onnx
+# SavedModel TF1 original del clasificador (171 MB): es la FUENTE desde la que se
+# genero models/saved_model_class.onnx con tf2onnx, no lo usa el runtime (.pb ni
+# siquiera esta en MODEL_EXTENSIONS). Queda afuera por el limite de 100 MB por
+# archivo de GitHub y porque models/ NO esta en git-LFS (pendientes #11/#13).
+# El .onnx SI se versiona: se convirtio a float16 (171 -> 86 MB) y entra como blob
+# normal. La conversion mantiene la IO en float32, asi que el config no cambia.
 models/saved_model_class.pb
