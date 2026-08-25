@@ -1,44 +1,59 @@
-# """
-# Utilizar un interprete de python 3.8
-# Pasos para el uso del sistema (commit 163):
-#    JS                                                                            
-#   npm install                                                                                                                                                      
-                                                                                                                                                                   
-#    Python (en un venv Python 3.8)
-#   python -m venv .venv                                                                                                                                             
-#   .venv\Scripts\activate                                                                                                                                         
+# =============================================================================
+# UNCaLens — dependencias del backend (Python 3.12)
+# -----------------------------------------------------------------------------
+# Migrado de Python 3.8.10 + CUDA 11.8 el 2026-08-25. El techo lo pone
+# TensorFlow (sin wheels para 3.14) y el piso onnxruntime-gpu (sin wheels para
+# 3.10): 3.12 queda comodo en el medio.
+#
+# CUDA NO se instala a nivel sistema: viene por pip dentro del venv, arrastrado
+# por el extra [cuda,cudnn] de onnxruntime-gpu (~1,1 GB de paquetes nvidia-*-cu12).
+# Lo unico que sigue siendo del sistema es el DRIVER de NVIDIA, que debe soportar
+# CUDA >= 12.0 (chequear con nvidia-smi).
+#
+# Armado del entorno:
+#   py -3.12 -m venv .venv
+#   .venv\Scripts\activate
 #   pip install -r requirements.txt
-
-#   Y para correr:
-#    Terminal 1 — backend
-#   uvicorn api.mainAPI:app --host 127.0.0.1 --port 8000
-
-#    Terminal 2 — frontend
-#   npm start
-# """
+#
+# Correr:
+#   npm run build && npm start        # Electron arranca uvicorn solo
+#   # backend a mano:
+#   uvicorn api.mainAPI:app --host 127.0.0.1 --port 8000 --app-dir src
+#
+# requirements.lock.txt es el freeze exacto (solo-Windows) de este entorno.
+# =============================================================================
 
 # ── Core API ──────────────────────────────
-fastapi[standard]
-uvicorn
-websockets
+fastapi[standard]==0.141.1
+uvicorn==0.52.4
+websockets==17.0.1
+python-multipart==0.0.32
 
 # ── Inferencia ────────────────────────────
-tensorflow
-onnxruntime-gpu==1.17.1      # CUDA 11.8 — usar onnxruntime-gpu==1.18.x para CUDA 12.x
-torch>=2.0.0
+# El extra [cuda,cudnn] baja CUDA 12 + cuDNN 9 como wheels dentro del venv.
+# OJO: 1.26.0 es la ultima version de ORT que declara CUDA 12; de 1.27 en adelante
+# es CUDA 13. NO instalar onnxruntime-directml al lado: dos ORT en el mismo
+# directorio es un conflicto conocido (el propio ORT avisa).
+onnxruntime-gpu[cuda,cudnn]==1.26.0
+# TensorFlow esta SOLO por tf.lite.Interpreter (los EfficientDet .tflite).
+# Ningun modelo usa el backend keras/tensorflow. Ver pendiente: reemplazarlo por
+# ai-edge-litert sacaria TF entero del proyecto (~600 MB).
+tensorflow==2.21.0
+torch==2.13.0
 
 # ── Procesamiento de imagenes ─────────────
-Pillow>=7.1.2
-numpy>=1.23.0
-opencv-python
-python-multipart
+opencv-python==5.0.0.93
+Pillow==12.3.0
+numpy==2.5.2
+
+# ── Testing (no hace falta para correr la app) ──
+pytest==9.1.1
+matplotlib==3.11.1          # lo usa el e2e de yolov7 para mostrar las cajas
 
 # ── Entrenamiento YOLOv7 (no necesario para inferencia) ──
-# matplotlib>=3.2.2
 # PyYAML>=5.3.1
 # requests>=2.23.0
 # scipy>=1.4.1
 # torchvision>=0.8.1
 # tqdm>=4.41.0
-# protobuf<4.21.3
 # pandas

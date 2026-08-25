@@ -4,8 +4,9 @@ package-lock.json
 client/dist/
 .vscode/
 .venv/
+# venv viejo de Python 3.8: plan de rollback de la migracion a 3.12 (2026-08-25)
+.venv38/
 .prettierrc
-pytest.ini
 **/__pycache__/
 .claude/
 .agents/
