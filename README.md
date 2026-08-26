@@ -295,16 +295,10 @@ TanStack Query · Tailwind 4 · Electron 32.
 
 ## Rumbo
 
-El siguiente hito es mudar el render al backend con
+Se acaba de completar el hito de mudar el backend a
 [`supervision`](https://github.com/roboflow/supervision): el cliente deja de dibujar cajas y
 máscaras y queda como thin client puro, mientras el backend gana annotators, tracking
-(ByteTrack) y zonas. Se decidió tras medir que la latencia extra no era notoria con
-detectores. Va en tres pasos, sin saltear ninguno:
-
-1. ~~Migrar a Python 3.12 + CUDA 12~~ — hecho, destraba `supervision` moderno
-2. `sv.Detections` como tipo de dominio interno detrás del seam de `tasks/`
-3. Render en backend: el WS pasa a binario para detección/segmentación, JSON para
-   clasificación y errores
+(ByteTrack) y zonas. De aqui en adelante se va a empezar a utilizar las capacidades de supervision.
 
 
 ## Contribuir

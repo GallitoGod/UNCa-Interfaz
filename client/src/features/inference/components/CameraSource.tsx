@@ -19,14 +19,27 @@ export function CameraSource() {
     }
   }, [cameras, source.kind, setCameraSource]);
 
+  // Nombre completo de la camara elegida, para el tooltip: el <select> recorta el
+  // texto y el usuario tiene que poder leerlo entero de alguna forma.
+  const nombreSeleccionado =
+    cameras.find((c) => c.deviceId === selected)?.label ?? '';
+
   return (
     <div className="space-y-2">
       <label className="lbl">Camara</label>
-      <div className="flex gap-2">
+      <div className="flex min-w-0 gap-2">
         <select
           value={selected}
           onChange={(e) => setCameraSource(e.target.value)}
-          className="h-9 flex-1 rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent"
+          title={nombreSeleccionado || undefined}
+          // min-w-0 + truncate: sin min-w-0 el <select> NO baja de su ancho
+          // intrinseco —el de la opcion mas larga— y una camara con nombre largo
+          // (tipico: "HD Pro Webcam C920 (046d:082d)") ensancha toda la columna y
+          // le mete una barra de scroll horizontal al panel. Mismo patron que
+          // ModelRow, que ya recortaba los nombres de modelo.
+          // La lista desplegada la dibuja el sistema operativo y NO se recorta:
+          // al elegir se sigue viendo el nombre completo.
+          className="h-9 min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-border bg-control px-2 text-sm text-fg focus-visible:outline-none focus-visible:border-accent"
         >
           {cameras.length === 0 && <option value="">Sin camaras</option>}
           {cameras.map((c, i) => (

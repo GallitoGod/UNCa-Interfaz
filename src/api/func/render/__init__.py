@@ -1,6 +1,7 @@
 # render/ — composicion del frame en el backend (paso 3 del plan del 2026-08-21).
 # El cliente dejo de dibujar: recibe el JPEG ya compuesto.
 from .draw_config import (
+    BOX_STYLES,
     DrawConfig,
     get_draw_config,
     update_draw_config,
@@ -10,6 +11,7 @@ from .draw_config import (
 from .annotators import Annotators, annotators_for
 
 __all__ = [
+    "BOX_STYLES",
     "DrawConfig",
     "get_draw_config",
     "update_draw_config",

@@ -16,6 +16,7 @@ import { CameraSource } from './components/CameraSource';
 import { FileSource } from './components/FileSource';
 import { ModelSelector } from './components/ModelSelector';
 import { ConfidenceSlider } from './components/ConfidenceSlider';
+import { RenderSettings } from './components/RenderSettings';
 import { MetricsHUD } from './components/MetricsHUD';
 import { MetricsPanel } from './components/MetricsPanel';
 import { LogPanel } from './components/LogPanel';
@@ -90,6 +91,11 @@ export default function InferenceView() {
         <div className="flex flex-col gap-3">
           <SectionLabel>Parametros</SectionLabel>
           <ConfidenceSlider />
+        </div>
+
+        <div className="flex flex-col gap-2.5">
+          <SectionLabel>Render</SectionLabel>
+          <RenderSettings />
         </div>
 
         <div className="flex flex-col gap-2.5">

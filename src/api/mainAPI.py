@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Optional
+from typing import Literal, Optional, get_args
 import asyncio
 import base64
 import datetime
@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
-from api.func.render import update_draw_config
+from api.func.render import update_draw_config, BOX_STYLES
 from api.func.reader_pipeline.config_schema import (
     ModelConfig,
     build_config_template,
@@ -71,10 +71,28 @@ class DrawSettingsRequest(BaseModel):
                                       description="Color del texto de las etiquetas, formato #RRGGBB")
     maskAlpha: Optional[float] = Field(default=None, ge=0.0, le=1.0,
                                        description="Opacidad de la mascara (segmentacion)")
+    boxStyle: Optional[Literal["box", "round", "corner", "dot"]] = Field(
+        default=None,
+        description="Estilo de marca: rectangulo, redondeado, solo esquinas o punto")
+    smartLabels: Optional[bool] = Field(
+        default=None,
+        description="Correr las etiquetas para que no se tapen entre si")
+    autoScale: Optional[bool] = Field(
+        default=None,
+        description="Derivar grosor y escala de texto de la resolucion del frame")
     thickness: Optional[int] = Field(default=None, ge=1, le=20,
-                                     description="Grosor del trazo de las cajas, en px")
+                                     description="Grosor del trazo, en px (solo si autoScale=false)")
+    textScale: Optional[float] = Field(default=None, gt=0.0, le=5.0,
+                                       description="Escala del texto (solo si autoScale=false)")
     jpegQuality: Optional[int] = Field(default=None, ge=1, le=100,
                                        description="Calidad del re-encode del frame compuesto")
+
+
+# Guarda de coherencia: el Literal de arriba y BOX_STYLES tienen que decir lo mismo.
+# Si alguien agrega un estilo en render/draw_config.py y se olvida del endpoint, esto
+# revienta al importar el modulo, no en produccion con un 422 misterioso.
+assert set(get_args(DrawSettingsRequest.model_fields["boxStyle"].annotation.__args__[0])) == set(BOX_STYLES), (
+    "El Literal de boxStyle quedo desincronizado de BOX_STYLES")
 
 
 class ModelPathRequest(BaseModel):
@@ -242,16 +260,27 @@ def update_draw(data: DrawSettingsRequest):
         bbox_color=data.bboxColor,
         label_color=data.labelColor,
         mask_alpha=data.maskAlpha,
+        box_style=data.boxStyle,
+        smart_labels=data.smartLabels,
+        auto_scale=data.autoScale,
         thickness=data.thickness,
+        text_scale=data.textScale,
         jpeg_quality=data.jpegQuality,
     )
+    # Se devuelve el estado EFECTIVO completo, no el pedido: asi el cliente puede
+    # re-sincronizar su UI si el backend venia con otros valores (p.ej. tras un
+    # reinicio) sin tener que adivinar.
     return {
         "status": "ok",
         "draw": {
             "bboxColor": cfg.bbox_color,
             "labelColor": cfg.label_color,
             "maskAlpha": cfg.mask_alpha,
+            "boxStyle": cfg.box_style,
+            "smartLabels": cfg.smart_labels,
+            "autoScale": cfg.auto_scale,
             "thickness": cfg.thickness,
+            "textScale": cfg.text_scale,
             "jpegQuality": cfg.jpeg_quality,
         },
     }

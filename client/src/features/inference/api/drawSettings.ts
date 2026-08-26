@@ -20,7 +20,11 @@ export interface DrawSettingsPayload {
   bboxColor?: string;
   labelColor?: string;
   maskAlpha?: number;
+  boxStyle?: string;
+  smartLabels?: boolean;
+  autoScale?: boolean;
   thickness?: number;
+  textScale?: number;
   jpegQuality?: number;
 }
 
@@ -38,5 +42,8 @@ export function pushDrawSettings(settings: DrawSettings): void {
     bboxColor: settings.bboxColor,
     labelColor: settings.labelColor,
     maskAlpha: settings.maskAlpha,
+    boxStyle: settings.boxStyle,
+    smartLabels: settings.smartLabels,
+    autoScale: settings.autoScale,
   }).catch((e) => console.warn('No se pudieron enviar los ajustes de dibujo:', e));
 }

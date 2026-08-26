@@ -8,10 +8,12 @@
 import cv2
 import numpy as np
 import pytest
+import supervision as sv
 from fastapi.testclient import TestClient
 
 import api.mainAPI as main
 from api.func.render import (
+    BOX_STYLES,
     DrawConfig,
     annotators_for,
     get_draw_config,
@@ -179,3 +181,107 @@ def test_ws_responde_json_sin_modelo():
 def test_output_kind_sin_modelo_es_json():
     main.controller.unload_model()
     assert main.controller.output_kind == "json"
+
+
+# ── Tier A (2026-08-27): escala adaptativa, etiquetas que se esquivan, estilos ──
+
+def test_auto_scale_deriva_grosor_y_texto_de_la_resolucion():
+    # El defecto que corrige: con valores fijos, 1080p se dibuja con cajas de hilo
+    # y 320x240 con el texto al doble. Los dos extremos tienen que dar distinto.
+    cfg = get_draw_config()
+    chico = annotators_for(cfg, (320, 240))
+    grande = annotators_for(cfg, (1920, 1080))
+    assert grande.thickness > chico.thickness
+    assert grande.text_scale > chico.text_scale
+    assert grande.thickness == sv.calculate_optimal_line_thickness((1920, 1080))
+    assert grande.text_scale == sv.calculate_optimal_text_scale((1920, 1080))
+
+
+def test_auto_scale_apagado_respeta_los_valores_manuales():
+    cfg = update_draw_config(auto_scale=False, thickness=7, text_scale=1.25)
+    ann = annotators_for(cfg, (1920, 1080))
+    assert ann.thickness == 7 and ann.text_scale == 1.25
+
+
+def test_cache_de_annotators_distingue_resolucion():
+    cfg = get_draw_config()
+    a = annotators_for(cfg, (640, 480))
+    assert annotators_for(cfg, (640, 480)) is a       # misma clave -> mismo objeto
+    assert annotators_for(cfg, (1280, 720)) is not a  # otra resolucion -> otro objeto
+
+
+@pytest.mark.parametrize("style,clase", [
+    ("box", sv.BoxAnnotator),
+    ("round", sv.RoundBoxAnnotator),
+    ("corner", sv.BoxCornerAnnotator),
+    ("dot", sv.DotAnnotator),
+])
+def test_cada_estilo_construye_su_annotator(style, clase):
+    ann = annotators_for(update_draw_config(box_style=style), (860, 573))
+    assert isinstance(ann.box, clase)
+
+
+@pytest.mark.parametrize("style", list(BOX_STYLES))
+def test_render_funciona_con_todos_los_estilos(style, frame, dets):
+    update_draw_config(box_style=style)
+    jpg = render_detection(dets, frame)
+    back = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+    assert back is not None and back.shape == frame.shape
+
+
+def test_estilo_desconocido_cae_al_rectangulo():
+    # El endpoint valida, pero un config viejo no debe romper el frame: preferimos
+    # dibujar algo antes que tirar la inferencia.
+    ann = annotators_for(update_draw_config(box_style="triangulo_raro"), (860, 573))
+    assert isinstance(ann.box, sv.BoxAnnotator)
+
+
+def test_smart_labels_llega_al_annotator():
+    assert annotators_for(update_draw_config(smart_labels=True), (860, 573)).label.smart_position
+    assert not annotators_for(update_draw_config(smart_labels=False), (860, 573)).label.smart_position
+
+
+def test_smart_labels_prendido_por_defecto():
+    # Con pocas cajas no se nota y con muchas es la diferencia entre leer los nombres
+    # o ver una banda de carteles pisados: el default correcto es prendido.
+    assert DrawConfig().smart_labels is True
+    assert DrawConfig().auto_scale is True
+
+
+def test_post_config_draw_acepta_los_ajustes_nuevos():
+    client = TestClient(main.app)
+    r = client.post("/config/draw", json={
+        "boxStyle": "corner", "smartLabels": False, "autoScale": False,
+        "thickness": 5, "textScale": 0.9,
+    })
+    assert r.status_code == 200
+    draw = r.json()["draw"]
+    assert draw["boxStyle"] == "corner"
+    assert draw["smartLabels"] is False and draw["autoScale"] is False
+    cfg = get_draw_config()
+    assert cfg.box_style == "corner" and cfg.thickness == 5
+
+
+def test_apagar_un_booleano_no_se_confunde_con_no_mandarlo():
+    # update_draw_config ignora los None; False tiene que APLICARSE igual.
+    update_draw_config(smart_labels=True)
+    TestClient(main.app).post("/config/draw", json={"smartLabels": False})
+    assert get_draw_config().smart_labels is False
+
+
+@pytest.mark.parametrize("body", [
+    {"boxStyle": "triangulo"},   # no esta en BOX_STYLES
+    {"boxStyle": "BOX"},         # sensible a mayusculas, como el resto del schema
+    {"textScale": 0},            # tiene que ser > 0
+    {"textScale": 9},            # fuera de rango
+])
+def test_post_config_draw_rechaza_ajustes_nuevos_invalidos(body):
+    assert TestClient(main.app).post("/config/draw", json=body).status_code == 422
+
+
+def test_la_version_nunca_vuelve_atras():
+    # La version es la clave del cache de annotators: si reset() la devolviera a 0,
+    # el cache serviria objetos construidos con OTRA config que tuvo ese numero.
+    v = update_draw_config(bbox_color="#010203").version
+    assert reset_draw_config().version > v
+    assert update_draw_config(box_style="dot").version > v + 1

@@ -199,7 +199,10 @@ def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
         # Nada que dibujar: se re-encodea el frame tal cual, sin copiarlo.
         scene = img_bgr
     else:
-        ann = annotators_for(cfg)
+        # La resolucion entra en la busqueda porque el grosor y la escala del texto
+        # se derivan de ella (auto_scale). Es (ancho, alto), no el shape de numpy.
+        h, w = img_bgr.shape[:2]
+        ann = annotators_for(cfg, (w, h))
         scene = ann.box.annotate(scene=img_bgr.copy(), detections=result)
         scene = ann.label.annotate(scene=scene, detections=result, labels=_labels_for(result))
 

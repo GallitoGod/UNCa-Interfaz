@@ -28,6 +28,12 @@ const DEFAULT_DRAW_SETTINGS: DrawSettings = {
   bboxColor: '#00BFFF',
   labelColor: '#001018',
   maskAlpha: 0.5,
+  // Los tres defaults coinciden con los del backend (render/draw_config.py).
+  // smartLabels y autoScale nacen prendidos: son mejores defaults, y el panel de
+  // render los deja apagar.
+  boxStyle: 'box',
+  smartLabels: true,
+  autoScale: true,
 };
 
 // Persistencia en localStorage (mismo patron manual que uiStore, sin middleware).
