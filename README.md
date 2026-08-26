@@ -25,8 +25,16 @@ https://github.com/user-attachments/assets/d95da196-59f0-4d70-acf8-88f3eaf8263f
 
 ---
 
-<img src= 'img_readme/main_page.png' alt= 'main_page_image' width='500'>
-<img src= 'img_readme/Model_wizzard.png' alt= 'wizzard_page_image' width='500'>
+<table>
+  <tr>
+    <td width="50%">
+      <img src="img_readme/main_page.png" alt="Inferencia" style="width:100%;">
+    </td>
+    <td width="50%">
+      <img src="img_readme/Model_wizzard.png" alt="Modelos" style="width:100%;">
+    </td>
+  </tr>
+</table>
 
 ---
 
