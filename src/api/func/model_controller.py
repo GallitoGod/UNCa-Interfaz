@@ -47,6 +47,30 @@ class ModelController:
         """model_type de la estrategia activa (para etiquetar el envelope), o None."""
         return self._strategy.task if self._strategy is not None else None
 
+    @property
+    def output_kind(self) -> str:
+        """
+        Como viaja la respuesta de la tarea activa por el WS: "json" (envelope de
+        texto) o "frame" (JPEG binario ya compuesto). Sin modelo: "json", porque lo
+        unico que se puede responder es un error, y los errores SIEMPRE son JSON.
+        """
+        return self._strategy.output_kind if self._strategy is not None else "json"
+
+    def render_result(self, result, img_bgr) -> bytes:
+        """
+        Compone el resultado sobre el frame y devuelve el JPEG (solo tareas "frame").
+        Mide el tiempo y lo empuja al bucket draw_ms del PerfMeter — que existe
+        separado justamente para que este costo no se esconda dentro de post_ms.
+        """
+        strategy = self._strategy
+        if strategy is None or strategy.render is None:
+            raise RuntimeError(
+                "La estrategia activa no renderiza frames: no se puede componer la salida.")
+        t0 = time.perf_counter()
+        frame = strategy.render(result, img_bgr)
+        self.perf.push_draw((time.perf_counter() - t0) * 1000)
+        return frame
+
     def serialize_result(self, result):
         """Serializa el resultado de dominio al formato JSON del envelope (segun el tipo)."""
         if self._strategy is None:
@@ -113,8 +137,10 @@ class ModelController:
     def inference(self, img):
         """
         Delega en el runner de la estrategia activa y alimenta las metricas.
-        Devuelve el resultado de dominio crudo (deteccion: ndarray (N,6)); la
+        Devuelve el resultado de dominio crudo (deteccion: sv.Detections); la
         serializacion al cliente la hace la frontera via serialize_result().
+        El controller NO conoce el tipo: solo lo pasa a serialize_result(), que
+        despacha por estrategia. Por eso agregar supervision no lo toco.
         """
         with self._lock:
             if self._runner is None:

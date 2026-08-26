@@ -70,14 +70,10 @@ def test_yolov7_tiny_on_horse_image():
     print("Total detecciones (len result):", len(result))
 
     boxes, labels, scores = [], [], []
-    for i, det in enumerate(result):
-        det = list(det)
-
-        if len(det) < 6:
-            print(f"[{i}] Formato inesperado (len={len(det)}): {det}")
-            continue
-
-        x1, y1, x2, y2, conf, cls = det[:6]
+    # result es un sv.Detections: se recorre por campos paralelos, no por filas.
+    for i, (box, conf, cls) in enumerate(
+            zip(result.xyxy, result.confidence, result.class_id)):
+        x1, y1, x2, y2 = box
 
         x1i, y1i, x2i, y2i = map(int, map(round, (x1, y1, x2, y2)))
 

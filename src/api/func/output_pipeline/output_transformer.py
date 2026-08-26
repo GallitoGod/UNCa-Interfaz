@@ -109,7 +109,7 @@ def _undo_transform_xyxy_inplace(dets_xyxy: np.ndarray, runtime: RuntimeConfig, 
     boxes[:, 3] = np.clip(y2, 0.0, H0)
 
 
-def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]], dict], List[List[float]]]:
+def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> Callable[[Sequence[Sequence[float]], dict], np.ndarray]:
     """
     Devuelve un callable que toma (detecciones, meta):
       - detecciones en layout [x1, y1, x2, y2, score, class_id] (floats)
@@ -122,7 +122,13 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
       2) Top-K opcional (mantener las K mejores por score) antes del NMS.
       3) NMS (clase-agnostico o por clase).
       4) Undo del preprocesado (tensor -> original): letterbox o resize directo.
-      5) Orden final por score desc y conversion a List[List[float]].
+      5) Orden final por score desc.
+
+    Devuelve un ndarray (N,6) float32 en px de la imagen original. Desde el
+    2026-08-26 NO devuelve List[List[float]]: quien consume el resultado es
+    detections_from_array() (tasks/domain.py), que necesita el array. El
+    .tolist() que habia aca era una copia a objetos Python por frame en pleno
+    hot path, y ademas contradecia la regla de "nunca .tolist()" del pipeline.
 
     Notas:
       - Para modelos con TFLite DetectionPostProcess (ya traen NMS/umbral),
@@ -149,10 +155,10 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
     # ---------funcion-de-postproceso---------
     # Recibe el meta del frame como segundo argumento: el postprocesador no lee
     # NINGUN estado per-frame de 'runtime' (solo constantes de carga).
-    def _postprocess(arr: np.ndarray, meta: dict) -> List[List[float]]:
+    def _postprocess(arr: np.ndarray, meta: dict) -> np.ndarray:
         arr = np.asarray(arr, dtype=np.float32)
         if arr.size == 0:
-            return []
+            return np.empty((0, 6), dtype=np.float32)
 
         if arr.ndim != 2 or arr.shape[1] < 6:
             raise ValueError(f"""output_transformer: 
@@ -167,7 +173,7 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
             if conf_thr > 0:
                 m = arr[:, 4] >= conf_thr
                 if not np.any(m):
-                    return []
+                    return np.empty((0, 6), dtype=np.float32)
                 arr = arr[m]
 
         # 2) Top-K (reduce costo del NMS si hay muchas cajas)
@@ -200,7 +206,7 @@ def buildPostprocessor(output_cfg: AnyOutputConfig, runtime: RuntimeConfig) -> C
         if arr.shape[0] > 1:
             arr = arr[np.argsort(arr[:, 4])[::-1]]
 
-        return arr.astype(float, copy=False).tolist()
+        return np.ascontiguousarray(arr, dtype=np.float32)
 
     return _postprocess
 

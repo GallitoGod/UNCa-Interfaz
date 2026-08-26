@@ -1,8 +1,11 @@
 # Paso 3: render en el backend con supervision (el cliente se vuelve thin client puro)
 
 - **Fecha**: 2026-08-21
-- **Rama**: `refactor-frontend-react` (crear `render-backend` a partir de ella)
-- **Estado**: propuesto — **bloqueado por los pasos 1 y 2** (ver §1.2)
+- **Rama**: `main`
+- **Estado**: **IMPLEMENTADO el 2026-08-26** (los pasos 1 y 2, que lo bloqueaban, se
+  cerraron el 2026-08-25 y el 2026-08-26). Lo de abajo es el diseño tal como se
+  propuso; se construyó tal cual, con dos apartamientos y un agregado, anotados en
+  §11 al final.
 - **Reemplaza**: el "paso 3" de una línea que figuraba en
   `2026-08-13-migracion-python-312-cuda12-design.md` §1
 
@@ -328,3 +331,59 @@ suave es el borrado de `detection.service.ts`: hasta ahí, volver es un `git rev
 - `/metrics` expone `draw_ms`.
 - CLAUDE.md actualizado: §4 (el diagrama del flujo cambia), §5 (endpoint nuevo), y una
   nota en §7 de que la Reforma 3 fue revertida **a propósito y con medición**.
+
+
+---
+
+## 11. Cómo salió (2026-08-26)
+
+Implementado tal como está especificado arriba. Lo que difiere o se agregó:
+
+1. **Los nombres de clase viajan dentro del `sv.Detections`.** §4.4 dejaba abierto cómo
+   llegaba el `label_map` hasta el annotator. La solución es la idiomática de
+   supervision: el runner escribe `detections.data["class_name"]` al armar el resultado
+   (donde SÍ conoce el config) y `render_detection()` lee de ahí. Así `render` sigue
+   siendo una función de módulo que no conoce el modelo, como pedía §4.1.
+2. **Los annotators se cachean por versión, no se construyen una sola vez.** §4.2 decía
+   "una vez al armar el pipeline", pero los ajustes cambian en vivo (§4.3) y los
+   annotators llevan el color adentro. `render/annotators.py` los reconstruye sólo
+   cuando cambia la `version` de la `DrawConfig`; mientras nadie toque un color, el hot
+   path devuelve los mismos objetos.
+   También hubo que forzar `color_lookup=ColorLookup.INDEX`: con el default
+   (`CLASS` + `ColorPalette`) supervision ignora el color elegido y pinta una clase de
+   cada color.
+3. **Agregado: guardia de orden en el cliente.** `createImageBitmap` es asíncrono, así
+   que dos respuestas podrían resolverse fuera de orden y pintar un frame viejo encima
+   del nuevo. `videoStream.ts` numera las respuestas y descarta las que quedaron atrás
+   (`bitmap.close()`), en vez de retener la espera — la invariante anti-deadlock de
+   soltar `waitingForResponse` de inmediato se mantiene intacta.
+4. **`avg_with_draw_ms` además de `draw_avg_ms`.** §4.5 pedía el bucket nuevo; se sumó
+   también el total real por frame, que es el número comparable contra la medición
+   previa al paso.
+
+### Medición (la que motivó el paso)
+
+`yolov7-tiny`, `horses.jpg` (860×573, 6 cajas), 30 frames seguidos por WS, GPU:
+
+| bucket | ms |
+|---|---|
+| pre | 3,36 |
+| inferencia | 7,31 |
+| post | 0,29 |
+| **dibujo (annotate + encode JPEG)** | **1,86** |
+| **total por frame** | **13,19** (contra 11,34 sin dibujar) |
+
+El dibujo cuesta **+16 % de tiempo de backend por frame** y el techo del backend baja de
+~88 a ~76 fps — sigue muy por encima de los 30 fps de la cámara. El frame compuesto pesa
+~120 KB contra ~1,4 MB del raw.
+
+### Verificación ejecutada
+
+Los 8 puntos de §8, todos verdes: 104 tests (`pytest`), clasificación intacta (envelope
+`663/813` idéntico), detección devolviendo binario con las cajas **con nombres**
+(`horse 0.83`), los tres errores respondiendo JSON con el stream vivo, ida y vuelta
+det→cls→det, `/metrics` con `draw_avg_ms`, y `npm run typecheck` + `npm run build`
+limpios. **El punto 8 (Electron real) lo cerró el usuario el mismo 2026-08-26**: probó la
+app y confirmó que anda; la caída de fps se percibe pero es mínima y la dio por aceptable
+"a cambio de la cantidad de herramientas que podemos utilizar de ahora en más con
+supervision". Con eso, los 8 puntos de §8 están verdes y el spec queda cerrado.

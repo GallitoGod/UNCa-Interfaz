@@ -1,10 +1,16 @@
-// DrawSettingsModal.tsx — colores de dibujo (client-side, sin backend). Draft local
-// que se commitea al workspaceStore solo al Guardar (como el modal viejo).
+// DrawSettingsModal.tsx — colores de dibujo. Draft local que se commitea al
+// workspaceStore solo al Guardar (como el modal viejo).
+//
+// Desde el 2026-08-26 el dibujo lo hace el BACKEND, asi que guardar ademas empuja
+// los colores por POST /config/draw. El cliente sigue siendo dueno del estado (lo
+// persiste en localStorage); el backend solo recibe una copia. El cambio se ve en el
+// frame SIGUIENTE, no en el que ya esta en vuelo.
 
 import { useEffect, useState } from 'react';
 import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
+import { pushDrawSettings } from '../api/drawSettings';
 
 interface Props {
   open: boolean;
@@ -27,7 +33,9 @@ export function DrawSettingsModal({ open, onClose }: Props) {
   }, [open, drawSettings.bboxColor, drawSettings.labelColor]);
 
   function save() {
-    setDrawSettings({ bboxColor: bbox, labelColor: label });
+    const next = { ...drawSettings, bboxColor: bbox, labelColor: label };
+    setDrawSettings(next);
+    pushDrawSettings(next); // el que dibuja es el backend: tiene que enterarse
     onClose();
   }
 

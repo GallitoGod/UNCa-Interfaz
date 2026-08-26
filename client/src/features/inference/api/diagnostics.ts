@@ -10,8 +10,13 @@ export async function updateConfidence(value: number): Promise<void> {
 export interface Metrics {
   fps_avg: number;
   inf_avg_ms: number;
-  avg_ms: number;
+  avg_ms: number; // pipeline de inferencia (pre+inf+post), SIN el dibujo
   p95_ms: number;
+  // Desde el 2026-08-26 el backend tambien DIBUJA (annotators + re-encode JPEG).
+  // Va en su propio bucket para que ese costo no quede escondido dentro de post_ms:
+  // es el numero que justifica —o no— haber mudado el render al backend.
+  draw_avg_ms: number;
+  avg_with_draw_ms: number; // lo que cuesta un frame de punta a punta en el backend
 }
 
 // GET /metrics -> { status, metrics }. Devuelve null si el backend no tiene datos.

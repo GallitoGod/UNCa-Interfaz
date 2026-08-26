@@ -7,6 +7,18 @@ segmentation) para que sea mantenible y expansible.
 
 Este doc es el **plano** del diseño; al 2026-06-26 ya está **implementado** (ver banner).
 
+> **🔴 AMENDMENT (2026-08-26) — el cliente ya NO dibuja cajas.** El paso 3 del plan del
+> 2026-08-21 mudó el render al backend: para **detección** (y segmentación cuando exista)
+> el WS responde **binario** con el frame JPEG ya compuesto por los annotators de
+> supervision, y `present.ts` solo lo pinta. `detection.service.ts` conserva su entrada en
+> el registry (`implemented: true`, para el `UnsupportedOverlay` y el `clear()` del cambio
+> de tipo) pero **su dibujo se borró**. `drawSettings` sigue viviendo en el
+> `workspaceStore` con su persistencia en localStorage, y además se **empuja al backend**
+> por `POST /config/draw`. **Clasificación no cambió**: sigue llegando como envelope JSON y
+> su panel HTML se sigue montando en `overlayRoot`. Todo lo que este doc dice sobre dibujar
+> cajas en el canvas describe el estado **anterior** a esa fecha. Ver CLAUDE.md §4 y el
+> spec `docs/superpowers/specs/2026-08-21-render-backend-supervision-design.md`.
+
 > **✅ Estado (2026-06-26): implementado** en `client/src/features/vision-workspace/`. El
 > diseño de abajo se construyó tal cual: `present.ts` (regla de oro frame-base + estrategia,
 > manejo de errores del hot path con try/catch por frame, `no_model`→frame solo), `registry.ts`

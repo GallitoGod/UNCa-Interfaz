@@ -17,7 +17,12 @@ export function MetricsPanel() {
       <StatTile value={fmt0(data?.fps_avg)} label="FPS" />
       <StatTile value={fmt(data?.p95_ms)} unit="ms" label="P95" accent />
       <StatTile value={fmt(data?.inf_avg_ms)} unit="ms" label="Inferencia" />
-      <StatTile value={fmt(data?.avg_ms)} unit="ms" label="Total" />
+      {/* Dibujo: anotado + re-encode del frame, que desde el 2026-08-26 hace el
+          backend. Se muestra aparte a proposito — es el costo de la decision. */}
+      <StatTile value={fmt(data?.draw_avg_ms)} unit="ms" label="Dibujo" />
+      <div className="col-span-2">
+        <StatTile value={fmt(data?.avg_with_draw_ms)} unit="ms" label="Total por frame" />
+      </div>
     </div>
   );
 }

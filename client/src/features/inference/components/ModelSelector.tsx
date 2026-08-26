@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 import type { ModelType } from '@/shared/api/types';
 import { useModels, useSelectModel } from '../hooks/useModels';
 import { getModelType } from '../api/models';
+import { pushDrawSettings } from '../api/drawSettings';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
 import { useStreamStore } from '../store/streamStore';
 import { ModelRow } from './ModelRow';
@@ -43,6 +44,9 @@ export function ModelSelector() {
         console.warn('No se pudo leer el model_type del config, se asume detection:', e);
       }
       setActiveModel(name, type);
+      // Re-empujar los colores: el backend puede haberse reiniciado (vuelve a sus
+      // defaults) mientras el cliente seguia vivo con los del usuario.
+      pushDrawSettings(useWorkspaceStore.getState().drawSettings);
       // Fuente estatica: volver a inferir el frame actual con el modelo nuevo. Sin
       // esto la pantalla queda mostrando el resultado del modelo anterior.
       resendStill();

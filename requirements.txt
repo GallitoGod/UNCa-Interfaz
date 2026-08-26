@@ -41,6 +41,13 @@ onnxruntime-gpu[cuda,cudnn]==1.26.0
 tensorflow==2.21.0
 torch==2.13.0
 
+# ── Dominio de vision ─────────────────────
+# supervision aporta sv.Detections, el TIPO DE DOMINIO interno de las tareas
+# geometricas desde el 2026-08-26 (paso 2 del plan del 2026-08-21). Todavia no
+# se usan sus annotators: eso es el paso 3 (render en el backend).
+# Arrastra scipy, av, tqdm, defusedxml y pydeprecate (~40 MB).
+supervision==0.30.1
+
 # ── Procesamiento de imagenes ─────────────
 opencv-python==5.0.0.93
 Pillow==12.3.0

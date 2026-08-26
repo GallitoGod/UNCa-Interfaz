@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Optional
 import asyncio
 import base64
 import datetime
@@ -11,6 +12,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
+from api.func.render import update_draw_config
 from api.func.reader_pipeline.config_schema import (
     ModelConfig,
     build_config_template,
@@ -31,10 +33,11 @@ app = FastAPI(
     description=(
         "API para carga de modelos de deteccion y ejecucion de inferencias sobre "
         "imagenes y video. El streaming va por WebSocket `/video_stream`: el cliente "
-        "envia frames JPEG binarios y recibe un envelope JSON etiquetado por tarea "
-        "`{task, result, error}`. Para deteccion, `result` son las cajas "
-        "`[x1, y1, x2, y2, conf, cls]` en pixeles de la imagen original. "
-        "El dibujo es responsabilidad del cliente."
+        "envia frames JPEG binarios y recibe UN mensaje por frame, de dos formas "
+        "posibles: **binario** (el frame JPEG ya compuesto por el backend) para "
+        "deteccion y segmentacion, o **texto** (envelope JSON `{task, result, error}`) "
+        "para clasificacion y para cualquier error. Desde el 2026-08-26 **el dibujo "
+        "es responsabilidad del BACKEND** (supervision): el cliente es un thin client."
     ),
     version="2",
 )
@@ -51,6 +54,27 @@ controller = ModelController()
 
 # Ultimos 50 errores de inferencia (in-memory)
 _inference_errors: deque = deque(maxlen=50)
+
+
+class DrawSettingsRequest(BaseModel):
+    """
+    Ajustes de dibujo del backend. Todos opcionales: el cliente puede mandar solo lo
+    que cambio. Los colores llegan como "#RRGGBB" (lo que produce un <input
+    type=color>) y se validan ACA, no en el hot path.
+
+    Nombres en camelCase a proposito: son los mismos del drawSettings del cliente,
+    que sigue siendo el dueno del estado y lo persiste en localStorage.
+    """
+    bboxColor: Optional[str] = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$",
+                                     description="Color de las cajas, formato #RRGGBB")
+    labelColor: Optional[str] = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$",
+                                      description="Color del texto de las etiquetas, formato #RRGGBB")
+    maskAlpha: Optional[float] = Field(default=None, ge=0.0, le=1.0,
+                                       description="Opacidad de la mascara (segmentacion)")
+    thickness: Optional[int] = Field(default=None, ge=1, le=20,
+                                     description="Grosor del trazo de las cajas, en px")
+    jpegQuality: Optional[int] = Field(default=None, ge=1, le=100,
+                                       description="Calidad del re-encode del frame compuesto")
 
 
 class ModelPathRequest(BaseModel):
@@ -199,6 +223,41 @@ def update_confidence(data: ConfidenceUpdateRequest):
 
 
 # ════════════════════════════════════════
+# 2b Ajustes de dibujo (el backend dibuja desde el 2026-08-26)
+# ════════════════════════════════════════
+
+@app.post("/config/draw", summary="Actualizar los ajustes de dibujo en vivo")
+def update_draw(data: DrawSettingsRequest):
+    """
+    Resucita, en los hechos, el viejo /config/colors: cuando el dibujo se mudo al
+    cliente (Reforma 3) los colores dejaron de ser asunto del backend; ahora que el
+    backend volvio a dibujar (paso 3 del plan del 2026-08-21) los necesita de vuelta.
+
+    NO requiere modelo cargado: son ajustes del USUARIO, no del modelo, y cambiar de
+    modelo no debe resetearlos. Se aplican al frame SIGUIENTE, no al que ya esta en
+    vuelo: se pierde el cambio de color instantaneo que daba el dibujo client-side.
+    Costo conocido y aceptado.
+    """
+    cfg = update_draw_config(
+        bbox_color=data.bboxColor,
+        label_color=data.labelColor,
+        mask_alpha=data.maskAlpha,
+        thickness=data.thickness,
+        jpeg_quality=data.jpegQuality,
+    )
+    return {
+        "status": "ok",
+        "draw": {
+            "bboxColor": cfg.bbox_color,
+            "labelColor": cfg.label_color,
+            "maskAlpha": cfg.mask_alpha,
+            "thickness": cfg.thickness,
+            "jpegQuality": cfg.jpeg_quality,
+        },
+    }
+
+
+# ════════════════════════════════════════
 # 3 Descargar modelo
 # ════════════════════════════════════════
 
@@ -229,17 +288,27 @@ def _decode_frame(message: dict):
 
 @app.websocket("/video_stream")
 async def video_stream(websocket: WebSocket):
-    """Protocolo: el cliente envia un frame JPEG (binario) y espera UN mensaje JSON
-    con envelope etiquetado por tarea:
+    """Protocolo: el cliente envia un frame JPEG (binario) y recibe SIEMPRE UN mensaje
+    por frame, en una de dos formas (desde el 2026-08-26, paso 3 del plan del
+    2026-08-21):
 
-        {"task": "detection", "result": [[x1,y1,x2,y2,conf,cls], ...], "error": null}
-        {"task": "classification", "result": [{"cls": 3, "score": 0.91}, ...], "error": null}
-        {"task": "segmentation", "result": {"mask": "...", "shape": [h,w]}, "error": null}
+      BINARIO -> el frame JPEG ya compuesto por el backend (deteccion; segmentacion
+                 cuando exista). El cliente lo pinta y listo: no parsea nada.
+      TEXTO   -> envelope JSON {task, result, error}:
+                   {"task": "classification", "result": [{"cls": 3, "score": 0.91}], "error": null}
+                   {"task": null, "result": null, "error": "frame_invalido"}
+                 Clasificacion va por aca porque su resultado es TEXTO, no geometria:
+                 componerlo en el backend obligaria a re-encodear un frame entero para
+                 estampar tres renglones. Y TODOS los errores van por aca, de cualquier
+                 tarea.
 
-    El cliente despacha por 'task'. La forma de 'result' la decide la estrategia del
-    modelo cargado (controller.serialize_result). SIEMPRE se responde (aunque el frame
-    sea invalido o falle la inferencia) para que el cliente nunca quede esperando un
-    frame que no va a llegar.
+    El cliente discrimina por el TIPO del dato recibido (string vs Blob), no por un
+    campo. El despacho es por strategy.output_kind, NO por 'task': agregar un tipo
+    nuevo no hace crecer este handler.
+
+    SIEMPRE se responde (aunque el frame sea invalido o falle la inferencia) para que
+    el cliente nunca quede esperando un frame que no va a llegar. Romper eso
+    reintroduce el deadlock del stream.
     """
     await websocket.accept()
     try:
@@ -249,6 +318,7 @@ async def video_stream(websocket: WebSocket):
                 break
 
             response = {"task": None, "result": None, "error": None}
+            frame_bytes = None            # != None -> la respuesta va BINARIA
             img_bgr = _decode_frame(message)
 
             if img_bgr is None:
@@ -258,22 +328,39 @@ async def video_stream(websocket: WebSocket):
             else:
                 try:
                     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                    # En threadpool: la inferencia es bloqueante y no debe congelar
-                    # el event loop (los endpoints REST siguen respondiendo).
+
+                    def _procesar():
+                        """Inferencia + (segun la tarea) composicion del frame.
+
+                        Las dos cosas van en UNA sola llamada al threadpool: ambas son
+                        bloqueantes y no deben congelar el event loop (los endpoints
+                        REST tienen que seguir respondiendo mientras corre el stream).
+                        """
+                        result = controller.inference(img_rgb)
+                        if controller.output_kind == "frame":
+                            # El render recibe el img_bgr que YA teniamos decodificado:
+                            # no hay un decode extra por frame.
+                            return None, controller.render_result(result, img_bgr)
+                        return (controller.active_task,
+                                controller.serialize_result(result)), None
+
                     loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(
-                        None, controller.inference, img_rgb)
-                    # La estrategia activa serializa su resultado de dominio al envelope.
-                    response["task"] = controller.active_task
-                    response["result"] = controller.serialize_result(result)
+                    envelope, frame_bytes = await loop.run_in_executor(None, _procesar)
+                    if envelope is not None:
+                        response["task"], response["result"] = envelope
                 except Exception as e:
                     _inference_errors.append({
                         "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
                         "error": str(e),
                     })
                     response["error"] = "inference_error"
+                    frame_bytes = None      # ante error se responde JSON, SIEMPRE
 
-            await websocket.send_json(response)
+            # UN mensaje por frame, en una de las dos formas.
+            if frame_bytes is not None:
+                await websocket.send_bytes(frame_bytes)
+            else:
+                await websocket.send_json(response)
 
     except WebSocketDisconnect:
         pass

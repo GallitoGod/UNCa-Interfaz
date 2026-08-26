@@ -4,6 +4,7 @@
 # build_detection_pipeline devuelve, sin conocer adapters, shapes ni indices.
 
 import time
+import cv2
 import numpy as np
 
 from ..logger import run_warmup, make_dummy_input
@@ -13,6 +14,8 @@ from ..output_pipeline import buildPostprocessor, generate_output_adapter
 from ..output_pipeline.unpackers.registry import unpack_out
 from ..output_pipeline.unpackers.anchor_gen import generate_efficientdet_anchors
 from .strategy import TaskStrategy
+from .domain import detections_from_array, array_from_detections
+from ..render import get_draw_config, annotators_for
 
 # boxes_scores ya entrega [x1,y1,x2,y2,conf,cls] en formato estandar del sistema.
 # Aplicar el adapter encima reordena mal las coords (swapea x/y de vuelta a yxyx).
@@ -25,7 +28,10 @@ def build_detection_pipeline(config, model_path, logger):
     Arma el pipeline completo de deteccion y devuelve un 'runner' autocontenido.
 
     runner(img, debug=False) -> (result, timings):
-      - result : ndarray (N,6) [x1,y1,x2,y2,conf,cls] en px de la imagen original.
+      - result : sv.Detections (supervision) con xyxy/confidence/class_id en px de
+                 la imagen original. Es el TIPO DE DOMINIO de la tarea desde el
+                 2026-08-26; el (N,6) crudo sobrevive solo adentro del pipeline,
+                 hasta detections_from_array() en el ultimo paso.
       - timings: dict {pre_ms, inf_ms, post_ms} para alimentar el PerfMeter del controller.
 
     Todo el conocimiento detection-especifico (decision del adapter, normalizacion de
@@ -63,6 +69,12 @@ def build_detection_pipeline(config, model_path, logger):
 
     pack_fmt = (getattr(config.output, "pack_format", "raw") or "raw").lower()
     needs_adapter = pack_fmt in _NEEDS_ADAPTER
+
+    # Nombres de clase (opcional). Se resuelven UNA vez al armar: el hot path solo
+    # indexa. Si el JSON no trae label_map se dibuja el id numerico, como siempre.
+    label_map = getattr(config.output, "label_map", None) or None
+    if label_map:
+        logger.info(f"label_map con {len(label_map)} nombres de clase.")
 
     def run(img, debug=False):
         # 1. preprocess -> (tensor, meta). El meta (orig size + letterbox) viaja con
@@ -122,10 +134,22 @@ def build_detection_pipeline(config, model_path, logger):
                          frame_meta)
 
         # 5. postprocess: conf filter + top-k + NMS + undo letterbox (usa el meta)
-        result = postprocess_fn(adapted_output, frame_meta)
+        arr = postprocess_fn(adapted_output, frame_meta)
+
+        # 6. al tipo de dominio. Toda la geometria que sale de tasks/ es
+        #    sv.Detections: es lo que consumen los annotators/ByteTrack/zonas de
+        #    supervision (paso 3), y lo que le da lugar a la mascara de SEG.
+        result = detections_from_array(arr)
+
+        # Los nombres viajan DENTRO del sv.Detections (data['class_name']), que es
+        # donde supervision los espera. Asi render_detection no necesita conocer el
+        # config del modelo y sigue siendo una funcion de modulo.
+        if label_map and len(result):
+            result.data["class_name"] = np.array(
+                [_class_name(label_map, int(c)) for c in result.class_id])
         if debug:
             logger.debug("Inferencia ejecutada: %d detecciones. Primeras: %s",
-                         len(result), result[:3])
+                         len(result), result.xyxy[:3])
         t_post1 = time.perf_counter()
 
         timings = {
@@ -138,18 +162,76 @@ def build_detection_pipeline(config, model_path, logger):
     return run
 
 
+def _class_name(label_map, class_id: int) -> str:
+    """Nombre de la clase, o el id como string si el label_map no lo cubre."""
+    if 0 <= class_id < len(label_map):
+        return str(label_map[class_id])
+    return str(class_id)
+
+
+def _labels_for(dets) -> list:
+    """
+    Textos de las etiquetas: "<nombre> <conf>". Usa data['class_name'] si el pipeline
+    lo adjunto (hay label_map) y cae al id numerico si no.
+    """
+    names = dets.data.get("class_name") if dets.data else None
+    conf = dets.confidence
+    out = []
+    for i in range(len(dets)):
+        name = str(names[i]) if names is not None else str(int(dets.class_id[i]))
+        score = float(conf[i]) if conf is not None else 0.0
+        out.append(f"{name} {score:.2f}")
+    return out
+
+
+def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
+    """
+    Compone las cajas sobre el frame y devuelve el JPEG listo para mandar por el WS.
+
+    Es el corazon del paso 3 (2026-08-26): el cliente ya no dibuja nada, recibe esto.
+    'img_bgr' es el frame que el handler del WS ya tenia decodificado — no hay decode
+    extra. Los annotators de supervision escriben IN-PLACE, por eso el .copy(): el
+    frame original no es nuestro.
+    """
+    cfg = draw_cfg if draw_cfg is not None else get_draw_config()
+
+    if len(result) == 0:
+        # Nada que dibujar: se re-encodea el frame tal cual, sin copiarlo.
+        scene = img_bgr
+    else:
+        ann = annotators_for(cfg)
+        scene = ann.box.annotate(scene=img_bgr.copy(), detections=result)
+        scene = ann.label.annotate(scene=scene, detections=result, labels=_labels_for(result))
+
+    ok, buf = cv2.imencode(".jpg", scene, [int(cv2.IMWRITE_JPEG_QUALITY), int(cfg.jpeg_quality)])
+    if not ok:
+        raise RuntimeError("cv2.imencode fallo al comprimir el frame compuesto.")
+    return buf.tobytes()
+
+
 def serialize_detection(result):
     """
-    Serializa el resultado de dominio (ndarray (N,6)) al formato del envelope:
+    Serializa el resultado de dominio (sv.Detections) al formato del envelope:
     lista de [x1,y1,x2,y2,conf,cls] redondeados a 2 decimales.
-    No traga: si 'result' no es iterable de filas numericas, propaga.
+
+    El contrato del WebSocket NO cambia con la llegada de supervision: el cliente
+    sigue recibiendo exactamente las mismas filas que antes. Recien el paso 3
+    (render en el backend) cambia esto por un JPEG binario.
+
+    No traga: si 'result' no es un sv.Detections, array_from_detections propaga
+    un TypeError con el tipo real.
     """
-    return [[round(float(v), 2) for v in det] for det in result]
+    return [[round(float(v), 2) for v in row] for row in array_from_detections(result)]
 
 
 # Estrategia exportada: la consume el registry.
+# serialize sigue existiendo aunque el WS ya no lo use para deteccion: lo consumen
+# los tests y cualquier consumidor que quiera las cajas como dato (ver riesgo 3 del
+# spec del paso 3). El transporte al cliente es 'frame'.
 detection_strategy = TaskStrategy(
     task="detection",
     build_pipeline=build_detection_pipeline,
     serialize=serialize_detection,
+    output_kind="frame",
+    render=render_detection,
 )

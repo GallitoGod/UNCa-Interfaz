@@ -50,6 +50,7 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
     fake_predict = MagicMock(side_effect=lambda x: f"raw:{x}")
 
     import numpy as np
+    import supervision as sv
     def _fake_unpack(raw, runtime=None):
         return np.array([[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]], dtype=np.float32)
     fake_unpack = MagicMock(side_effect=_fake_unpack)
@@ -96,7 +97,12 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
         assert fake_post.call_count == 1
         assert fake_post.call_args[0][1] is FAKE_META
 
-        np.testing.assert_array_almost_equal(result, [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]])
+        # inference() devuelve el tipo de dominio (sv.Detections), no el (N,6) pelado.
+        assert isinstance(result, sv.Detections)
+        assert len(result) == 1
+        np.testing.assert_array_almost_equal(result.xyxy, [[10.0, 10.0, 20.0, 20.0]])
+        np.testing.assert_array_almost_equal(result.confidence, [0.9])
+        assert result.class_id.tolist() == [0]
 
 
 def test_update_confidence_strict_runtime(fake_config):

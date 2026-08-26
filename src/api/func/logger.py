@@ -69,6 +69,11 @@ class PerfMeter:
         self.t_pre  = deque(maxlen=window)
         self.t_inf  = deque(maxlen=window)
         self.t_post = deque(maxlen=window)
+        # Anotado + re-encode JPEG del frame compuesto (paso 3, 2026-08-26). Va en su
+        # PROPIO bucket a proposito: si cayera dentro de post_ms quedaria invisible, y
+        # es justo el numero que hace falta para defender la decision de mudar el
+        # render al backend. No entra en t_total: total mide el pipeline de inferencia.
+        self.t_draw = deque(maxlen=window)
         self.t_total= deque(maxlen=window)
 
     def reset(self) -> None:
@@ -76,7 +81,12 @@ class PerfMeter:
         self.t_pre.clear()
         self.t_inf.clear()
         self.t_post.clear()
+        self.t_draw.clear()
         self.t_total.clear()
+
+    def push_draw(self, draw_ms) -> None:
+        """Tiempo de composicion+encode de UN frame. Lo llama el controller al renderizar."""
+        self.t_draw.append(draw_ms)
 
     def push(self, pre_ms, inf_ms, post_ms, total_ms) -> None:
         self.t_pre.append(pre_ms)
@@ -96,14 +106,19 @@ class PerfMeter:
         pre_avg  = float(np.mean(np.asarray(self.t_pre,  dtype=np.float32))) if self.t_pre else 0.0
         inf_avg  = float(np.mean(np.asarray(self.t_inf,  dtype=np.float32))) if self.t_inf else 0.0
         post_avg = float(np.mean(np.asarray(self.t_post, dtype=np.float32))) if self.t_post else 0.0
+        draw_avg = float(np.mean(np.asarray(self.t_draw, dtype=np.float32))) if self.t_draw else 0.0
 
         return {
-            "avg_ms": avg_ms,
+            "avg_ms": avg_ms,            # pipeline de inferencia (pre+inf+post), SIN el dibujo
             "p95_ms": p95_ms,
             "fps_avg": fps_avg,
             "pre_avg_ms": pre_avg,
             "inf_avg_ms": inf_avg,
             "post_avg_ms": post_avg,
+            "draw_avg_ms": draw_avg,     # anotado + re-encode (0 si la tarea no dibuja)
+            # Lo que realmente cuesta un frame de punta a punta en el backend. Es el
+            # numero a comparar contra la medicion previa al paso 3.
+            "avg_with_draw_ms": avg_ms + draw_avg,
             "n": len(total),
         }
 

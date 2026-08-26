@@ -5,6 +5,7 @@ import pytest
 from api.func.tasks.registry import get_strategy, TASK_STRATEGIES
 from api.func.tasks.errors import UnknownModelType, TaskNotImplemented
 from api.func.tasks.detection import serialize_detection, detection_strategy
+from api.func.tasks.domain import detections_from_array, empty_detections
 from api.func.tasks.classification import serialize_classification, classification_strategy
 
 
@@ -52,14 +53,23 @@ def test_excepciones_son_subclases_para_mapeo_http():
 # ── Serializador de deteccion ─────────────────────────────────────────────────
 
 def test_serialize_detection_redondea_a_2_decimales():
-    arr = np.array([[10.123, 20.456, 30.0, 40.0, 0.987, 1.0]], dtype=np.float32)
-    out = serialize_detection(arr)
+    # El envelope no cambio con supervision: entra sv.Detections, sale la MISMA
+    # lista de filas que recibia el cliente antes del 2026-08-26.
+    dets = detections_from_array(
+        np.array([[10.123, 20.456, 30.0, 40.0, 0.987, 1.0]], dtype=np.float32))
+    out = serialize_detection(dets)
     assert out == [[10.12, 20.46, 30.0, 40.0, 0.99, 1.0]]
 
 
 def test_serialize_detection_matriz_vacia():
-    arr = np.empty((0, 6), dtype=np.float32)
-    assert serialize_detection(arr) == []
+    assert serialize_detection(empty_detections()) == []
+
+
+def test_serialize_detection_rechaza_lo_que_no_es_detections():
+    # No traga: el (N,6) pelado dejo de ser el tipo de dominio y decirlo fuerte
+    # evita que vuelva a colarse por la puerta de atras.
+    with pytest.raises(TypeError):
+        serialize_detection(np.empty((0, 6), dtype=np.float32))
 
 
 # ── Serializador de clasificacion ─────────────────────────────────────────────

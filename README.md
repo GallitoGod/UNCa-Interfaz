@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 # UNCaLens — Interfaz modular de visión por computadora
 
 Aplicación de escritorio (Electron + FastAPI) para ejecutar modelos de visión sobre

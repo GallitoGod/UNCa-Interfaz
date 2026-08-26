@@ -7,6 +7,15 @@ El contrato central del frontend vive acá: **se envía un frame JPEG binario po
 WebSocket y el backend responde UN JSON `{detections, error}` por frame**; el dibujo es
 client-side.
 
+> **🔴 AMENDMENT (2026-08-26) — el contrato del WS cambió.** Desde el paso 3 del plan del
+> 2026-08-21, el backend responde **UN mensaje por frame en una de dos formas**: *binario*
+> (el JPEG ya compuesto, para detección/segmentación) o *texto* (el envelope
+> `{task, result, error}`, para clasificación y para todos los errores). El dibujo de cajas
+> **dejó de ser client-side**: `videoStream.ts` decodifica el binario con
+> `createImageBitmap` y `present.ts` lo pinta. Los colores del `DrawSettingsModal` ahora
+> también viajan al backend (`POST /config/draw`). Lo que este doc describe como
+> "`{detections, error}` + dibujo client-side" es el estado anterior.
+
 Archivos as-is: `streamHandler.js`, `cameraSwitcher.js`, `fileHandler.js`, `overlay.js`,
 `record.js`, `modelLoader.js`, `selectModel.js`, y la parte de controles de `scripts.js`.
 

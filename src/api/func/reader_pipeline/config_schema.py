@@ -83,6 +83,12 @@ class DetectionOutput(StrictModel):
     tensor_structure: TensorDetection = Field(default_factory=TensorDetection)
     pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
     anchor_config: Optional[AnchorConfig] = None   # requerido si pack_format == "anchor_deltas"
+    # Nombres de clase indexados por class_id (la forma que traen los .names de casi
+    # todos los modelos). Desde el 2026-08-26 el que dibuja es el BACKEND, asi que el
+    # label_map se consume aca y NO viaja al cliente. Ausente -> se dibuja el id
+    # numerico, como antes. OJO: el indice tiene que ser el del modelo, no "el de COCO":
+    # yolov7 usa la lista de 80 (17=horse) y los EfficientDet la de 91 (18=horse).
+    label_map: Optional[List[str]] = None
 
 class ClassificationOutput(StrictModel):
     apply_softmax: bool = True      # aplicar softmax sobre el vector de salida

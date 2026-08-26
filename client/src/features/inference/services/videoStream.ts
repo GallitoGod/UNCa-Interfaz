@@ -10,6 +10,34 @@ import { STREAM_URL } from '@/shared/api/ws';
 
 export type StreamStatus = 'connecting' | 'open' | 'closed' | 'waiting';
 
+/**
+ * Lo que devuelve el backend por cada frame, en UNA de dos formas (paso 3 del plan
+ * del 2026-08-21, implementado el 2026-08-26):
+ *
+ *   'frame' -> BINARIO: el JPEG ya compuesto por el backend (deteccion/segmentacion).
+ *              El cliente solo lo pinta: no parsea, no dibuja, no sabe de cajas.
+ *   'json'  -> TEXTO: el envelope {task, result, error} de siempre. Lo usan
+ *              clasificacion (su resultado es texto, no geometria) y TODOS los
+ *              errores, de cualquier tarea.
+ *
+ * Se discrimina por el TIPO del dato recibido, no por un campo del mensaje.
+ */
+export type StreamPayload =
+  | { kind: 'json'; envelope: unknown }
+  | { kind: 'frame'; bitmap: ImageBitmap };
+
+// Decodifica el frame compuesto. Devuelve null si el blob no es una imagen valida:
+// un frame roto no debe matar el loop.
+async function decodeFrame(data: Blob | ArrayBuffer): Promise<ImageBitmap | null> {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
+  try {
+    return await createImageBitmap(blob);
+  } catch (e) {
+    console.warn('No se pudo decodificar el frame compuesto del backend:', e);
+    return null;
+  }
+}
+
 export interface VideoStreamHandle {
   // Pausa el envio de frames y el <video> SIN cerrar el WS ni soltar la camara
   // (para navegar a otra vista y volver sin reconectar ni repedir permisos).
@@ -22,7 +50,7 @@ export interface VideoStreamHandle {
 export interface VideoStreamOptions {
   videoElement: HTMLVideoElement;
   mirror?: boolean;
-  onMessage: (payload: unknown, captureCanvas: HTMLCanvasElement) => void;
+  onMessage: (payload: StreamPayload, captureCanvas: HTMLCanvasElement) => void;
   onStatus?: (status: StreamStatus) => void;
 }
 
@@ -41,6 +69,7 @@ export function startVideoStream(opts: VideoStreamOptions): VideoStreamHandle {
   let intentionallyClosed = false;
   let paused = false; // navegacion fuera de Inferencia: loop detenido, WS vivo
   let retryDelay = 1000;
+  let lastResponseSeq = 0; // ordena los decodes asincronos de frames compuestos
 
   function connect() {
     onStatus?.('connecting');
@@ -71,16 +100,34 @@ export function startVideoStream(opts: VideoStreamOptions): VideoStreamHandle {
 
     ws.onmessage = (event) => {
       waitingForResponse = false;
-      let payload: unknown;
-      try {
-        payload = JSON.parse(event.data as string);
-      } catch {
-        console.warn('Respuesta del stream no es JSON valido');
+
+      // TEXTO: envelope JSON (clasificacion o error).
+      if (typeof event.data === 'string') {
+        let envelope: unknown;
+        try {
+          envelope = JSON.parse(event.data);
+        } catch {
+          console.warn('Respuesta de texto del stream no es JSON valido');
+          return;
+        }
+        // captureCanvas sigue con el frame que se envio (1 en vuelo): el consumidor
+        // lo repinta y superpone su capa.
+        onMessage({ kind: 'json', envelope }, captureCanvas);
         return;
       }
-      // captureCanvas sigue con el frame que se envio (1 en vuelo): el consumidor
-      // lo repinta y superpone resultados.
-      onMessage(payload, captureCanvas);
+
+      // BINARIO: frame ya compuesto por el backend. El decode es ASINCRONO, asi que
+      // se numera la respuesta: si mientras decodificabamos llego una mas nueva,
+      // este bitmap se descarta en vez de pintar un frame viejo encima del actual.
+      const seq = ++lastResponseSeq;
+      void decodeFrame(event.data as Blob).then((bitmap) => {
+        if (!bitmap) return;
+        if (seq !== lastResponseSeq) {
+          bitmap.close(); // llego uno mas nuevo: soltar la memoria del viejo
+          return;
+        }
+        onMessage({ kind: 'frame', bitmap }, captureCanvas);
+      });
     };
   }
 
@@ -166,7 +213,7 @@ export function startVideoStream(opts: VideoStreamOptions): VideoStreamHandle {
 // Envio one-shot para imagenes: abre un WS efimero, manda un frame y cierra.
 export function sendSingleFrame(
   sourceCanvas: HTMLCanvasElement,
-  onResult: (payload: unknown, sourceCanvas: HTMLCanvasElement) => void,
+  onResult: (payload: StreamPayload, sourceCanvas: HTMLCanvasElement) => void,
 ): void {
   const ws = new WebSocket(STREAM_URL);
 
@@ -181,16 +228,26 @@ export function sendSingleFrame(
     );
   };
 
+  // Mismas dos formas que el stream continuo: texto (envelope) o binario (frame ya
+  // compuesto). Aca hay un solo frame en juego, asi que no hace falta ordenar nada.
   ws.onmessage = (event) => {
-    let payload: unknown;
-    try {
-      payload = JSON.parse(event.data as string);
-    } catch {
+    if (typeof event.data === 'string') {
+      let envelope: unknown;
+      try {
+        envelope = JSON.parse(event.data);
+      } catch {
+        ws.close();
+        return;
+      }
+      onResult({ kind: 'json', envelope }, sourceCanvas);
       ws.close();
       return;
     }
-    onResult(payload, sourceCanvas);
-    ws.close();
+
+    void decodeFrame(event.data as Blob).then((bitmap) => {
+      if (bitmap) onResult({ kind: 'frame', bitmap }, sourceCanvas);
+      ws.close();
+    });
   };
 
   ws.onerror = (err) => console.error('WS error al procesar imagen:', err);

@@ -11,6 +11,7 @@ import { presentFrame, releaseOverlay } from '@/features/vision-workspace/servic
 import {
   sendSingleFrame,
   startVideoStream,
+  type StreamPayload,
   type VideoStreamHandle,
 } from '../services/videoStream';
 
@@ -34,7 +35,7 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
   // Frame fijo de la fuente 'file-image' y el render vigente, guardados para poder
   // volver a inferir sin re-ejecutar el effect principal (que revoca el objectURL).
   const stillRef = useRef<HTMLCanvasElement | null>(null);
-  const renderRef = useRef<((payload: unknown, src: HTMLCanvasElement) => void) | null>(null);
+  const renderRef = useRef<((payload: StreamPayload, src: HTMLCanvasElement) => void) | null>(null);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current || !overlayRef.current) return;
@@ -51,7 +52,7 @@ export function useVisionSession({ videoRef, canvasRef, overlayRef }: SessionRef
     let cancelled = false;
 
     // Render de un frame: lee modelo activo + colores en el momento (live).
-    const render = (payload: unknown, src: HTMLCanvasElement) => {
+    const render = (payload: StreamPayload, src: HTMLCanvasElement) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const { activeModel, drawSettings } = useWorkspaceStore.getState();
