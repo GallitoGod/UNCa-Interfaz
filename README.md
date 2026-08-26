@@ -19,7 +19,9 @@ formato ya está soportado es escribir ese JSON desde el wizard de la app — ce
 
 ---
 
-https://github.com/user-attachments/assets/1cf714f3-799f-4f45-aa63-7b17a957efee
+
+https://github.com/user-attachments/assets/d95da196-59f0-4d70-acf8-88f3eaf8263f
+
 
 ---
 
