@@ -9,11 +9,11 @@
 
 # UNCaLens — Interfaz modular de visión por computadora
 
-Aplicación de escritorio (**Electron + FastAPI**) para ejecutar modelos de visión sobre
-**cámara en vivo, videos e imágenes**, sin escribir código para cada modelo nuevo.
+Aplicación de escritorio (Electron + FastAPI) para ejecutar modelos de visión sobre
+cámara en vivo, videos e imágenes, sin escribir código para cada modelo nuevo.
 
-La idea central: **el backend es agnóstico al framework**. Un modelo no se "programa", se
-**describe** con un JSON (`configs/<nombre>.json`) que declara cómo preprocesar la entrada,
+La idea central: el backend es agnóstico al framework. Un modelo no se "programa", se
+describe con un JSON (`configs/<nombre>.json`) que declara cómo preprocesar la entrada,
 cómo desempaquetar el tensor de salida y con qué runtime ejecutarlo. Agregar un modelo cuyo
 formato ya está soportado es escribir ese JSON desde el wizard de la app — cero Python.
 
@@ -22,6 +22,11 @@ formato ya está soportado es escribir ese JSON desde el wizard de la app — ce
 
 https://github.com/user-attachments/assets/d95da196-59f0-4d70-acf8-88f3eaf8263f
 
+
+---
+
+<img src= 'img_readme/main_page.png' alt= 'main_page_image' width='500'>
+<img src= 'img_readme/Model_wizzard.png' alt= 'wizzard_page_image' width='500'>
 
 ---
 
