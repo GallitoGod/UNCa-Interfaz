@@ -2,7 +2,14 @@
 
 - **Fecha**: 2026-08-13
 - **Rama**: `refactor-frontend-react` (crear `migracion-python-312` a partir de ella)
-- **Estado**: propuesto — pendiente de ejecutar
+- **Estado**: **EJECUTADO el 2026-08-25** en la rama `migracion-python-312` (creada
+  desde `main`, no desde `refactor-frontend-react`, que ya estaba mergeada). Los 7
+  puntos de la §6 en verde y la regresión de la §4 exacta. **Tres desviaciones**:
+  (1) `C:\Python312` no existía — era una entrada fantasma del registro de `py`; se
+  instaló 3.12.10 con winget. (2) `ort.preload_dlls()` **no alcanza**: hay que agregar
+  además `site-packages/nvidia/*/bin` al PATH del proceso o cuDNN 9 no encuentra sus
+  sublibs y ORT cae a CPU en silencio (§5.4 quedó corta). (3) Se aprovechó para
+  versionar `pytest.ini`, que faltaba porque el `.gitignore` lo ignoraba (§8.3).
 
 ## 1. Contexto y objetivo
 
