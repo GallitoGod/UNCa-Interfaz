@@ -6,12 +6,18 @@
 // configurar-y-olvidar (los colores). La regla: el control tiene que estar donde el
 // usuario puede ver el efecto AL MISMO TIEMPO que lo toca.
 //
-// Los cuatro ajustes son del USUARIO (no del modelo): persisten en localStorage via
+// Los ajustes son del USUARIO (no del modelo): persisten en localStorage via
 // workspaceStore y se empujan al backend, que es el que dibuja desde el 2026-08-26.
 // Se aplican al frame SIGUIENTE.
+//
+// Lo que NO va aca: seguimiento, suavizado y trazas (TrackingSettings.tsx). Esos
+// gobiernan como se sigue un objeto A LO LARGO DEL TIEMPO, tienen dependencias entre
+// si y solo valen para camara y video; agrupados aparte, esas reglas se aplican al
+// bloque entero en vez de repetirse control por control.
 
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
 import type { BoxStyle, ModelType } from '@/features/vision-workspace/services/types';
+import { Interruptor } from '@/shared/ui/Interruptor';
 import { pushDrawSettings } from '../api/drawSettings';
 import { useStreamStore } from '../store/streamStore';
 import { cn } from '@/shared/ui/cn';
@@ -105,45 +111,3 @@ export function RenderSettings() {
   );
 }
 
-// Interruptor de una linea: etiqueta a la izquierda, estado mono a la derecha. Sin
-// componente Switch porque el re-skin "Cabina Tecnica" lo elimino a proposito; el
-// estado se lee del color y del texto, como el resto de la piel.
-function Interruptor({
-  label,
-  hint,
-  on,
-  onToggle,
-}: {
-  label: string;
-  hint: string;
-  on: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      title={hint}
-      onClick={onToggle}
-      className={cn(
-        'flex w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] border',
-        'px-2.5 py-2 text-left text-xs transition-colors duration-150',
-        'focus-visible:outline-none active:scale-[0.99]',
-        on
-          ? 'border-accent-border bg-accent-soft text-fg'
-          : 'border-border bg-control text-fg-subtle hover:text-fg hover:border-border-strong',
-      )}
-    >
-      <span className="leading-tight">{label}</span>
-      <span
-        className={cn(
-          'shrink-0 font-mono text-[9px] font-semibold tracking-[0.1em]',
-          on ? 'text-accent' : 'text-label',
-        )}
-      >
-        {on ? 'ON' : 'OFF'}
-      </span>
-    </button>
-  );
-}

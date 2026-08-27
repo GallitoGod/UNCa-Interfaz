@@ -215,7 +215,11 @@ export function sendSingleFrame(
   sourceCanvas: HTMLCanvasElement,
   onResult: (payload: StreamPayload, sourceCanvas: HTMLCanvasElement) => void,
 ): void {
-  const ws = new WebSocket(STREAM_URL);
+  // stateful=false: una foto suelta NO es una secuencia. Sin esto el backend armaria
+  // la memoria de sesion (tracker, suavizado) para un unico frame que no tiene con
+  // que compararse. Se declara en vez de deducirse: desde el backend, una conexion
+  // que todavia no recibio su segundo frame es identica a una que nunca lo va a recibir.
+  const ws = new WebSocket(`${STREAM_URL}?stateful=false`);
 
   ws.onopen = () => {
     sourceCanvas.toBlob(

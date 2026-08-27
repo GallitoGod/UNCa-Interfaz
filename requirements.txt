@@ -43,10 +43,16 @@ torch==2.13.0
 
 # ── Dominio de vision ─────────────────────
 # supervision aporta sv.Detections, el TIPO DE DOMINIO interno de las tareas
-# geometricas desde el 2026-08-26 (paso 2 del plan del 2026-08-21). Todavia no
-# se usan sus annotators: eso es el paso 3 (render en el backend).
+# geometricas desde el 2026-08-26 (paso 2 del plan del 2026-08-21), y desde el
+# paso 3 tambien sus annotators: el frame compuesto se arma con ellos.
 # Arrastra scipy, av, tqdm, defusedxml y pydeprecate (~40 MB).
 supervision==0.30.1
+
+# Tracking (Tier B, 2026-08-27). Es el paquete de Roboflow, NO sv.ByteTrack: ese
+# esta deprecado desde la 0.28 de supervision y SE ELIMINA en la 0.31. Cambia el
+# metodo de update_with_detections() a update(). No arrastra ni una dependencia
+# nueva: todo lo que pide ya lo trajo supervision (verificado con pip --dry-run).
+trackers==2.6.0
 
 # ── Procesamiento de imagenes ─────────────
 opencv-python==5.0.0.93

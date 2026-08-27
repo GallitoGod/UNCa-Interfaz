@@ -28,14 +28,24 @@ const DEFAULT_DRAW_SETTINGS: DrawSettings = {
   bboxColor: '#00BFFF',
   labelColor: '#001018',
   maskAlpha: 0.5,
-  // Los cuatro defaults coinciden con los del backend (render/draw_config.py).
+  // Los defaults coinciden con los del backend (render/draw_config.py).
   // smartLabels y autoScale nacen prendidos: son mejores defaults, y el panel de
   // render los deja apagar. shading nace APAGADO: con muchas cajas superpuestas los
   // rellenos se suman y tapan la imagen, asi que lo prende quien lo quiera mirar.
+  //
+  // Los tres de seguimiento nacen APAGADOS y no por costo (~1,3 ms/frame los tres):
+  // rastrear es una herramienta de inspeccion que se prende cuando se quiere
+  // responder algo concreto, y el suavizado ademas MAQUILLA al modelo (promedia la
+  // salida cruda), que es justo lo que un banco de pruebas no deberia hacer solo.
   boxStyle: 'box',
   smartLabels: true,
   shading: false,
   autoScale: true,
+  tracking: false,
+  smoothing: false,
+  smoothingLength: 5,
+  traces: false,
+  tracesLength: 30,
 };
 
 // Persistencia en localStorage (mismo patron manual que uiStore, sin middleware).

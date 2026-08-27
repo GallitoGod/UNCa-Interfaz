@@ -9,6 +9,7 @@ from .draw_config import (
     hex_to_bgr,
 )
 from .annotators import Annotators, annotators_for
+from .session import StreamSession
 
 __all__ = [
     "BOX_STYLES",
@@ -19,4 +20,5 @@ __all__ = [
     "hex_to_bgr",
     "Annotators",
     "annotators_for",
+    "StreamSession",
 ]

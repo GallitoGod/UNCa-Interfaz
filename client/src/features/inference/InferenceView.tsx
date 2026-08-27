@@ -18,6 +18,7 @@ import { FileSource } from './components/FileSource';
 import { ModelSelector } from './components/ModelSelector';
 import { ConfidenceSlider } from './components/ConfidenceSlider';
 import { RenderSettings, panelDeRenderAplica } from './components/RenderSettings';
+import { TrackingSettings } from './components/TrackingSettings';
 import { MetricsHUD } from './components/MetricsHUD';
 import { MetricsPanel } from './components/MetricsPanel';
 import { LogPanel } from './components/LogPanel';
@@ -106,6 +107,18 @@ export default function InferenceView() {
           <div className="flex flex-col gap-2.5">
             <SectionLabel>Render</SectionLabel>
             <RenderSettings />
+          </div>
+        )}
+
+        {/* Seguimiento cuelga de la MISMA condicion que Render, y por el mismo motivo:
+            necesita que el backend componga el frame (output_kind="frame"). Con un
+            clasificador no hay geometria que rastrear ni sobre que dibujar una estela.
+            Va como seccion aparte de Render porque gobierna el eje del TIEMPO, no el
+            del pintado, y porque solo aplica a camara y video. */}
+        {mostrarRender && (
+          <div className="flex flex-col gap-2.5">
+            <SectionLabel>Seguimiento</SectionLabel>
+            <TrackingSettings />
           </div>
         )}
 

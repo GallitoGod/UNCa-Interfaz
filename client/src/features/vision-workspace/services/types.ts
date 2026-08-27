@@ -20,6 +20,20 @@ export interface DrawSettings {
   smartLabels: boolean; // correr los carteles para que no se tapen entre si
   shading: boolean; // rellenar la caja con el color de acento translucido
   autoScale: boolean; // grosor y texto derivados de la resolucion del frame
+
+  // ── Seguimiento (Tier B, 2026-08-27) ──────────────────────────────────────
+  // Estos tres son ajustes del USUARIO igual que los de arriba (persisten, viajan
+  // por el mismo POST /config/draw), pero habilitan MEMORIA en el backend, que vive
+  // por conexion del WebSocket y muere con ella. El cliente no guarda esa memoria:
+  // solo dice si la quiere.
+  //
+  // Solo tienen efecto con camara o video: una imagen fija abre un WS declarado
+  // `?stateful=false` y el backend no rastrea nada sobre una foto suelta.
+  tracking: boolean; // identidad estable por objeto entre frames (#id en la etiqueta)
+  smoothing: boolean; // promedia la posicion en las ultimas N deteccciones. REQUIERE tracking
+  smoothingLength: number; // ventana del promedio
+  traces: boolean; // estela del recorrido de cada objeto. REQUIERE tracking
+  tracesLength: number; // cuantos frames de recorrido conserva la estela
 }
 
 // Todo lo que una estrategia necesita para presentar un frame.

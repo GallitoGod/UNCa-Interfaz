@@ -27,10 +27,15 @@ class TaskStrategy:
                         El WS despacha por output_kind y NO por task: agregar un tipo nuevo
                         sigue siendo "registrar una estrategia", sin que el handler crezca
                         un if por tipo.
-      - render:         (result, img_bgr, draw_cfg) -> bytes (JPEG compuesto).
+      - render:         (result, img_bgr, draw_cfg, session) -> bytes (JPEG compuesto).
                         Obligatorio si output_kind == "frame"; None si es "json".
                         Recibe el img_bgr YA decodificado que el handler tiene en la mano,
                         asi que no hay un decode extra por frame.
+                        'session' es la memoria de la conexion (render/session.py) y
+                        llega hasta aca por una razon concreta: hay annotators con
+                        ESTADO —las trazas guardan el recorrido de cada objeto— que no
+                        pueden vivir en el cache global de annotators, compartido por
+                        todas las conexiones. Es opcional: None dibuja sin ellos.
     """
     task: str
     build_pipeline: Callable

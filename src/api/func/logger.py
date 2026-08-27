@@ -74,6 +74,11 @@ class PerfMeter:
         # es justo el numero que hace falta para defender la decision de mudar el
         # render al backend. No entra en t_total: total mide el pipeline de inferencia.
         self.t_draw = deque(maxlen=window)
+        # Tracking + suavizado (Tier B). Bucket propio por el mismo motivo que
+        # t_draw: es un costo OPCIONAL que el usuario prende, y hay que poder
+        # mirarlo aislado para decidir si vale lo que cuesta. Tampoco entra en
+        # t_total, que mide el pipeline de inferencia.
+        self.t_track = deque(maxlen=window)
         self.t_total= deque(maxlen=window)
 
     def reset(self) -> None:
@@ -82,11 +87,17 @@ class PerfMeter:
         self.t_inf.clear()
         self.t_post.clear()
         self.t_draw.clear()
+        self.t_track.clear()
         self.t_total.clear()
 
     def push_draw(self, draw_ms) -> None:
         """Tiempo de composicion+encode de UN frame. Lo llama el controller al renderizar."""
         self.t_draw.append(draw_ms)
+
+    def push_track(self, track_ms) -> None:
+        """Tiempo de tracking+suavizado de UN frame. Lo empuja el handler del WS,
+        que es donde vive la memoria de sesion (ver render/session.py)."""
+        self.t_track.append(track_ms)
 
     def push(self, pre_ms, inf_ms, post_ms, total_ms) -> None:
         self.t_pre.append(pre_ms)
@@ -107,6 +118,7 @@ class PerfMeter:
         inf_avg  = float(np.mean(np.asarray(self.t_inf,  dtype=np.float32))) if self.t_inf else 0.0
         post_avg = float(np.mean(np.asarray(self.t_post, dtype=np.float32))) if self.t_post else 0.0
         draw_avg = float(np.mean(np.asarray(self.t_draw, dtype=np.float32))) if self.t_draw else 0.0
+        track_avg = float(np.mean(np.asarray(self.t_track, dtype=np.float32))) if self.t_track else 0.0
 
         return {
             "avg_ms": avg_ms,            # pipeline de inferencia (pre+inf+post), SIN el dibujo
@@ -116,9 +128,14 @@ class PerfMeter:
             "inf_avg_ms": inf_avg,
             "post_avg_ms": post_avg,
             "draw_avg_ms": draw_avg,     # anotado + re-encode (0 si la tarea no dibuja)
-            # Lo que realmente cuesta un frame de punta a punta en el backend. Es el
-            # numero a comparar contra la medicion previa al paso 3.
-            "avg_with_draw_ms": avg_ms + draw_avg,
+            "track_avg_ms": track_avg,   # tracking + suavizado (0 si estan apagados)
+            # Lo que realmente cuesta un frame de punta a punta en el backend, y por
+            # eso SUMA todos los costos opcionales: el cliente lo muestra como "Total
+            # por frame". Si el tracking quedara afuera, prenderlo haria que el total
+            # mostrado dejara de coincidir con la realidad. El nombre quedo del paso 3
+            # (cuando el dibujo era el unico extra); se conserva porque es contrato
+            # con el cliente.
+            "avg_with_draw_ms": avg_ms + draw_avg + track_avg,
             "n": len(total),
         }
 

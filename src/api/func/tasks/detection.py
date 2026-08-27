@@ -171,20 +171,30 @@ def _class_name(label_map, class_id: int) -> str:
 
 def _labels_for(dets) -> list:
     """
-    Textos de las etiquetas: "<nombre> <conf>". Usa data['class_name'] si el pipeline
-    lo adjunto (hay label_map) y cae al id numerico si no.
+    Textos de las etiquetas: "<nombre> <conf>", o "#<id> <nombre> <conf>" cuando el
+    tracking esta prendido. Usa data['class_name'] si el pipeline lo adjunto (hay
+    label_map) y cae al id numerico de clase si no.
+
+    El tracker_id se antepone porque es lo que hace que el tracking se VEA: sin el
+    numero en pantalla, rastrear no cambia un solo pixel. Los tracks todavia no
+    confirmados llegan con tracker_id = -1 y se dibujan SIN prefijo: "#-1" no seria
+    informacion, seria ruido que el usuario tendria que aprender a ignorar.
     """
     names = dets.data.get("class_name") if dets.data else None
     conf = dets.confidence
+    tids = dets.tracker_id
     out = []
     for i in range(len(dets)):
         name = str(names[i]) if names is not None else str(int(dets.class_id[i]))
         score = float(conf[i]) if conf is not None else 0.0
-        out.append(f"{name} {score:.2f}")
+        etiqueta = f"{name} {score:.2f}"
+        if tids is not None and int(tids[i]) >= 0:
+            etiqueta = f"#{int(tids[i])} {etiqueta}"
+        out.append(etiqueta)
     return out
 
 
-def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
+def render_detection(result, img_bgr, draw_cfg=None, session=None) -> bytes:
     """
     Compone las cajas sobre el frame y devuelve el JPEG listo para mandar por el WS.
 
@@ -192,11 +202,16 @@ def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
     'img_bgr' es el frame que el handler del WS ya tenia decodificado — no hay decode
     extra. Los annotators de supervision escriben IN-PLACE, por eso el .copy(): el
     frame original no es nuestro.
+
+    'session' (opcional) es la memoria de la conexion: de ahi salen los annotators con
+    ESTADO, hoy las trazas. None dibuja todo lo demas igual.
     """
     cfg = draw_cfg if draw_cfg is not None else get_draw_config()
 
     if len(result) == 0:
-        # Nada que dibujar: se re-encodea el frame tal cual, sin copiarlo.
+        # Nada que dibujar: se re-encodea el frame tal cual, sin copiarlo. Las trazas
+        # tampoco pintan nada sin detecciones (verificado), asi que este camino sigue
+        # siendo seguro: nadie escribe sobre un frame que no copiamos.
         scene = img_bgr
     else:
         # La resolucion entra en la busqueda porque el grosor y la escala del texto
@@ -211,6 +226,10 @@ def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
         # trazo de la caja y el texto que van arriba.
         if ann.shade is not None:
             scene = ann.shade.annotate(scene=scene, detections=result)
+        # Las trazas van DEBAJO de la caja: son contexto historico y no deben competir
+        # con la marca del objeto actual, que es lo que el usuario esta mirando.
+        if session is not None:
+            scene = session.anotar_trazas(scene, result, cfg, (w, h))
         scene = ann.box.annotate(scene=scene, detections=result)
         scene = ann.label.annotate(scene=scene, detections=result, labels=_labels_for(result))
 

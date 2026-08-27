@@ -36,6 +36,18 @@ class ModelController:
         self.perf = PerfMeter(window=300)
         self._frame_idx = 0
         self._log_every = 60
+        # Generacion del pipeline: avanza en CADA carga y CADA descarga. No identifica
+        # al modelo, identifica al ESTADO del controller, y su unico consumidor es la
+        # memoria por conexion del stream (render/session.py): el cliente mantiene
+        # abierto el mismo WebSocket cuando cambia de modelo, asi que la sesion no
+        # tiene forma de enterarse sola de que los tracks que viene arrastrando
+        # nacieron con otro pipeline (donde los class_id significaban otra cosa).
+        # Comparando generaciones se da cuenta y se olvida de todo.
+        #
+        # Monotona, por el mismo motivo que la version de DrawConfig: si volviera
+        # atras, una sesion podria creerse vigente contra un pipeline distinto que
+        # por casualidad tuvo ese mismo numero.
+        self._generation = 0
 
     @property
     def is_loaded(self) -> bool:
@@ -56,18 +68,42 @@ class ModelController:
         """
         return self._strategy.output_kind if self._strategy is not None else "json"
 
-    def render_result(self, result, img_bgr) -> bytes:
+    @property
+    def confidence_threshold(self) -> float:
+        """
+        Umbral de confianza vigente, o 0.0 sin modelo. Lo consume el tracker: todo lo
+        que llega a el ya paso este filtro, asi que es el piso real de la escena.
+        """
+        if self.config is None:
+            return 0.0
+        return float(self.config.output.confidence_threshold)
+
+    @property
+    def pipeline_generation(self) -> int:
+        """
+        Numero de generacion del pipeline vigente. Cambia cuando cambia el modelo
+        (carga o descarga). Lo consume StreamSession para invalidar su memoria: ver
+        el comentario de _generation en __init__.
+        """
+        return self._generation
+
+    def render_result(self, result, img_bgr, session=None) -> bytes:
         """
         Compone el resultado sobre el frame y devuelve el JPEG (solo tareas "frame").
         Mide el tiempo y lo empuja al bucket draw_ms del PerfMeter — que existe
         separado justamente para que este costo no se esconda dentro de post_ms.
+
+        'session' es la memoria de la conexion que pide el frame. El controller no la
+        interpreta: la pasa. Es un singleton de proceso y no puede ser dueno de estado
+        por conexion, pero el render sí necesita los annotators con estado que ella
+        guarda (las trazas).
         """
         strategy = self._strategy
         if strategy is None or strategy.render is None:
             raise RuntimeError(
                 "La estrategia activa no renderiza frames: no se puede componer la salida.")
         t0 = time.perf_counter()
-        frame = strategy.render(result, img_bgr)
+        frame = strategy.render(result, img_bgr, None, session)
         self.perf.push_draw((time.perf_counter() - t0) * 1000)
         return frame
 
@@ -101,6 +137,7 @@ class ModelController:
             # Commit atomico del nuevo pipeline
             self.perf.reset()
             self._frame_idx = 0
+            self._generation += 1
             self.model_format = os.path.splitext(model_path)[1].lower()
             self.config = config
             self._strategy = strategy
@@ -177,6 +214,9 @@ class ModelController:
 
     def unload_model(self):
         with self._lock:
+            # Descargar tambien es un cambio de generacion: lo que viniera recordando
+            # una sesion del stream dejo de tener sentido en este mismo instante.
+            self._generation += 1
             self._runner = None
             self._strategy = None
             self.model_format = None

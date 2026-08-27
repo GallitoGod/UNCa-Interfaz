@@ -71,6 +71,36 @@ class DrawConfig:
     thickness: int = 2              # solo si auto_scale=False
     text_scale: float = 0.5         # solo si auto_scale=False
 
+    # ── Tier B: lo que necesita memoria entre frames ──────────────────────────
+    # OJO: estos toggles son del USUARIO y viven aca (persisten, sobreviven al
+    # cambio de modelo), pero la MEMORIA que habilitan es por conexion y vive en
+    # render/session.py. Separar las dos cosas es lo que evita inventar un tercer
+    # dueno de ajustes: lo que muere con la sesion no es el toggle, es el recuerdo.
+    #
+    # Nace apagado: rastrear no aporta nada mirando una foto, y sobre video es una
+    # herramienta de inspeccion que el usuario prende cuando quiere responder "¿mi
+    # modelo pierde el objeto entre frames?".
+    tracking: bool = False
+
+    # Promedia la posicion de cada objeto en los ultimos n frames, POR IDENTIDAD.
+    # Nace apagado y no por costo (es gratis al lado del tracking) sino por honestidad:
+    # suavizar es MAQUILLAR al modelo, y esto es un banco de pruebas. Ademas no sale
+    # gratis en calidad: promediar arrastra la caja unos px por detras del objeto en
+    # movimiento sostenido (medido: ~13 px con n=5 sobre algo que avanza 5 px/frame).
+    # Por eso la UI tiene que decir "suavizado n=5" y no "mejorar deteccion".
+    smoothing: bool = False
+    smoothing_length: int = 5
+
+    # Estela del recorrido de cada objeto rastreado sobre los ultimos n frames.
+    # Como herramienta de diagnostico vale mas de lo que parece: una traza que salta
+    # de un objeto a otro muestra a simple vista que el tracker confunde identidades,
+    # y una entrecortada muestra que el detector pierde el objeto en algunos frames.
+    # Es la forma mas rapida de VER la estabilidad temporal de un modelo, que en
+    # numeros es aburrida y en pantalla es obvia. Tambien REQUIERE tracking: sin
+    # tracker_id el annotator de supervision no avisa, levanta ValueError.
+    traces: bool = False
+    traces_length: int = 30
+
     # Calidad del re-encode JPEG del frame compuesto. El frame ya llego comprimido a
     # 0.8 desde el cliente, asi que esto es una SEGUNDA compresion: es perdida de
     # calidad, no de latencia. Configurable para poder subirla si se ve degradacion.
@@ -103,6 +133,28 @@ def update_draw_config(**patch) -> DrawConfig:
     """
     global _current, _version_seq
     clean = {k: v for k, v in patch.items() if v is not None and k != "version"}
+
+    # Coherencia de dependencias, aplicada ACA porque esta es la unica puerta de
+    # escritura del singleton: asi no existe forma de dejar el estado en una
+    # combinacion imposible, la valide quien la valide.
+    #
+    # El suavizado y las trazas trabajan POR tracker_id, asi que sin tracking no
+    # tienen con que. Y fallan distinto, lo cual es peor que si fallaran igual: el
+    # suavizado no suaviza y avisa (toggle prendido sin efecto, el sintoma que el
+    # catalogo prohibe), mientras que el TraceAnnotator directamente levanta
+    # ValueError y rompe el frame. En vez de dejar que el usuario arme ese estado,
+    # se corrige el estado y el endpoint le devuelve el EFECTIVO, para que la UI
+    # pueda mostrar lo que realmente paso.
+    #
+    # Si un mismo patch pide las dos cosas a la vez, apagar gana sobre prender: es
+    # el pedido mas explicito ("no quiero seguimiento") y el que no deja nada
+    # prendido a medias.
+    if clean.get("tracking") is False:
+        clean["smoothing"] = False
+        clean["traces"] = False
+    if clean.get("smoothing") or clean.get("traces"):
+        clean["tracking"] = True
+
     with _lock:
         _version_seq += 1
         _current = replace(_current, version=_version_seq, **clean)

@@ -5,6 +5,7 @@ import base64
 import datetime
 import json
 import re
+import time
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
@@ -12,7 +13,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
-from api.func.render import update_draw_config, BOX_STYLES
+from api.func.render import update_draw_config, get_draw_config, BOX_STYLES, StreamSession
 from api.func.reader_pipeline.config_schema import (
     ModelConfig,
     build_config_template,
@@ -89,6 +90,27 @@ class DrawSettingsRequest(BaseModel):
                                      description="Grosor del trazo, en px (solo si autoScale=false)")
     textScale: Optional[float] = Field(default=None, gt=0.0, le=5.0,
                                        description="Escala del texto (solo si autoScale=false)")
+    tracking: Optional[bool] = Field(
+        default=None,
+        description=("Seguir cada objeto entre frames y mostrar su identidad (#id). "
+                     "Solo tiene efecto sobre camara y video: una imagen suelta no es "
+                     "una secuencia."))
+    smoothing: Optional[bool] = Field(
+        default=None,
+        description=("Promediar la posicion de cada objeto en los ultimos n frames. "
+                     "REQUIERE tracking: pedirlo lo prende solo, y apagar el tracking "
+                     "lo apaga. Suaviza el temblequeo a costa de que la caja quede "
+                     "unos px por detras del objeto en movimiento."))
+    smoothingLength: Optional[int] = Field(
+        default=None, ge=2, le=30,
+        description="Cuantos frames promedia el suavizado (ventana)")
+    traces: Optional[bool] = Field(
+        default=None,
+        description=("Dibujar la estela del recorrido de cada objeto rastreado. "
+                     "REQUIERE tracking: pedirlo lo prende solo."))
+    tracesLength: Optional[int] = Field(
+        default=None, ge=2, le=200,
+        description="Cuantos frames de recorrido conserva cada estela")
     jpegQuality: Optional[int] = Field(default=None, ge=1, le=100,
                                        description="Calidad del re-encode del frame compuesto")
 
@@ -272,6 +294,11 @@ def update_draw(data: DrawSettingsRequest):
         auto_scale=data.autoScale,
         thickness=data.thickness,
         text_scale=data.textScale,
+        tracking=data.tracking,
+        smoothing=data.smoothing,
+        smoothing_length=data.smoothingLength,
+        traces=data.traces,
+        traces_length=data.tracesLength,
         jpeg_quality=data.jpegQuality,
     )
     # Se devuelve el estado EFECTIVO completo, no el pedido: asi el cliente puede
@@ -290,6 +317,11 @@ def update_draw(data: DrawSettingsRequest):
             "autoScale": cfg.auto_scale,
             "thickness": cfg.thickness,
             "textScale": cfg.text_scale,
+            "tracking": cfg.tracking,
+            "smoothing": cfg.smoothing,
+            "smoothingLength": cfg.smoothing_length,
+            "traces": cfg.traces,
+            "tracesLength": cfg.traces_length,
             "jpegQuality": cfg.jpeg_quality,
         },
     }
@@ -349,6 +381,14 @@ async def video_stream(websocket: WebSocket):
     reintroduce el deadlock del stream.
     """
     await websocket.accept()
+
+    # Memoria de ESTA conexion (tracking/suavizado/trazas del Tier B). Vive y muere
+    # con el WebSocket: ver render/session.py para por que ese es el dueno correcto.
+    # 'stateful=false' lo manda el camino one-shot de imagenes, que no es una
+    # secuencia y no debe recordar nada entre fotos sueltas.
+    session = StreamSession(
+        stateful=websocket.query_params.get("stateful", "true").lower() != "false")
+
     try:
         while True:
             message = await websocket.receive()
@@ -376,9 +416,21 @@ async def video_stream(websocket: WebSocket):
                         """
                         result = controller.inference(img_rgb)
                         if controller.output_kind == "frame":
+                            # Memoria entre frames, SOLO para las tareas geometricas:
+                            # clasificacion no produce un sv.Detections y no tiene nada
+                            # que rastrear. sync() va ANTES de process(): si cambio el
+                            # modelo hay que olvidar los tracks viejos antes de usarlos,
+                            # no despues.
+                            session.sync(controller.pipeline_generation)
+                            t_track = time.perf_counter()
+                            result = session.process(
+                                result, get_draw_config(),
+                                controller.confidence_threshold)
+                            controller.perf.push_track(
+                                (time.perf_counter() - t_track) * 1000)
                             # El render recibe el img_bgr que YA teniamos decodificado:
                             # no hay un decode extra por frame.
-                            return None, controller.render_result(result, img_bgr)
+                            return None, controller.render_result(result, img_bgr, session)
                         return (controller.active_task,
                                 controller.serialize_result(result)), None
 

@@ -11,6 +11,13 @@
 //
 // Los cambios se aplican al frame SIGUIENTE: se perdio el cambio de color
 // instantaneo que daba el dibujo client-side. Costo conocido y aceptado.
+//
+// OJO: el backend responde el estado EFECTIVO, que puede no ser el pedido — pedir
+// suavizado o trazas prende el seguimiento, y apagar el seguimiento los apaga (la
+// coherencia se fuerza en update_draw_config(), su unica puerta de escritura). El
+// cliente aplica la misma regla ANTES de enviar (aplicarDependencias, en
+// TrackingSettings.tsx) para que el panel no parpadee esperando la respuesta; el
+// backend sigue siendo la autoridad y ambos convergen porque la regla es la misma.
 
 import { api } from '@/shared/api/axios';
 import type { DrawSettings } from '@/features/vision-workspace/services/types';
@@ -27,6 +34,11 @@ export interface DrawSettingsPayload {
   autoScale?: boolean;
   thickness?: number;
   textScale?: number;
+  tracking?: boolean;
+  smoothing?: boolean;
+  smoothingLength?: number;
+  traces?: boolean;
+  tracesLength?: number;
   jpegQuality?: number;
 }
 
@@ -50,5 +62,10 @@ export function pushDrawSettings(settings: DrawSettings): void {
     // shadingAlpha NO se manda: el cliente no expone la opacidad (no hay slider en
     // el panel) y omitirla deja el default del backend en pie. Ajustable por API.
     autoScale: settings.autoScale,
+    tracking: settings.tracking,
+    smoothing: settings.smoothing,
+    smoothingLength: settings.smoothingLength,
+    traces: settings.traces,
+    tracesLength: settings.tracesLength,
   }).catch((e) => console.warn('No se pudieron enviar los ajustes de dibujo:', e));
 }

@@ -11,6 +11,12 @@ este sistema* y qué cuesta medido, no estimado.
 > de texto adaptativos, etiquetas que se esquivan (`smart_position`) y cuatro estilos de
 > marca (`box`/`round`/`corner`/`dot`), los tres manejables desde el panel **Render** del
 > cliente. Este documento cubre **lo que falta**.
+>
+> **Tier B hecho** (2026-08-27, segunda tanda): la superficie de control de sesión (§7),
+> **tracking**, **suavizado** y **trazas**, backend **y** cliente (sección `Seguimiento` en
+> la columna derecha de Inferencia). Las secciones 4.1, 4.2 y 4.3 quedan cerradas; del
+> Tier B siguen abiertas las **zonas** (§4.4), las **líneas de conteo** (§4.5) y el **mapa
+> de calor** (§4.6).
 
 ---
 
@@ -128,6 +134,23 @@ al cambiar de modelo o de fuente, o el tracker "ve" objetos que saltan de una fo
 **Veredicto.** Sí, como cimiento del Tier B. No hacerlo solo: junto con el suavizado, que
 es el que se nota.
 
+> ✅ **HECHO el 2026-08-27** (`render/session.py`). **Costo real: 0,54 ms/frame**, la mitad
+> de lo estimado acá. Tres hallazgos que este documento no anticipaba:
+>
+> **(a)** Los defaults del paquete (`track_activation_threshold=0.7`,
+> `high_conf_det_threshold=0.6`) hacen que el tracking **no haga absolutamente nada** con
+> los tres modelos del repo, cuyos umbrales son 0,5 / 0,3 / 0,25: una detección por debajo
+> de esos valores nunca recibe `tracker_id`. El que bloquea es `high_conf_det_threshold`
+> — bajar sólo `track_activation_threshold` **no alcanza** (verificado). Ambos se derivan
+> ahora del umbral del usuario, y la razón de fondo es estructural: **nuestro postprocesador
+> ya descartó la banda de baja confianza** que ByteTrack usa en su segunda pasada, así que
+> esa capa llega vacía por construcción y no hay nada que perder al aplanarla.
+>
+> **(b)** El tracker **no descarta detecciones**: entran N y salen N, y las no confirmadas
+> salen con `tracker_id = -1`. Prender el tracking no puede hacer desaparecer una caja.
+>
+> **(c)** `reset()` existe y devuelve el tracker a estado virgen (ids desde 0).
+
 ### 4.2 Suavizado · `sv.DetectionsSmoother` — **≈0 ms** · requiere `tracker_id`
 
 **Qué es.** Promedia la posición de cada objeto en los últimos *n* frames usando su
@@ -145,6 +168,20 @@ exactamente lo que no querés. Por eso va como toggle **apagado por defecto** y 
 clara ("suavizado n=5", no "mejorar detección"): el usuario tiene que saber que ve un
 promedio, no la salida cruda.
 
+> ✅ **HECHO el 2026-08-27.** **No es ≈0 ms: cuesta +0,48 ms/frame** (el bucket `track_ms`
+> pasa de 0,55 a 1,03). Y la contracara es más concreta de lo que decía este documento: el
+> promedio **arrastra la caja por detrás del objeto** en movimiento sostenido — medido,
+> ~13 px con `n=5` sobre algo que avanza 5 px/frame. No sólo quita temblor: **agrega
+> retardo**, y eso es lo que la UI tiene que comunicar.
+>
+> ⚠️ **El bug que hay que conocer si se toca esto.** `sv.DetectionsSmoother` agrupa por
+> `tracker_id`, y **todos** los tracks sin confirmar comparten el valor `-1`: para el
+> suavizador son el mismo objeto. Verificado: dos detecciones separadas con `tracker_id=-1`
+> entran y sale **UNA sola caja**, promediada entre ambas, en un punto de la imagen donde no
+> hay nada (entran 2, sale 1). Por eso las detecciones se **parten** antes de suavizar y se
+> reúnen después (`StreamSession._con_identidad`). El aviso que este documento celebraba
+> —"no suaviza y avisa"— sólo cubre el caso `tracker_id = None`, **no el `-1`**.
+
 ### 4.3 Trazas · `sv.TraceAnnotator` — **+1,02 ms** · requiere `tracker_id`
 
 **Qué es.** Dibuja la estela del recorrido de cada objeto rastreado sobre los últimos *n*
@@ -157,6 +194,21 @@ más rápida de **ver** la estabilidad temporal de un modelo, que en números es
 pantalla es obvia.
 
 **Veredicto.** Sí, junto con el tracking, como toggle. Es el modo "inspección temporal".
+
+> ✅ **HECHO el 2026-08-27.** **+0,3 ms**, un tercio de lo estimado. Cae en el bucket
+> `draw_ms` y no en `track_ms`, porque se dibuja dentro de `render_detection`.
+>
+> Dos cosas que este documento no anticipaba: **sin `tracker_id` el annotator no avisa,
+> levanta `ValueError`** y rompe el frame — por eso la dependencia con el tracking se fuerza
+> en el singleton y no sólo en la UI; y **agrupa por `tracker_id` igual que el smoother**,
+> así que los `-1` dibujarían una estela saltando de un objeto a otro: justo el artefacto
+> que el usuario debería leer como "el tracker confunde identidades". Un artefacto que
+> **imita al bug que la herramienta sirve para detectar** es peor que no tener la
+> herramienta, así que las trazas también pasan por `_con_identidad`.
+>
+> Confirmado el valor de diagnóstico que este documento le atribuía: sobre una traslación
+> horizontal **perfectamente recta**, la estela sale ondulada — el temblequeo del detector
+> hecho visible sin mirar un solo número.
 
 ### 4.4 Zonas poligonales · `sv.PolygonZone` — **0,03 ms** · NO requiere tracking
 
@@ -330,9 +382,33 @@ forma más rápida de repetir la inflación que el wizard de modelos ya tuvo que
 | **Modelo** | `configs/<modelo>.json` (schema estricto, wizard) | `label_map`, umbral, NMS, tile sugerido del slicer | Se recarga con el modelo |
 | **Sesión** | La conexión del stream — **hoy no existe** | tracking, suavizado, trazas, zonas dibujadas, mapa de calor | Al cambiar de modelo o de fuente |
 
-**Estado al 2026-08-27:** la primera fila está resuelta (`/config/draw` + el panel Render
-del cliente). La tercera **es el trabajo pendiente**, y es el verdadero costo del Tier B —
-los toggles son la parte fácil.
+**Estado al 2026-08-27 (segunda tanda): resuelto, con una corrección a la tabla de arriba.**
+
+Este documento proponía un **tercer dueño** de ajustes ("sesión") con su propio endpoint
+`/config/render`. Al implementarlo se vio que la taxonomía estaba mal cortada: **que el
+tracking esté prendido es una preferencia del usuario** — sobrevive al modelo, a la fuente
+y al reinicio, igual que el color de caja. Lo que muere con la sesión **no es el toggle, es
+la memoria**: el objeto tracker con sus filtros, el deque del smoother, el buffer de
+recorridos.
+
+Separadas esas dos cosas, el tercer dueño desaparece y con él el endpoint nuevo. Los toggles
+se sumaron a `DrawConfig` y a `POST /config/draw` (regla 2 cumplida, y sin migrar el
+cliente); la memoria vive en `render/session.py`, **colgada de la conexión del WebSocket**.
+
+Ese dueño resuelve de forma **estructural** tres de los cuatro casos de reseteo —cambio de
+fuente, reconexión y foto suelta cierran la conexión o nunca la abren— sin que nadie tenga
+que acordarse de llamar a nada. El cuarto es el que importa: **cambiar de modelo NO cierra
+el WebSocket** (el effect del cliente depende de la fuente, no del modelo). Se resuelve con
+un contador de generación en el `ModelController`: la sesión recuerda bajo cuál nació,
+compara una vez por frame y se olvida sola. Es el mismo truco que la `version` de
+`DrawConfig` con el cache de annotators, y por la misma razón — se auto-repara, en vez de
+exigir que el endpoint REST le avise a cada conexión viva.
+
+La **regla 3** (dependencias visibles) se cumple en el **singleton**, no en la UI:
+`smoothing` y `traces` prenden el tracking solos, y apagar el tracking los apaga. Como es la
+única puerta de escritura del estado, no existe forma de dejarlo en una combinación
+imposible, la valide quien la valide. El endpoint devuelve el estado efectivo para que el
+cliente pueda mostrar lo que realmente pasó.
 
 ### Cuatro reglas antes de dibujar ningún botón nuevo
 
@@ -382,10 +458,18 @@ efectivo completo.)
 
 1. ~~**Tier A, sin el blur**~~ → **HECHO el 2026-08-27**: escala adaptativa, etiquetas que
    se esquivan y cuatro estilos de marca, con su panel en el cliente.
-2. **La superficie de control (estado de sesión).** Hacerlo *antes* del Tier B: si el
-   tracking llega primero, su estado se acomoda donde entre y después se paga el doble.
-3. **Tracking y suavizado, juntos** (con el paquete `trackers`, no con el `ByteTrack`
-   deprecado). Las trazas salen casi gratis en el mismo viaje.
+2. ~~**La superficie de control (estado de sesión).** Hacerlo *antes* del Tier B: si el
+   tracking llega primero, su estado se acomoda donde entre y después se paga el doble.~~
+   → **HECHO el 2026-08-27**, y el consejo era correcto. Se montó y verificó el andamiaje
+   **vacío** (`StreamSession` + contador de generación, con tests propios) antes de colgarle
+   el primer tracker, así el reseteo se probó sin que se mezclara con el comportamiento de
+   una librería.
+3. ~~**Tracking y suavizado, juntos** (con el paquete `trackers`, no con el `ByteTrack`
+   deprecado). Las trazas salen casi gratis en el mismo viaje.~~ → **HECHO el 2026-08-27**
+   backend **y** cliente, trazas incluidas: **~1,3 ms/frame** con los tres prendidos. El
+   panel `Seguimiento` va **aparte** de `Render` (gobierna el eje del tiempo, no el del
+   pintado), con los dependientes indentados bajo el maestro y el bloque deshabilitado
+   cuando la fuente es una imagen fija.
 4. **Exportar detecciones.** Barato y le devuelve al usuario el dato numérico que el paso 3
    se llevó al backend.
 5. **La bifurcación**, según el objetivo:
