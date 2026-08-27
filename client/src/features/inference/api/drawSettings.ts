@@ -22,6 +22,8 @@ export interface DrawSettingsPayload {
   maskAlpha?: number;
   boxStyle?: string;
   smartLabels?: boolean;
+  shading?: boolean;
+  shadingAlpha?: number;
   autoScale?: boolean;
   thickness?: number;
   textScale?: number;
@@ -44,6 +46,9 @@ export function pushDrawSettings(settings: DrawSettings): void {
     maskAlpha: settings.maskAlpha,
     boxStyle: settings.boxStyle,
     smartLabels: settings.smartLabels,
+    shading: settings.shading,
+    // shadingAlpha NO se manda: el cliente no expone la opacidad (no hay slider en
+    // el panel) y omitirla deja el default del backend en pie. Ajustable por API.
     autoScale: settings.autoScale,
   }).catch((e) => console.warn('No se pudieron enviar los ajustes de dibujo:', e));
 }

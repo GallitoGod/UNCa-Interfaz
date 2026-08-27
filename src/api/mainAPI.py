@@ -77,6 +77,11 @@ class DrawSettingsRequest(BaseModel):
     smartLabels: Optional[bool] = Field(
         default=None,
         description="Correr las etiquetas para que no se tapen entre si")
+    shading: Optional[bool] = Field(
+        default=None,
+        description="Rellenar el interior de la caja con el color de acento translucido")
+    shadingAlpha: Optional[float] = Field(default=None, ge=0.0, le=1.0,
+                                          description="Opacidad del sombreado de la caja (0..1)")
     autoScale: Optional[bool] = Field(
         default=None,
         description="Derivar grosor y escala de texto de la resolucion del frame")
@@ -262,6 +267,8 @@ def update_draw(data: DrawSettingsRequest):
         mask_alpha=data.maskAlpha,
         box_style=data.boxStyle,
         smart_labels=data.smartLabels,
+        shading=data.shading,
+        shading_alpha=data.shadingAlpha,
         auto_scale=data.autoScale,
         thickness=data.thickness,
         text_scale=data.textScale,
@@ -278,6 +285,8 @@ def update_draw(data: DrawSettingsRequest):
             "maskAlpha": cfg.mask_alpha,
             "boxStyle": cfg.box_style,
             "smartLabels": cfg.smart_labels,
+            "shading": cfg.shading,
+            "shadingAlpha": cfg.shading_alpha,
             "autoScale": cfg.auto_scale,
             "thickness": cfg.thickness,
             "textScale": cfg.text_scale,

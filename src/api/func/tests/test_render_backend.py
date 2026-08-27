@@ -285,3 +285,88 @@ def test_la_version_nunca_vuelve_atras():
     v = update_draw_config(bbox_color="#010203").version
     assert reset_draw_config().version > v
     assert update_draw_config(box_style="dot").version > v + 1
+
+
+# ── Sombreado de la caja (2026-08-26) ─────────────────────────────────────────
+
+def test_sombreado_apagado_no_construye_annotator():
+    # Apagado tiene que costar CERO: ni objeto construido ni entrada retenida.
+    assert DrawConfig().shading is False
+    assert annotators_for(get_draw_config(), (860, 573)).shade is None
+
+
+def test_sombreado_prendido_construye_un_color_annotator():
+    ann = annotators_for(update_draw_config(shading=True), (860, 573))
+    # OJO: es ColorAnnotator (rellena el RECTANGULO), no MaskAnnotator (que necesita
+    # detections.mask por pixel, cosa que un detector no produce).
+    assert isinstance(ann.shade, sv.ColorAnnotator)
+    assert ann.shade.opacity == DrawConfig().shading_alpha
+
+
+def test_shading_alpha_llega_al_annotator():
+    ann = annotators_for(update_draw_config(shading=True, shading_alpha=0.6), (860, 573))
+    assert ann.shade.opacity == 0.6
+
+
+def test_sombreado_pinta_adentro_de_la_caja(frame, dets):
+    # La prueba real: el interior de la caja tiene que cambiar respecto de no
+    # sombrear. Se mira un pixel BIEN adentro (no el borde, que ya lo pinta el
+    # contorno con o sin sombreado).
+    update_draw_config(shading=False)
+    sin = cv2.imdecode(np.frombuffer(render_detection(dets, frame), np.uint8), cv2.IMREAD_COLOR)
+    update_draw_config(shading=True)
+    con = cv2.imdecode(np.frombuffer(render_detection(dets, frame), np.uint8), cv2.IMREAD_COLOR)
+    # dets = [10,20,90,100]; (50,60) cae en el centro, lejos del trazo.
+    assert not np.array_equal(sin[60, 50], con[60, 50])
+
+
+def test_sombreado_no_toca_lo_de_afuera_de_la_caja(frame, dets):
+    # El relleno es de la deteccion, no del frame: fuera de [10,20,90,100] no cambia
+    # ni un pixel. Si esto falla, el annotator esta pintando la escena entera.
+    update_draw_config(shading=True)
+    con = cv2.imdecode(np.frombuffer(render_detection(dets, frame), np.uint8), cv2.IMREAD_COLOR)
+    assert np.array_equal(con[110, 180], frame[110, 180])
+
+
+def test_sombreado_convive_con_todos_los_estilos(frame, dets):
+    # Es una capa aparte, no una propiedad del estilo: se apila abajo de cualquiera.
+    for style in BOX_STYLES:
+        update_draw_config(box_style=style, shading=True)
+        jpg = render_detection(dets, frame)
+        back = cv2.imdecode(np.frombuffer(jpg, np.uint8), cv2.IMREAD_COLOR)
+        assert back is not None and back.shape == frame.shape
+
+
+def test_sombreado_no_muta_el_frame_original(frame, dets):
+    # El .copy() se movio de lugar al encadenar annotators: si alguien lo saca, el
+    # frame del handler del WS —que no es nuestro— queda pintado.
+    update_draw_config(shading=True)
+    antes = frame.copy()
+    render_detection(dets, frame)
+    assert np.array_equal(frame, antes)
+
+
+def test_post_config_draw_acepta_el_sombreado():
+    client = TestClient(main.app)
+    r = client.post("/config/draw", json={"shading": True, "shadingAlpha": 0.4})
+    assert r.status_code == 200
+    draw = r.json()["draw"]
+    assert draw["shading"] is True and draw["shadingAlpha"] == 0.4
+    cfg = get_draw_config()
+    assert cfg.shading is True and cfg.shading_alpha == 0.4
+
+
+def test_apagar_el_sombreado_se_aplica():
+    # Mismo caso que smartLabels: False no es None, tiene que aplicarse.
+    update_draw_config(shading=True)
+    TestClient(main.app).post("/config/draw", json={"shading": False})
+    assert get_draw_config().shading is False
+
+
+@pytest.mark.parametrize("body", [
+    {"shadingAlpha": -0.1},   # fuera de rango por abajo
+    {"shadingAlpha": 1.5},    # fuera de rango por arriba
+    {"shading": "si"},        # no es booleano
+])
+def test_post_config_draw_rechaza_sombreado_invalido(body):
+    assert TestClient(main.app).post("/config/draw", json=body).status_code == 422

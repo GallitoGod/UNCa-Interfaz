@@ -28,11 +28,13 @@ const DEFAULT_DRAW_SETTINGS: DrawSettings = {
   bboxColor: '#00BFFF',
   labelColor: '#001018',
   maskAlpha: 0.5,
-  // Los tres defaults coinciden con los del backend (render/draw_config.py).
+  // Los cuatro defaults coinciden con los del backend (render/draw_config.py).
   // smartLabels y autoScale nacen prendidos: son mejores defaults, y el panel de
-  // render los deja apagar.
+  // render los deja apagar. shading nace APAGADO: con muchas cajas superpuestas los
+  // rellenos se suman y tapan la imagen, asi que lo prende quien lo quiera mirar.
   boxStyle: 'box',
   smartLabels: true,
+  shading: false,
   autoScale: true,
 };
 

@@ -29,6 +29,10 @@ class Annotators:
     box: object            # el estilo elegido: Box / RoundBox / BoxCorner / Dot
     label: sv.LabelAnnotator
     mask: sv.MaskAnnotator
+    # Relleno translucido de la caja. None cuando el sombreado esta apagado: asi el
+    # hot path pregunta por None en vez de por un flag de la config, y el caso
+    # "apagado" no construye ni retiene un annotator que nadie usa.
+    shade: Optional[sv.ColorAnnotator]
     thickness: int         # el efectivo (auto o manual), para logs y tests
     text_scale: float
 
@@ -97,6 +101,14 @@ def _build(cfg: DrawConfig, resolution_wh: Optional[Tuple[int, int]]) -> Annotat
             opacity=cfg.mask_alpha,
             color_lookup=sv.ColorLookup.INDEX,
         ),
+        # OJO: sv.ColorAnnotator pinta el RECTANGULO de la deteccion, no una mascara
+        # por pixel (eso es MaskAnnotator, y necesita detections.mask, que un detector
+        # no produce). El nombre de supervision confunde: su docstring dice "box masks".
+        shade=sv.ColorAnnotator(
+            color=box_color,
+            opacity=cfg.shading_alpha,
+            color_lookup=sv.ColorLookup.INDEX,
+        ) if cfg.shading else None,
         thickness=thickness,
         text_scale=text_scale,
     )

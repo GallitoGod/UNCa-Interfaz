@@ -18,6 +18,7 @@ export interface DrawSettings {
   maskAlpha: number; // segmentacion (futuro)
   boxStyle: BoxStyle;
   smartLabels: boolean; // correr los carteles para que no se tapen entre si
+  shading: boolean; // rellenar la caja con el color de acento translucido
   autoScale: boolean; // grosor y texto derivados de la resolucion del frame
 }
 

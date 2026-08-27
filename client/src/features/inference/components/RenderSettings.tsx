@@ -6,12 +6,12 @@
 // configurar-y-olvidar (los colores). La regla: el control tiene que estar donde el
 // usuario puede ver el efecto AL MISMO TIEMPO que lo toca.
 //
-// Los tres ajustes son del USUARIO (no del modelo): persisten en localStorage via
+// Los cuatro ajustes son del USUARIO (no del modelo): persisten en localStorage via
 // workspaceStore y se empujan al backend, que es el que dibuja desde el 2026-08-26.
 // Se aplican al frame SIGUIENTE.
 
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
-import type { BoxStyle } from '@/features/vision-workspace/services/types';
+import type { BoxStyle, ModelType } from '@/features/vision-workspace/services/types';
 import { pushDrawSettings } from '../api/drawSettings';
 import { useStreamStore } from '../store/streamStore';
 import { cn } from '@/shared/ui/cn';
@@ -24,6 +24,23 @@ const ESTILOS: { key: BoxStyle; label: string; hint: string }[] = [
   { key: 'corner', label: 'Esquinas', hint: 'Solo las esquinas: deja ver la imagen debajo' },
   { key: 'dot', label: 'Punto', hint: 'Un punto por deteccion: para muchas cajas chicas' },
 ];
+
+// Tipos cuyo resultado se DIBUJA sobre el frame (output_kind="frame" en el backend).
+// Un clasificador devuelve TEXTO: el backend no compone nada, manda el envelope JSON y
+// el cliente pinta su propio frame con un panel HTML encima. Ninguno de estos controles
+// puede cambiarle un pixel, asi que mostrarlos seria ofrecer perillas desconectadas.
+const TIPOS_QUE_SE_DIBUJAN: ModelType[] = ['detection', 'segmentation'];
+
+/**
+ * Si el panel de render tiene algo que gobernar para el modelo activo.
+ *
+ * Sin modelo (null) devuelve true a proposito: son ajustes del USUARIO, persistidos, y
+ * dejarlos a mano antes de cargar nada es legitimo. La columna solo se poda cuando hay
+ * un modelo cargado que no dibuja.
+ */
+export function panelDeRenderAplica(type: ModelType | null | undefined): boolean {
+  return type == null || TIPOS_QUE_SE_DIBUJAN.includes(type);
+}
 
 export function RenderSettings() {
   const drawSettings = useWorkspaceStore((s) => s.drawSettings);
@@ -71,6 +88,12 @@ export function RenderSettings() {
         hint="Corre los carteles para que no se tapen entre si. Cuesta un poco mas con muchas cajas."
         on={drawSettings.smartLabels}
         onToggle={() => aplicar({ smartLabels: !drawSettings.smartLabels })}
+      />
+      <Interruptor
+        label="Sombreado"
+        hint="Rellena la caja con el color de acento translucido. Se lleva bien con Esquinas; con muchas cajas superpuestas los rellenos se suman y tapan la imagen."
+        on={drawSettings.shading}
+        onToggle={() => aplicar({ shading: !drawSettings.shading })}
       />
       <Interruptor
         label="Grosor automatico"

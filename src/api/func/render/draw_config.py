@@ -44,6 +44,19 @@ class DrawConfig:
     mask_alpha: float = 0.5         # segmentacion (todavia sin pipeline)
     box_style: str = "box"          # uno de BOX_STYLES
 
+    # Sombreado: rellena el interior de la caja con el color de acento translucido
+    # (sv.ColorAnnotator). NO es la mascara de segmentacion —eso es mask_alpha y
+    # necesita geometria real por pixel—, es la caja pintada por dentro: sirve para
+    # que la deteccion se lea de un vistazo sin perder el detalle de abajo.
+    #
+    # Nace APAGADO: prende bien con "corner" (que a proposito no cierra el contorno)
+    # pero sobre un frame con muchas cajas superpuestas los rellenos se suman y la
+    # imagen desaparece bajo el color. Que lo prenda quien lo quiera mirar.
+    shading: bool = False
+    # 0.25 y no el 0.5 de supervision: a 0.5 el relleno gana sobre la foto y deja de
+    # verse el objeto, que es justo lo que el usuario esta mirando.
+    shading_alpha: float = 0.25
+
     # Etiquetas que se corren solas para no taparse entre si. Prendido por defecto:
     # con pocas cajas no se nota y con muchas es la diferencia entre leer los nombres
     # o ver una banda de carteles pisados. Cuesta ~0,37 ms con 6 cajas y crece con la

@@ -203,7 +203,15 @@ def render_detection(result, img_bgr, draw_cfg=None) -> bytes:
         # se derivan de ella (auto_scale). Es (ancho, alto), no el shape de numpy.
         h, w = img_bgr.shape[:2]
         ann = annotators_for(cfg, (w, h))
-        scene = ann.box.annotate(scene=img_bgr.copy(), detections=result)
+        # El .copy() va aca (antes estaba en la llamada al box): los annotators
+        # escriben IN-PLACE y ahora hay mas de uno encadenado sobre la misma escena.
+        scene = img_bgr.copy()
+        # El orden es el de las capas y no es negociable: primero el relleno, despues
+        # el contorno, al final las etiquetas. Al reves el sombreado se comeria el
+        # trazo de la caja y el texto que van arriba.
+        if ann.shade is not None:
+            scene = ann.shade.annotate(scene=scene, detections=result)
+        scene = ann.box.annotate(scene=scene, detections=result)
         scene = ann.label.annotate(scene=scene, detections=result, labels=_labels_for(result))
 
     ok, buf = cv2.imencode(".jpg", scene, [int(cv2.IMWRITE_JPEG_QUALITY), int(cfg.jpeg_quality)])
