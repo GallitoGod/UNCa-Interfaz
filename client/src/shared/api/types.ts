@@ -72,7 +72,13 @@ export interface DetectionOutput {
   nms_per_class: boolean;
   nms_threshold: number;
   tensor_structure: TensorDetection;
-  pack_format: 'raw' | 'yolo_flat' | 'boxes_scores' | 'tflite_detpost' | 'anchor_deltas';
+  pack_format:
+    | 'raw'
+    | 'yolo_flat'
+    | 'yolo_v8'
+    | 'boxes_scores'
+    | 'tflite_detpost'
+    | 'anchor_deltas';
   anchor_config: AnchorConfig | null; // requerido si pack_format === 'anchor_deltas'
 }
 

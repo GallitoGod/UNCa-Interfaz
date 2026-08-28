@@ -88,10 +88,14 @@ def test_load_and_inference_integration_strict_runtime(fake_config):
         assert args[0] == "raw:adapt_in:pre:image_data"
         assert args[1] is fake_config.runtime
 
+        # UNA sola llamada con el TENSOR ENTERO (N,K), no una por fila: el adapter se
+        # vectorizo el 2026-08-27 porque con heads crudos (anchor_deltas entrega ~19k
+        # anchors) el list comprehension dominaba el postproceso. Por eso lo esperado
+        # es 2D: si alguien volviera a llamarlo fila a fila, este test lo delata.
         assert fake_output_adapter.call_count == 1
         np.testing.assert_array_almost_equal(
             fake_output_adapter.call_args[0][0],
-            [10.0, 10.0, 20.0, 20.0, 0.9, 0.0]
+            [[10.0, 10.0, 20.0, 20.0, 0.9, 0.0]]
         )
         # El controller debe pasar al post el MISMO meta que devolvio el pre
         assert fake_post.call_count == 1

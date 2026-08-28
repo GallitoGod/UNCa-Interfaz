@@ -1,11 +1,15 @@
-// LogPanel.tsx — ultimos errores de inferencia. Polling solo cuando esta abierto.
+// LogPanel.tsx — ultimos errores de inferencia.
 // Render en JSX (elimina el innerHTML del codigo viejo).
+//
+// Ya no recibe 'open': la seccion plegable lo desmonta cuando esta cerrada, asi que
+// no hay nada que decidir aca. El polling sigue vivo igual porque el encabezado de la
+// seccion muestra el contador aunque este plegada — comparten queryKey y TanStack
+// deduplica, asi que sigue habiendo una sola ronda de pedidos.
 
 import { useInferenceLogs } from '../hooks/useDiagnostics';
 
-export function LogPanel({ open }: { open: boolean }) {
-  const { data } = useInferenceLogs(open);
-  if (!open) return null;
+export function LogPanel() {
+  const { data } = useInferenceLogs(true);
 
   // Sin errores: fila verde "pipeline estable" (estado de sistema, no decoracion).
   if (!data || data.length === 0) {

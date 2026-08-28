@@ -104,3 +104,66 @@ def test_preprocessor_invalid_config():
 
     with pytest.raises(ValueError):
         build_preprocessor(cfg, runtime)
+
+
+# ── El value_step in-place (2026-08-27) ─────────────────────────────────────
+# La escala/normalizacion paso de encadenar operadores (`img.astype(f32) * factor
+# + offset`) a convertir UNA vez y operar in-place sobre esa copia. Cada operador
+# encadenado alocaba y recorria un tensor entero de mas: con 640x640x3 float32 son
+# 4,9 MB por copia. Estos tests fijan las dos propiedades que lo hacen seguro.
+
+def _cfg_valores(scale, normalize, mean, std):
+    return InputConfig(
+        width=8, height=8, channels=3,
+        normalize=normalize, mean=mean, std=std, scale=scale,
+        letterbox=False, preserve_aspect_ratio=False,
+        auto_pad_color=[114, 114, 114], color_order="RGB",
+    )
+
+
+# Las cuatro ramas de value_step, con el resultado esperado calculado a mano.
+CASOS = [
+    # (scale, normalize, mean, std, formula de referencia)
+    (True,  True,  [0.5, 0.5, 0.5], [0.25, 0.25, 0.25], lambda a: (a / 255.0 - 0.5) / 0.25),
+    (True,  True,  [0.0, 0.0, 0.0], [1.0, 1.0, 1.0],    lambda a: a / 255.0),
+    (True,  False, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0],    lambda a: a / 255.0),
+    (False, True,  [10.0, 20.0, 30.0], [2.0, 4.0, 8.0],
+     lambda a: (a - np.array([10.0, 20.0, 30.0], dtype=np.float32)) / np.array([2.0, 4.0, 8.0], dtype=np.float32)),
+    (False, False, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0],    lambda a: a),
+]
+
+
+@pytest.mark.parametrize("scale,normalize,mean,std,referencia", CASOS)
+def test_value_step_da_lo_mismo_que_la_formula(scale, normalize, mean, std, referencia):
+    """La aritmetica no cambio al pasar a in-place: solo se dejo de copiar."""
+    pre = build_preprocessor(_cfg_valores(scale, normalize, mean, std), _make_runtime())
+    rng = np.random.default_rng(3)
+    img = rng.integers(0, 256, size=(8, 8, 3), dtype=np.uint8)
+
+    tensor, _ = pre(img)
+    esperado = referencia(img.astype(np.float32))
+
+    np.testing.assert_allclose(tensor.astype(np.float64), np.asarray(esperado, dtype=np.float64),
+                               rtol=0, atol=1e-6)
+
+
+@pytest.mark.parametrize("scale,normalize,mean,std,_ref", CASOS)
+def test_value_step_no_muta_el_frame_recibido(scale, normalize, mean, std, _ref):
+    """
+    LA propiedad que hace seguro el in-place: astype() copia siempre (copy=True es su
+    default), asi que las operaciones posteriores escriben sobre esa copia y nunca
+    sobre el frame del llamador. Si alguien "optimizara" con copy=False, el
+    preprocesador empezaria a corromper el frame que le dieron.
+
+    Hoy el handler del WS le pasa el img_rgb que produjo cv2.cvtColor —una copia
+    aparte del img_bgr sobre el que despues dibuja—, asi que el radio de dano seria
+    chico. Pero la invariante es del PREPROCESADOR, no del llamador de turno: es lo
+    que permite que cualquiera reutilice su frame despues de inferir.
+    """
+    pre = build_preprocessor(_cfg_valores(scale, normalize, mean, std), _make_runtime())
+    img = np.full((8, 8, 3), 200, dtype=np.uint8)
+    intacto = img.copy()
+
+    pre(img)
+
+    assert np.array_equal(img, intacto), "el preprocesador mutó el frame que recibió"

@@ -119,7 +119,10 @@ def build_detection_pipeline(config, model_path, logger):
                         f"tensor_structure declara indices hasta {max_idx} pero el tensor "
                         f"desempaquetado tiene {unpacked.shape[1]} columnas. Revisar "
                         "'coordinates'/'confidence_index'/'class_index' en el JSON.")
-            adapted_output = [output_adapter(r) for r in unpacked]
+            # UNA llamada con el tensor entero, no una por fila: con heads crudos
+            # (anchor_deltas entrega ~19k anchors) el list comprehension era el costo
+            # dominante del postproceso. Ver generate_output_adapter().
+            adapted_output = output_adapter(unpacked)
         else:
             adapted_output = unpacked  # ya en [x1,y1,x2,y2,conf,cls]
 

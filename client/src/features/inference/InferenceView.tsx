@@ -1,16 +1,21 @@
 // InferenceView.tsx — vista de inferencia con la anatomia de 3 zonas del spec:
-//   izquierda  -> fuente (camara/archivo) + lista de modelos
+//   izquierda  -> ENTRADA y salud del modelo: fuente, modelos, errores
 //   centro     -> feed (heroe) + barra de transporte
-//   derecha    -> parametros + metricas + errores
+//   derecha    -> PRESENTACION y medicion: parametros, render, seguimiento, metricas
 // Es duena de los refs (video/canvas/overlay) y del orquestador (useVisionSession).
+//
+// Todas las secciones son PLEGABLES (shared/ui/Section). El motivo es de crecimiento:
+// cada cosecha de supervision le suma una seccion a la columna derecha y no da mas.
+// Los errores se mudaron a la IZQUIERDA porque son del MODELO —los produce el modelo
+// cargado, y /logs/inference devuelve errores de inferencia—, y porque la columna que
+// crece es la derecha: la izquierda (fuente y modelo) es estable, asi que ahi hay aire.
 
 import { useRef, useState } from 'react';
 import { VisionWorkspace } from '@/features/vision-workspace/components/VisionWorkspace';
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
 import { Tabs } from '@/shared/ui/Tabs';
-import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
-import { SectionLabel } from '@/shared/ui/SectionLabel';
+import { Section } from '@/shared/ui/Section';
 import { useStreamStore } from './store/streamStore';
 import { useVisionSession } from './hooks/useVisionSession';
 import { CameraSource } from './components/CameraSource';
@@ -23,7 +28,8 @@ import { MetricsHUD } from './components/MetricsHUD';
 import { MetricsPanel } from './components/MetricsPanel';
 import { LogPanel } from './components/LogPanel';
 import { Recorder } from './components/Recorder';
-import { DrawSettingsModal } from './components/DrawSettingsModal';
+import { useInferenceLogs } from './hooks/useDiagnostics';
+import { ESTILOS } from './components/RenderSettings';
 
 type SourceTab = 'camera' | 'file';
 
@@ -33,7 +39,6 @@ export default function InferenceView() {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const [sourceTab, setSourceTab] = useState<SourceTab>('camera');
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const sourceKind = useStreamStore((s) => s.source.kind);
   const hasSource = sourceKind !== 'none';
@@ -43,7 +48,21 @@ export default function InferenceView() {
   // solo existe para los tipos que el backend compone. Con un clasificador cargado la
   // columna lo esconde en vez de dejar perillas que no mueven nada.
   const activeType = useWorkspaceStore((s) => s.activeModel?.type ?? null);
+  const activeModelName = useWorkspaceStore((s) => s.activeModel?.name ?? null);
   const mostrarRender = panelDeRenderAplica(activeType);
+
+  // Resumenes para leer cada seccion SIN desplegarla (ver shared/ui/Section).
+  const drawSettings = useWorkspaceStore((s) => s.drawSettings);
+  const estiloActivo = ESTILOS.find((e) => e.key === drawSettings.boxStyle)?.label ?? '';
+  const seguimientoOn = drawSettings.tracking;
+
+  // Los errores se consultan SIEMPRE, este la seccion abierta o no: un contador de
+  // errores que deja de contar al plegarse es peor que no tener contador. Las
+  // metricas, en cambio, solo se piden con la seccion abierta — plegarlas no oculta
+  // nada que se este perdiendo. Comparten queryKey con sus paneles, asi que TanStack
+  // deduplica y esto no agrega una segunda ronda de polling.
+  const { data: errores } = useInferenceLogs(true);
+  const cantidadErrores = errores?.length ?? 0;
 
   // Orquesta media + stream + render segun la fuente activa.
   useVisionSession({ videoRef, canvasRef, overlayRef });
@@ -52,8 +71,7 @@ export default function InferenceView() {
     <div className="grid h-full grid-cols-[200px_1fr_230px] gap-3 bg-canvas p-3">
       {/* ── Zona izquierda: fuente + modelos ── */}
       <aside className="flex flex-col gap-5 overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-        <div className="flex flex-col gap-2.5">
-          <SectionLabel>Fuente</SectionLabel>
+        <Section id="fuente" title="Fuente" estado={sourceTab === 'camera' ? 'CAMARA' : 'ARCHIVO'}>
           <Tabs
             aria-label="Fuente de video"
             tabs={[
@@ -64,12 +82,22 @@ export default function InferenceView() {
             onChange={setSourceTab}
           />
           {sourceTab === 'camera' ? <CameraSource /> : <FileSource />}
-        </div>
+        </Section>
 
-        <div className="flex min-h-0 flex-col gap-2.5">
-          <SectionLabel>Modelo</SectionLabel>
+        <Section id="modelo" title="Modelo" estado={activeModelName ?? 'NINGUNO'} className="min-h-0">
           <ModelSelector />
-        </div>
+        </Section>
+
+        {/* Los errores viven ACA, con el modelo que los produce. Su encabezado cuenta
+            aunque este plegado: es el unico estado que no puede quedar mudo. */}
+        <Section
+          id="errores"
+          title="Errores"
+          estado={cantidadErrores > 0 ? String(cantidadErrores) : 'OK'}
+          alerta={cantidadErrores > 0}
+        >
+          <LogPanel />
+        </Section>
       </aside>
 
       {/* ── Zona central: feed (heroe) + transporte ── */}
@@ -96,18 +124,18 @@ export default function InferenceView() {
 
       {/* ── Zona derecha: parametros + metricas + errores ── */}
       <aside className="flex flex-col gap-5 overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-        <div className="flex flex-col gap-3">
-          <SectionLabel>Parametros</SectionLabel>
+        <Section id="parametros" title="Parametros">
           <ConfidenceSlider />
-        </div>
+        </Section>
 
-        {/* La seccion ENTERA se va, no solo los controles: un <SectionLabel>Render</
-            SectionLabel> huerfano sobre un hueco se lee como un panel roto. */}
+        {/* La seccion ENTERA se va cuando no aplica, no solo los controles: un
+            encabezado huerfano sobre un hueco se lee como un panel roto. Esto es
+            RELEVANCIA (la decide el sistema) y es independiente del plegado (lo decide
+            el usuario): la primera define que existe, el segundo que esta desplegado. */}
         {mostrarRender && (
-          <div className="flex flex-col gap-2.5">
-            <SectionLabel>Render</SectionLabel>
+          <Section id="render" title="Render" estado={estiloActivo}>
             <RenderSettings />
-          </div>
+          </Section>
         )}
 
         {/* Seguimiento cuelga de la MISMA condicion que Render, y por el mismo motivo:
@@ -116,34 +144,21 @@ export default function InferenceView() {
             Va como seccion aparte de Render porque gobierna el eje del TIEMPO, no el
             del pintado, y porque solo aplica a camara y video. */}
         {mostrarRender && (
-          <div className="flex flex-col gap-2.5">
-            <SectionLabel>Seguimiento</SectionLabel>
+          <Section id="seguimiento" title="Seguimiento" estado={seguimientoOn ? 'ON' : undefined}>
             <TrackingSettings />
-          </div>
+          </Section>
         )}
 
-        <div className="flex flex-col gap-2.5">
-          <SectionLabel>Metricas</SectionLabel>
+        {/* SIN 'estado' a proposito, y no por olvido: las metricas se dejan de pedir al
+            plegarse, asi que el encabezado solo podria mostrar el ultimo valor cacheado
+            — un fps congelado que se lee como si fuera en vivo. Eso es peor que no
+            mostrar nada, y es exactamente la clase de estado enganoso que la regla del
+            encabezado existe para evitar. El fps en vivo ya lo da el MetricsHUD, que
+            flota sobre el feed y no depende de esta seccion. */}
+        <Section id="metricas" title="Metricas">
           <MetricsPanel />
-        </div>
-
-        <div className="flex min-h-0 flex-col gap-2.5">
-          <SectionLabel>Errores</SectionLabel>
-          <LogPanel open />
-        </div>
-
-        {/* Misma regla que la seccion Render: el modal solo tiene colores de caja y de
-            etiqueta, o sea puro dibujo. Con un clasificador no hay nada que colorear. */}
-        {mostrarRender && (
-          <Button variant="outline" className="mt-auto" onClick={() => setSettingsOpen(true)}>
-            colores de label
-          </Button>
-        )}
+        </Section>
       </aside>
-
-      {/* El && con mostrarRender no es redundante con esconder el boton: cierra el modal
-          si el tipo de modelo cambiara con el abierto, en vez de dejarlo huerfano. */}
-      <DrawSettingsModal open={settingsOpen && mostrarRender} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

@@ -92,13 +92,26 @@ interface PackPreset {
 // Constantes por formato. El orden de columnas lo fija el unpacker; las coords mapean
 // ese orden al formato estandar [x1,y1,x2,y2,conf,cls] via output_adapter.
 //
-//   yolo_flat      -> [cx, cy, w, h, score, class_id]
+//   yolo_flat      -> [cx, cy, w, h, score, class_id]   (v5/v7: TIENE objectness)
+//   yolo_v8        -> ya estandar (no usa adapter; el head de v8+ llega TRANSPUESTO
+//                     y sin objectness, y el unpacker lo endereza y convierte)
 //   tflite_detpost -> [ymin, xmin, ymax, xmax, score, class_id]
 //   anchor_deltas  -> [ymin, xmin, ymax, xmax, prob,  class_id]  (verif: efficientdet-lite0/2)
 //   boxes_scores   -> ya estandar (no usa adapter; indices solo para validar el schema)
 //   raw            -> arbitrario por modelo: NO se autocompleta (lo edita el usuario)
 const PACK_PRESETS: Partial<Record<PackFormat, PackPreset>> = {
   yolo_flat: {
+    tensor_structure: {
+      box_format: 'cxcywh',
+      coordinates: { cx: 0, cy: 1, w: 2, h: 3 },
+      confidence_index: 4,
+      class_index: 5,
+    },
+    out_coords_space: 'tensor_pixels',
+  },
+  // Mismo orden de columnas que yolo_flat: la diferencia entre v5/v7 y v8 esta en el
+  // tensor CRUDO (transpuesto y sin objectness), y de eso ya se ocupa el unpacker.
+  yolo_v8: {
     tensor_structure: {
       box_format: 'cxcywh',
       coordinates: { cx: 0, cy: 1, w: 2, h: 3 },

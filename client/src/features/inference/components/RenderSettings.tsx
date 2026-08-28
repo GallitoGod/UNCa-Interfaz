@@ -10,6 +10,18 @@
 // workspaceStore y se empujan al backend, que es el que dibuja desde el 2026-08-26.
 // Se aplican al frame SIGUIENTE.
 //
+// Desde el reordenamiento del cliente los COLORES tambien viven aca, y ya no en un
+// modal aparte. El modal existia porque los colores eran "configurar y olvidar" y no
+// justificaban ocupar la columna; con las secciones plegables ese costo desaparecio.
+// Se fueron tres cosas de una: el boton "colores de label", el DrawSettingsModal
+// entero, y el guard `open={settingsOpen && mostrarRender}` que hacia falta para que
+// el modal no quedara huerfano si el tipo de modelo cambiaba con el abierto. Ese
+// guard no se resolvio: dejo de existir el problema.
+//
+// Ojo con un cambio de comportamiento deliberado: el modal tenia borrador y boton
+// Guardar; aca el color se aplica AL TOQUE, como el resto del panel. Es lo coherente
+// con un control de prender-mirar-apagar.
+//
 // Lo que NO va aca: seguimiento, suavizado y trazas (TrackingSettings.tsx). Esos
 // gobiernan como se sigue un objeto A LO LARGO DEL TIEMPO, tienen dependencias entre
 // si y solo valen para camara y video; agrupados aparte, esas reglas se aplican al
@@ -24,7 +36,7 @@ import { cn } from '@/shared/ui/cn';
 
 // Cuatro estilos de una familia de doce: cada uno resuelve un caso real y el resto
 // seria ruido (el wizard de modelos ya tuvo que podar por lo mismo en junio).
-const ESTILOS: { key: BoxStyle; label: string; hint: string }[] = [
+export const ESTILOS: { key: BoxStyle; label: string; hint: string }[] = [
   { key: 'box', label: 'Caja', hint: 'Rectangulo completo' },
   { key: 'round', label: 'Redonda', hint: 'Rectangulo con esquinas redondeadas' },
   { key: 'corner', label: 'Esquinas', hint: 'Solo las esquinas: deja ver la imagen debajo' },
@@ -107,7 +119,46 @@ export function RenderSettings() {
         on={drawSettings.autoScale}
         onToggle={() => aplicar({ autoScale: !drawSettings.autoScale })}
       />
+
+      <div className="mt-0.5 flex flex-col gap-1.5">
+        <Color
+          label="Caja"
+          value={drawSettings.bboxColor}
+          onChange={(v) => aplicar({ bboxColor: v })}
+        />
+        <Color
+          label="Texto"
+          value={drawSettings.labelColor}
+          onChange={(v) => aplicar({ labelColor: v })}
+        />
+      </div>
     </div>
+  );
+}
+
+// Fila de color compacta: la columna son 230px, asi que el nombre a la izquierda, el
+// hex y la muestra a la derecha. El <input type=color> abre el selector del sistema.
+function Color({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-control px-2.5 py-1.5 transition-colors hover:border-border-strong">
+      <span className="text-xs text-fg-subtle">{label}</span>
+      <span className="ml-auto font-mono text-[10px] text-label">{value}</span>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={`Color de ${label}`}
+        className="size-5 shrink-0 cursor-pointer rounded-[4px] border border-border bg-transparent"
+      />
+    </label>
   );
 }
 

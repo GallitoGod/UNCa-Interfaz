@@ -81,7 +81,8 @@ class DetectionOutput(StrictModel):
     nms_per_class: bool = False
     nms_threshold: float = 0.45
     tensor_structure: TensorDetection = Field(default_factory=TensorDetection)
-    pack_format: Literal["raw", "yolo_flat", "boxes_scores", "tflite_detpost", "anchor_deltas"] = "raw"
+    pack_format: Literal["raw", "yolo_flat", "yolo_v8", "boxes_scores", "tflite_detpost",
+                         "anchor_deltas"] = "raw"
     anchor_config: Optional[AnchorConfig] = None   # requerido si pack_format == "anchor_deltas"
     # Nombres de clase indexados por class_id (la forma que traen los .names de casi
     # todos los modelos). Desde el 2026-08-26 el que dibuja es el BACKEND, asi que el

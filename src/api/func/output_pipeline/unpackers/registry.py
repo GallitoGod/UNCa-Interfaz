@@ -5,6 +5,7 @@ import numpy as np
 
 from .raw import build_raw
 from .yolo_flat import build_yolo_flat
+from .yolo_v8 import build_yolo_v8
 from .boxes_scores import build_boxes_scores
 from .tflite_detpost import build_tflite_detpost
 from .anchor_deltas import build_anchor_deltas
@@ -22,6 +23,7 @@ UNPACKERS_REGISTRY: Dict[str, Callable] = {
     # --- deteccion ---
     "raw": build_raw,
     "yolo_flat": build_yolo_flat,
+    "yolo_v8": build_yolo_v8,
     "boxes_scores": build_boxes_scores,
     "tflite_detpost": build_tflite_detpost,
     "anchor_deltas": build_anchor_deltas,

@@ -96,7 +96,9 @@ function DetectionStep({
           <SelectField
             label="Empaquetado (pack_format)"
             value={out.pack_format}
-            options={['raw', 'yolo_flat', 'boxes_scores', 'tflite_detpost', 'anchor_deltas'] as const}
+            options={
+              ['raw', 'yolo_flat', 'yolo_v8', 'boxes_scores', 'tflite_detpost', 'anchor_deltas'] as const
+            }
             onChange={onPackFormat}
           />
           <SelectField
