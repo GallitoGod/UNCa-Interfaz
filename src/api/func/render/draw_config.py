@@ -27,6 +27,25 @@ from typing import Tuple
 #             dispara cientos de detecciones chicas, donde el rectangulo tapa al objeto.
 BOX_STYLES = ("box", "round", "corner", "dot")
 
+# Cuanto texto lleva cada deteccion. Existe porque con modelos que disparan MUCHAS
+# detecciones los carteles tapan la escena entera: medido con 'best' (VisDrone) sobre
+# una foto aerea de 713x403 salen ~70 cajas, y lo que se ve es una masa de etiquetas,
+# no la imagen ni las cajas. El smart_position hace lo que puede y no alcanza — el
+# problema no es que se pisen, es que no hay lugar.
+#   completa -> "#1 auto 0.87": lo de siempre. Es lo correcto con pocas detecciones.
+#   corta    -> "#1 auto": sin la confianza. La confianza es un numero que se lee para
+#               UNA caja, no para setenta, y se lleva ~40% del ancho del cartel.
+#   ninguna  -> sin etiquetas. El complemento natural del estilo 'dot', que existe
+#               justamente para modelos de muchas detecciones chicas pero hasta ahora
+#               seguia dibujando el cartel completo al lado de cada punto.
+#
+# Se descarto un modo "solo el numero de clase" (estaba sugerido en el pendiente #27):
+# mostrar "3" en vez de "auto" deshace el label_map, que se implemento a proposito el
+# 2026-08-26 para que las etiquetas dijeran el nombre y no el indice. Ahorrar ancho
+# volviendo a un dato menos legible es cambiar el problema de lugar; sacar la confianza
+# ahorra parecido sin perder que es cada cosa.
+LABEL_MODES = ("completa", "corta", "ninguna")
+
 
 @dataclass(frozen=True)
 class DrawConfig:
@@ -56,6 +75,12 @@ class DrawConfig:
     # 0.25 y no el 0.5 de supervision: a 0.5 el relleno gana sobre la foto y deja de
     # verse el objeto, que es justo lo que el usuario esta mirando.
     shading_alpha: float = 0.25
+
+    # Cuanto texto lleva cada deteccion (ver LABEL_MODES). Nace en "completa": con
+    # pocas cajas el cartel entero es la mejor lectura y es lo que el sistema venia
+    # haciendo. Los otros dos modos existen para el caso contrario, que no era
+    # atendible hasta ahora.
+    label_mode: str = "completa"
 
     # Etiquetas que se corren solas para no taparse entre si. Prendido por defecto:
     # con pocas cajas no se nota y con muchas es la diferencia entre leer los nombres

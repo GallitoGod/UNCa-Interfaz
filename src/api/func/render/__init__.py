@@ -2,6 +2,7 @@
 # El cliente dejo de dibujar: recibe el JPEG ya compuesto.
 from .draw_config import (
     BOX_STYLES,
+    LABEL_MODES,
     DrawConfig,
     get_draw_config,
     update_draw_config,
@@ -13,6 +14,7 @@ from .session import StreamSession
 
 __all__ = [
     "BOX_STYLES",
+    "LABEL_MODES",
     "DrawConfig",
     "get_draw_config",
     "update_draw_config",

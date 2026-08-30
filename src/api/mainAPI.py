@@ -13,7 +13,8 @@ import numpy as np
 import cv2
 from pathlib import Path
 from api.func.model_controller import ModelController
-from api.func.render import update_draw_config, get_draw_config, BOX_STYLES, StreamSession
+from api.func.render import (update_draw_config, get_draw_config, BOX_STYLES,
+                             LABEL_MODES, StreamSession)
 from api.func.reader_pipeline.config_schema import (
     ModelConfig,
     build_config_template,
@@ -75,9 +76,16 @@ class DrawSettingsRequest(BaseModel):
     boxStyle: Optional[Literal["box", "round", "corner", "dot"]] = Field(
         default=None,
         description="Estilo de marca: rectangulo, redondeado, solo esquinas o punto")
+    labelMode: Optional[Literal["completa", "corta", "ninguna"]] = Field(
+        default=None,
+        description=("Cuanto texto lleva cada deteccion: 'completa' (#id nombre conf), "
+                     "'corta' (sin la confianza) o 'ninguna' (sin etiquetas). Con "
+                     "modelos que disparan decenas de detecciones los carteles tapan "
+                     "la escena entera; 'ninguna' es el complemento del estilo 'dot'."))
     smartLabels: Optional[bool] = Field(
         default=None,
-        description="Correr las etiquetas para que no se tapen entre si")
+        description=("Correr las etiquetas para que no se tapen entre si. Inerte con "
+                     "labelMode='ninguna': no hay carteles que correr."))
     shading: Optional[bool] = Field(
         default=None,
         description="Rellenar el interior de la caja con el color de acento translucido")
@@ -120,6 +128,8 @@ class DrawSettingsRequest(BaseModel):
 # revienta al importar el modulo, no en produccion con un 422 misterioso.
 assert set(get_args(DrawSettingsRequest.model_fields["boxStyle"].annotation.__args__[0])) == set(BOX_STYLES), (
     "El Literal de boxStyle quedo desincronizado de BOX_STYLES")
+assert set(get_args(DrawSettingsRequest.model_fields["labelMode"].annotation.__args__[0])) == set(LABEL_MODES), (
+    "El Literal de labelMode quedo desincronizado de LABEL_MODES")
 
 
 class ModelPathRequest(BaseModel):
@@ -288,6 +298,7 @@ def update_draw(data: DrawSettingsRequest):
         label_color=data.labelColor,
         mask_alpha=data.maskAlpha,
         box_style=data.boxStyle,
+        label_mode=data.labelMode,
         smart_labels=data.smartLabels,
         shading=data.shading,
         shading_alpha=data.shadingAlpha,
@@ -311,6 +322,7 @@ def update_draw(data: DrawSettingsRequest):
             "labelColor": cfg.label_color,
             "maskAlpha": cfg.mask_alpha,
             "boxStyle": cfg.box_style,
+            "labelMode": cfg.label_mode,
             "smartLabels": cfg.smart_labels,
             "shading": cfg.shading,
             "shadingAlpha": cfg.shading_alpha,

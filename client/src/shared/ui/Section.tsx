@@ -30,15 +30,21 @@ interface SectionProps {
   estado?: ReactNode;
   /** Marca el estado como algo que reclama atencion (errores). */
   alerta?: boolean;
+  /**
+   * Seccion colgada DENTRO de otra (ej: Etiquetas dentro de Render). Se indenta con
+   * la misma guia vertical que usa Interruptor para sus dependientes: si se dibujara
+   * igual que su padre se leeria como hermana, no como hija.
+   */
+  anidada?: boolean;
   children: ReactNode;
   className?: string;
 }
 
-export function Section({ id, title, estado, alerta, children, className }: SectionProps) {
+export function Section({ id, title, estado, alerta, anidada, children, className }: SectionProps) {
   const abierta = useUiStore((s) => s.sections[id]);
   const toggle = useUiStore((s) => s.toggleSection);
 
-  return (
+  const cuerpo = (
     <div className={cn('flex flex-col gap-2.5', abierta && className)}>
       <button
         type="button"
@@ -71,6 +77,17 @@ export function Section({ id, title, estado, alerta, children, className }: Sect
           El contador de errores es la excepcion y por eso vive en el encabezado,
           no adentro. */}
       {abierta && children}
+    </div>
+  );
+
+  if (!anidada) return cuerpo;
+
+  // Misma guia vertical + indentado que Interruptor.dependiente: el lenguaje de
+  // "esto cuelga de aquello" ya existe en la piel, no hace falta inventar otro.
+  return (
+    <div className="flex items-stretch gap-2 pl-1.5">
+      <span aria-hidden className="w-px shrink-0 bg-border" />
+      <div className="min-w-0 flex-1">{cuerpo}</div>
     </div>
   );
 }

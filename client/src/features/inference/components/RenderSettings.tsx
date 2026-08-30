@@ -28,8 +28,9 @@
 // bloque entero en vez de repetirse control por control.
 
 import { useWorkspaceStore } from '@/features/vision-workspace/store/workspaceStore';
-import type { BoxStyle, ModelType } from '@/features/vision-workspace/services/types';
+import type { BoxStyle, LabelMode, ModelType } from '@/features/vision-workspace/services/types';
 import { Interruptor } from '@/shared/ui/Interruptor';
+import { Section } from '@/shared/ui/Section';
 import { pushDrawSettings } from '../api/drawSettings';
 import { useStreamStore } from '../store/streamStore';
 import { cn } from '@/shared/ui/cn';
@@ -41,6 +42,16 @@ export const ESTILOS: { key: BoxStyle; label: string; hint: string }[] = [
   { key: 'round', label: 'Redonda', hint: 'Rectangulo con esquinas redondeadas' },
   { key: 'corner', label: 'Esquinas', hint: 'Solo las esquinas: deja ver la imagen debajo' },
   { key: 'dot', label: 'Punto', hint: 'Un punto por deteccion: para muchas cajas chicas' },
+];
+
+// Cuanto texto lleva cada deteccion. Nace de un problema medido (#27): con `best`
+// sobre material aereo salen ~70 detecciones en un frame de 713x403 y los carteles
+// tapan la escena entera — no se ve ni la imagen ni las cajas. El "esquivarse" hace
+// lo que puede y no alcanza: el problema no es que se pisen, es que no hay lugar.
+export const MODOS_ETIQUETA: { key: LabelMode; label: string; hint: string }[] = [
+  { key: 'completa', label: 'Completa', hint: 'Nombre y confianza: "auto 0.87"' },
+  { key: 'corta', label: 'Corta', hint: 'Solo el nombre: "auto". La confianza se lee para una caja, no para setenta.' },
+  { key: 'ninguna', label: 'Ninguna', hint: 'Sin carteles: solo las marcas. Para modelos que disparan muchas detecciones.' },
 ];
 
 // Tipos cuyo resultado se DIBUJA sobre el frame (output_kind="frame" en el backend).
@@ -65,6 +76,11 @@ export function RenderSettings() {
   const setDrawSettings = useWorkspaceStore((s) => s.setDrawSettings);
   const resendStill = useStreamStore((s) => s.resendStill);
 
+  // Con las etiquetas apagadas, "que se esquiven" no gobierna nada.
+  const sinEtiquetas = drawSettings.labelMode === 'ninguna';
+  // Lo que muestra el encabezado cuando la seccion de etiquetas esta plegada.
+  const modoActivo = MODOS_ETIQUETA.find((m) => m.key === drawSettings.labelMode);
+
   // Aplica el cambio, lo empuja al backend y re-infiere si la fuente es una imagen
   // fija (sin esto el usuario cambia el estilo y no pasa nada en pantalla: no hay
   // frame siguiente que dibujar). Camara y video refrescan solos.
@@ -78,35 +94,57 @@ export function RenderSettings() {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Estilo de marca">
-        {ESTILOS.map((e) => {
-          const activo = drawSettings.boxStyle === e.key;
-          return (
-            <button
-              key={e.key}
-              type="button"
-              title={e.hint}
-              aria-pressed={activo}
-              onClick={() => aplicar({ boxStyle: e.key })}
-              className={cn(
-                'rounded-[var(--radius-sm)] border px-2 py-1.5 text-xs font-medium',
-                'transition-colors duration-150 focus-visible:outline-none active:scale-[0.98]',
-                activo
-                  ? 'border-accent-border bg-accent-soft text-accent'
-                  : 'border-border bg-control text-fg-subtle hover:text-fg hover:border-border-strong',
-              )}
-            >
-              {e.label}
-            </button>
-          );
-        })}
+        {ESTILOS.map((e) => (
+          <Opcion
+            key={e.key}
+            label={e.label}
+            hint={e.hint}
+            activo={drawSettings.boxStyle === e.key}
+            onClick={() => aplicar({ boxStyle: e.key })}
+          />
+        ))}
       </div>
 
-      <Interruptor
-        label="Etiquetas que se esquivan"
-        hint="Corre los carteles para que no se tapen entre si. Cuesta un poco mas con muchas cajas."
-        on={drawSettings.smartLabels}
-        onToggle={() => aplicar({ smartLabels: !drawSettings.smartLabels })}
-      />
+      {/* Las etiquetas van en su propia seccion anidada: son DOS controles que
+          gobiernan lo mismo (cuanto texto ocupa cada deteccion) y sueltos entre el
+          estilo de marca y el sombreado no se leia que iban juntos. Plegada muestra
+          el modo activo, que es la regla que hace que plegar no esconda estado. */}
+      <Section
+        id="etiquetas"
+        title="Etiquetas"
+        estado={modoActivo?.label.toUpperCase()}
+        anidada
+      >
+        {/* En vertical y no en una fila de tres: la columna son 230px y tres botones
+            lado a lado quedan apretados al punto de no poder leerlos. */}
+        <div className="flex flex-col gap-1.5" role="group" aria-label="Cuanto texto por deteccion">
+          {MODOS_ETIQUETA.map((m) => (
+            <Opcion
+              key={m.key}
+              label={m.label}
+              hint={m.hint}
+              activo={drawSettings.labelMode === m.key}
+              onClick={() => aplicar({ labelMode: m.key })}
+              textoIzquierda
+            />
+          ))}
+        </div>
+
+        <Interruptor
+          label="Que se esquiven"
+          hint={
+            sinEtiquetas
+              ? 'Sin efecto: no hay carteles que correr con las etiquetas en Ninguna.'
+              : 'Corre los carteles para que no se tapen entre si. Cuesta un poco mas con muchas cajas.'
+          }
+          on={drawSettings.smartLabels}
+          onToggle={() => aplicar({ smartLabels: !drawSettings.smartLabels })}
+          // Sin carteles no hay nada que esquivar. Se DESHABILITA en vez de forzarse a
+          // false para no perder la preferencia del usuario cuando vuelva a prender las
+          // etiquetas — mismo criterio que el bloque de Seguimiento con una imagen fija.
+          disabled={sinEtiquetas}
+        />
+      </Section>
       <Interruptor
         label="Sombreado"
         hint="Rellena la caja con el color de acento translucido. Se lleva bien con Esquinas; con muchas cajas superpuestas los rellenos se suman y tapan la imagen."
@@ -133,6 +171,43 @@ export function RenderSettings() {
         />
       </div>
     </div>
+  );
+}
+
+// Boton de una grilla de opciones excluyentes (estilo de marca, modo de etiqueta).
+// Se factorizo al agregar el segundo selector: son la misma pieza y duplicar el bloque
+// de clases garantiza que en el tercero uno de los dos quede desalineado.
+function Opcion({
+  label,
+  hint,
+  activo,
+  onClick,
+  textoIzquierda = false,
+}: {
+  label: string;
+  hint: string;
+  activo: boolean;
+  onClick: () => void;
+  /** Para listas verticales de ancho completo: centrado, el texto queda flotando. */
+  textoIzquierda?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={hint}
+      aria-pressed={activo}
+      onClick={onClick}
+      className={cn(
+        'rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-medium',
+        'transition-colors duration-150 focus-visible:outline-none active:scale-[0.98]',
+        textoIzquierda && 'text-left',
+        activo
+          ? 'border-accent-border bg-accent-soft text-accent'
+          : 'border-border bg-control text-fg-subtle hover:text-fg hover:border-border-strong',
+      )}
+    >
+      {label}
+    </button>
   );
 }
 

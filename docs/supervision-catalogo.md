@@ -230,14 +230,26 @@ qué tal anda el modelo en el carril").
 **Qué es.** Un segmento que cuenta cuántos objetos lo cruzaron en cada sentido; la variante
 `LineZoneAnnotatorMulticlass` lleva un contador por clase.
 
-**Por qué acá (poco).** Es lo **menos alineado** de todo el catálogo con lo que UNCaLens es:
-no dice nada sobre el modelo, dice algo sobre *la escena*. Vale como demo —y para un
-proyecto universitario, un demo que cuenta autos en vivo tiene valor de comunicación real—,
-pero no confundamos eso con valor de banco de pruebas.
+**Por qué acá.** > 🔴 **CORREGIDO el 2026-08-28.** Este apartado decía que las líneas eran
+> "lo **menos alineado** de todo el catálogo con lo que UNCaLens es", con veredicto "sólo si
+> aparece la necesidad de *mostrar* la app". **Ese juicio estaba mal fundado** y el usuario lo
+> corrigió: partía de asumir un único objetivo, el banco de pruebas. UNCaLens **también tiene
+> un objetivo educativo declarado** — mostrar las capacidades de la IA a alguien que no sabe
+> de IA. Bajo ese objetivo, "no dice nada sobre el modelo, dice algo sobre la escena" **deja
+> de ser una objeción**: que la app cuente autos cruzando una línea en vivo es precisamente
+> la clase de cosa que vuelve legible lo que el modelo está haciendo. El texto viejo se
+> conserva acá arriba, tachado en espíritu, porque la lección no es sobre las líneas: es que
+> **este catálogo juzga contra los objetivos que tiene escritos**, y tenía uno de menos.
 
-**Veredicto.** Sólo si aparece la necesidad de *mostrar* la app. Si el objetivo es la demo
-institucional, esto y el mapa de calor son lo que la gente recuerda; si el objetivo es la
-herramienta, van últimos.
+Hay que pesar **dos** objetivos, no uno: (a) ¿mide o diagnostica al modelo? y (b) ¿hace
+visible lo que el modelo hace, para alguien de afuera? Una feature que sólo cumple (b) es
+legítima.
+
+**Veredicto.** **Va.** Junto con las zonas (§4.4), es el par que cumple (b) mejor que
+cualquier otra cosa del catálogo, y cuesta 0,05 ms. Su dependencia real no es de prioridad
+sino técnica: **exige `tracker_id`**, así que hereda el Tier B entero — incluida la regla de
+filtrar los `-1` antes de contar, sin la cual todos los tracks sin confirmar son el mismo
+objeto y el contador cuenta ficción.
 
 ### 4.6 Mapa de calor · `sv.HeatMapAnnotator` — **+6,93 ms/frame**
 
@@ -404,6 +416,22 @@ compara una vez por frame y se olvida sola. Es el mismo truco que la `version` d
 `DrawConfig` con el cache de annotators, y por la misma razón — se auto-repara, en vez de
 exigir que el endpoint REST le avise a cada conexión viva.
 
+**Corrección al alcance de "sesión" (2026-08-28), antes de implementar zonas.** La forma
+propuesta del payload (más abajo) mete `zones` adentro de `session`, junto al tracking. Eso
+es un error: **`StreamSession` se resetea por `pipeline_generation`, o sea al cambiar de
+modelo**, y una zona NO debe morir cuando cambia el modelo — el polígono describe *la
+escena*, y comparar dos modelos sobre la misma zona es exactamente el caso de uso del banco
+de pruebas. Zonas y líneas tienen **vidas distintas entre sí**, aunque se dibujen parecido:
+
+| Objeto | Muere cuando | Por qué |
+|---|---|---|
+| **Zona** (el polígono) | cambia la **fuente** | Describe la escena. Si cambia el video, el polígono no significa nada. Sobrevive al cambio de modelo. |
+| **Contador de la línea** | se reinicia el **tracker** (o sea, también al cambiar de modelo) | Cuenta cruces por `tracker_id`. Si las identidades se reinician y el contador no, cuenta doble. |
+
+O sea que la geometría y el conteo no son el mismo estado y no pueden colgar del mismo
+dueño: la **geometría** de ambas (polígono y segmento) vive atada a la fuente; el **contador**
+de la línea vive atado al tracker.
+
 La **regla 3** (dependencias visibles) se cumple en el **singleton**, no en la UI:
 `smoothing` y `traces` prenden el tracking solos, y apagar el tracking los apaga. Como es la
 única puerta de escritura del estado, no existe forma de dejarlo en una combinación
@@ -472,9 +500,15 @@ efectivo completo.)
    cuando la fuente es una imagen fija.
 4. **Exportar detecciones.** Barato y le devuelve al usuario el dato numérico que el paso 3
    se llevó al backend.
-5. **La bifurcación**, según el objetivo:
+5. **Zonas y líneas de conteo** (§4.4, §4.5). **Ya no son una rama condicional de la
+   bifurcación**: el objetivo educativo del sistema está declarado, así que dejaron de
+   depender de que "aparezca la necesidad de mostrar la app" (ver la corrección del
+   2026-08-28 en §4.5). Van en este orden y no al revés: **la zona no necesita tracking y la
+   línea sí**, así que la zona se puede montar y verificar sola, y encima trae consigo la
+   pieza cara que las dos comparten —el editor de polígonos del cliente y su transformación
+   de coordenadas—, que la línea después reusa con dos vértices en vez de N.
+6. **La bifurcación** que queda, según el objetivo:
    - académico → **métricas sobre dataset** (§5.3);
-   - demostrar la app → **zonas y conteo** (§4.4, §4.5);
    - imágenes grandes → **el slicer** (§5.1);
    - identidad propia → **comparar dos modelos** (§5.4).
 

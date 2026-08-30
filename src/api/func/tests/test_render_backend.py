@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 import api.mainAPI as main
 from api.func.render import (
     BOX_STYLES,
+    LABEL_MODES,
     DrawConfig,
     annotators_for,
     get_draw_config,
@@ -370,3 +371,92 @@ def test_apagar_el_sombreado_se_aplica():
 ])
 def test_post_config_draw_rechaza_sombreado_invalido(body):
     assert TestClient(main.app).post("/config/draw", json=body).status_code == 422
+
+
+# ── Modos de etiqueta (pendiente #27, 2026-08-28) ─────────────────────────────
+#
+# El problema que resuelven: con 'best' (VisDrone) sobre material aereo salen ~70
+# detecciones por frame y los carteles tapan la escena entera. El smart_position no
+# alcanza — no es que se pisen, es que no hay lugar.
+
+def test_label_mode_nace_en_completa():
+    # Con pocas cajas el cartel entero es la mejor lectura, y es lo que el sistema
+    # venia haciendo: cambiar el default seria una regresion para el caso comun.
+    assert DrawConfig().label_mode == "completa"
+
+
+def test_modo_completa_trae_nombre_y_confianza(dets):
+    assert _labels_for(dets, "completa") == ["17 0.87"]
+
+
+def test_modo_corta_omite_la_confianza(dets):
+    # Es el ~40% del ancho del cartel y es un numero que se lee para UNA caja, no
+    # para setenta.
+    assert _labels_for(dets, "corta") == ["17"]
+
+
+def test_el_prefijo_de_tracking_sobrevive_al_modo_corto():
+    # El #id es lo mas corto de la etiqueta y lo unico que NO se puede deducir
+    # mirando el frame: es lo ultimo que habria que sacar.
+    d = detections_from_array(
+        np.array([[10.0, 20.0, 90.0, 100.0, 0.87, 17.0]], dtype=np.float32))
+    d.tracker_id = np.array([3])
+    assert _labels_for(d, "completa") == ["#3 17 0.87"]
+    assert _labels_for(d, "corta") == ["#3 17"]
+
+
+def test_modo_ninguna_no_construye_el_annotator_de_etiquetas():
+    # Mismo criterio que 'shade': el caso apagado no retiene un objeto que nadie usa,
+    # y el hot path pregunta por None en vez de releer un flag de la config.
+    assert annotators_for(update_draw_config(label_mode="ninguna"), (860, 573)).label is None
+    assert annotators_for(update_draw_config(label_mode="completa"), (860, 573)).label is not None
+
+
+def test_modo_ninguna_produce_un_frame_distinto(frame, dets):
+    # La verificacion que importa: apagar las etiquetas tiene que cambiar PIXELES.
+    # Un toggle prendido sin efecto visible es exactamente lo que este proyecto
+    # viene peleando.
+    update_draw_config(label_mode="completa")
+    con = render_detection(dets, frame)
+    update_draw_config(label_mode="ninguna")
+    sin = render_detection(dets, frame)
+    assert con != sin
+
+
+def test_apagar_las_etiquetas_no_cambia_ninguna_deteccion(frame, dets):
+    # Es una capa de dibujo, no un filtro: el resultado del modelo no se toca.
+    antes = dets.xyxy.copy(), dets.confidence.copy(), dets.class_id.copy()
+    update_draw_config(label_mode="ninguna")
+    render_detection(dets, frame)
+    assert np.array_equal(dets.xyxy, antes[0])
+    assert np.array_equal(dets.confidence, antes[1])
+    assert np.array_equal(dets.class_id, antes[2])
+
+
+def test_los_tres_modos_componen_un_frame_valido(frame, dets):
+    for modo in LABEL_MODES:
+        update_draw_config(label_mode=modo)
+        jpg = render_detection(dets, frame)
+        back = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+        assert back is not None and back.shape == frame.shape, modo
+
+
+def test_post_config_draw_acepta_label_mode():
+    client = TestClient(main.app)
+    r = client.post("/config/draw", json={"labelMode": "corta"})
+    assert r.status_code == 200
+    assert r.json()["draw"]["labelMode"] == "corta"
+    assert get_draw_config().label_mode == "corta"
+
+
+def test_post_config_draw_rechaza_un_modo_inventado():
+    r = TestClient(main.app).post("/config/draw", json={"labelMode": "solo_el_id"})
+    assert r.status_code == 422
+
+
+def test_el_endpoint_y_LABEL_MODES_no_pueden_desincronizarse():
+    # La misma guarda que ya protege a boxStyle: si alguien agrega un modo en
+    # draw_config y se olvida del endpoint, revienta al importar, no en produccion.
+    for modo in LABEL_MODES:
+        assert TestClient(main.app).post(
+            "/config/draw", json={"labelMode": modo}).status_code == 200

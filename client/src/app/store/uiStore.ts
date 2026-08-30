@@ -13,6 +13,7 @@ export type SectionId =
   | 'errores'
   | 'parametros'
   | 'render'
+  | 'etiquetas'
   | 'seguimiento'
   | 'metricas';
 
@@ -21,6 +22,9 @@ export type SectionId =
 //   - parametros: el umbral es el control mas tocado de la app.
 //   - metricas: es un instrumento, se mira de reojo mientras se hace otra cosa.
 //   - render/seguimiento: configurar-y-olvidar; se abren cuando se los busca.
+//   - etiquetas: ANIDADA dentro de render, y por eso nace ABIERTA: ya esta escondida
+//     detras del plegado del padre, y dejarla cerrada obligaria a dos clicks para
+//     llegar a un control que se toca seguido con modelos de muchas detecciones.
 //   - errores: cerrada, pero su encabezado SIEMPRE muestra el contador (ver Section).
 const SECCIONES_POR_DEFECTO: Record<SectionId, boolean> = {
   fuente: true,
@@ -28,6 +32,7 @@ const SECCIONES_POR_DEFECTO: Record<SectionId, boolean> = {
   errores: false,
   parametros: true,
   render: false,
+  etiquetas: true,
   seguimiento: false,
   metricas: true,
 };

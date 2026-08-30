@@ -172,25 +172,36 @@ def _class_name(label_map, class_id: int) -> str:
     return str(class_id)
 
 
-def _labels_for(dets) -> list:
+def _labels_for(dets, modo: str = "completa") -> list:
     """
     Textos de las etiquetas: "<nombre> <conf>", o "#<id> <nombre> <conf>" cuando el
     tracking esta prendido. Usa data['class_name'] si el pipeline lo adjunto (hay
     label_map) y cae al id numerico de clase si no.
 
+    'modo' es el label_mode de la DrawConfig (ver LABEL_MODES en render/draw_config):
+    "corta" omite la confianza. El modo "ninguna" NO llega hasta aca — render_detection
+    ni siquiera llama a esta funcion, porque este bucle es por deteccion y con ~70 cajas
+    por frame es trabajo real que no hay motivo de hacer para tirarlo.
+
     El tracker_id se antepone porque es lo que hace que el tracking se VEA: sin el
     numero en pantalla, rastrear no cambia un solo pixel. Los tracks todavia no
     confirmados llegan con tracker_id = -1 y se dibujan SIN prefijo: "#-1" no seria
-    informacion, seria ruido que el usuario tendria que aprender a ignorar.
+    informacion, seria ruido que el usuario tendria que aprender a ignorar. El prefijo
+    se conserva tambien en "corta": es lo mas corto de la etiqueta y lo unico que no se
+    puede deducir mirando el frame.
     """
     names = dets.data.get("class_name") if dets.data else None
     conf = dets.confidence
     tids = dets.tracker_id
+    con_confianza = modo != "corta"
     out = []
     for i in range(len(dets)):
         name = str(names[i]) if names is not None else str(int(dets.class_id[i]))
-        score = float(conf[i]) if conf is not None else 0.0
-        etiqueta = f"{name} {score:.2f}"
+        if con_confianza:
+            score = float(conf[i]) if conf is not None else 0.0
+            etiqueta = f"{name} {score:.2f}"
+        else:
+            etiqueta = name
         if tids is not None and int(tids[i]) >= 0:
             etiqueta = f"#{int(tids[i])} {etiqueta}"
         out.append(etiqueta)
@@ -234,7 +245,13 @@ def render_detection(result, img_bgr, draw_cfg=None, session=None) -> bytes:
         if session is not None:
             scene = session.anotar_trazas(scene, result, cfg, (w, h))
         scene = ann.box.annotate(scene=scene, detections=result)
-        scene = ann.label.annotate(scene=scene, detections=result, labels=_labels_for(result))
+        # ann.label es None cuando el usuario apago las etiquetas (label_mode
+        # "ninguna"). Se pregunta por el annotator y no por la config para no leer el
+        # mismo estado desde dos lados; ademas asi ni se arma la lista de textos.
+        if ann.label is not None:
+            scene = ann.label.annotate(
+                scene=scene, detections=result,
+                labels=_labels_for(result, cfg.label_mode))
 
     ok, buf = cv2.imencode(".jpg", scene, [int(cv2.IMWRITE_JPEG_QUALITY), int(cfg.jpeg_quality)])
     if not ok:

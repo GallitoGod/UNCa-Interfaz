@@ -27,7 +27,10 @@ _MAX_ENTRADAS = 4
 class Annotators:
     """Los annotators armados para una version de DrawConfig y una resolucion."""
     box: object            # el estilo elegido: Box / RoundBox / BoxCorner / Dot
-    label: sv.LabelAnnotator
+    # None cuando label_mode == "ninguna", mismo criterio que 'shade': el caso apagado
+    # no construye ni retiene un annotator que nadie va a usar, y el hot path pregunta
+    # por None en vez de volver a leer un flag de la config.
+    label: Optional[sv.LabelAnnotator]
     mask: sv.MaskAnnotator
     # Relleno translucido de la caja. None cuando el sombreado esta apagado: asi el
     # hot path pregunta por None en vez de por un flag de la config, y el caso
@@ -95,7 +98,7 @@ def _build(cfg: DrawConfig, resolution_wh: Optional[Tuple[int, int]]) -> Annotat
             text_scale=text_scale,
             smart_position=cfg.smart_labels,
             color_lookup=sv.ColorLookup.INDEX,
-        ),
+        ) if cfg.label_mode != "ninguna" else None,
         mask=sv.MaskAnnotator(
             color=box_color,
             opacity=cfg.mask_alpha,

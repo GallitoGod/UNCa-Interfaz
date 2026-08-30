@@ -9,6 +9,11 @@ export type { ModelType };
 // supervision: el resto seria ruido en la UI (ver render/draw_config.py).
 export type BoxStyle = 'box' | 'round' | 'corner' | 'dot';
 
+// Cuanto texto lleva cada deteccion (LABEL_MODES en render/draw_config.py). Existe
+// porque con modelos de muchas detecciones los carteles tapan la escena: con 'best'
+// sobre material aereo salen ~70 cajas y no se ve ni la imagen ni las cajas.
+export type LabelMode = 'completa' | 'corta' | 'ninguna';
+
 // Ajustes de dibujo. Desde el 2026-08-26 el que dibuja es el BACKEND: esto es el
 // estado del que el cliente es DUENO (lo persiste en localStorage) y que empuja por
 // POST /config/draw. El cliente ya no los usa para dibujar nada.
@@ -17,7 +22,8 @@ export interface DrawSettings {
   labelColor: string;
   maskAlpha: number; // segmentacion (futuro)
   boxStyle: BoxStyle;
-  smartLabels: boolean; // correr los carteles para que no se tapen entre si
+  labelMode: LabelMode; // cuanto texto lleva cada deteccion (o ninguno)
+  smartLabels: boolean; // correr los carteles para que no se tapen entre si. Inerte con labelMode 'ninguna'
   shading: boolean; // rellenar la caja con el color de acento translucido
   autoScale: boolean; // grosor y texto derivados de la resolucion del frame
 

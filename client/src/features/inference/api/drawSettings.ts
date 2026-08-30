@@ -28,6 +28,7 @@ export interface DrawSettingsPayload {
   labelColor?: string;
   maskAlpha?: number;
   boxStyle?: string;
+  labelMode?: string;
   smartLabels?: boolean;
   shading?: boolean;
   shadingAlpha?: number;
@@ -57,6 +58,7 @@ export function pushDrawSettings(settings: DrawSettings): void {
     labelColor: settings.labelColor,
     maskAlpha: settings.maskAlpha,
     boxStyle: settings.boxStyle,
+    labelMode: settings.labelMode,
     smartLabels: settings.smartLabels,
     shading: settings.shading,
     // shadingAlpha NO se manda: el cliente no expone la opacidad (no hay slider en

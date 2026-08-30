@@ -38,6 +38,9 @@ const DEFAULT_DRAW_SETTINGS: DrawSettings = {
   // responder algo concreto, y el suavizado ademas MAQUILLA al modelo (promedia la
   // salida cruda), que es justo lo que un banco de pruebas no deberia hacer solo.
   boxStyle: 'box',
+  // 'completa' es lo que el sistema venia haciendo y sigue siendo lo correcto con
+  // pocas cajas; los otros dos modos existen para el caso contrario (ver #27).
+  labelMode: 'completa',
   smartLabels: true,
   shading: false,
   autoScale: true,
